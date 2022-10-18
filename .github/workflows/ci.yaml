@@ -1,0 +1,24 @@
+name: HyperloopUPV H8 Backend Automatic Testing
+
+on: pull_request
+
+jobs:
+  run-go-tests:
+    
+    name: Check tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout under $GITHUB_WORKSPACE
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.19.0'
+          check-latest: false
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test -v ./...
