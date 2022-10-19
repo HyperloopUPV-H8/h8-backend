@@ -8,7 +8,6 @@ import (
 	"github.com/go-ping/ping"
 )
 
-// Helper struct to keep track of a connection with the pod
 type connection struct {
 	addr    *net.TCPAddr
 	tcp     *net.TCPConn
@@ -16,7 +15,6 @@ type connection struct {
 	isAlive bool
 }
 
-// Create a new connection and attempt to connect, returning error if the given ip and port are invalid
 func newConnection(ip string, port int) (*connection, error) {
 	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", ip, port))
 	if err != nil {
@@ -43,30 +41,31 @@ func newConnection(ip string, port int) (*connection, error) {
 	}, nil
 }
 
-// Attempt to establish connection with the other end
-func (c *connection) tryConnect() {
-	if c.tcp == nil {
-		c.pinger.Run()
-		if c.pinger.Statistics().PacketsRecv > 0 {
-			c.tcp, _ = net.DialTCP("tcp", nil, c.addr)
-			c.isAlive = c.tcp != nil
-		}
+func (conn *connection) tryConnect() {
+	if conn.tcp != nil {
+		return
+	}
+
+	conn.pinger.Run()
+	if conn.pinger.Statistics().PacketsRecv > 0 {
+		conn.tcp, _ = net.DialTCP("tcp", nil, conn.addr)
+		conn.isAlive = conn.tcp != nil
 	}
 }
 
-// Check if the other end is still connected by sending a dumy message
-func (c *connection) checkAlive() {
-	if c.tcp != nil {
-		_, err := c.tcp.Write(make([]byte, 1))
-		if err != nil {
-			c.disconnect()
-		}
+func (conn *connection) checkAlive() {
+	if conn.tcp == nil {
+		return
+	}
+
+	_, err := conn.tcp.Write(make([]byte, 1))
+	if err != nil {
+		conn.disconnect()
 	}
 }
 
-// Disconnect from the other end, gracefully closing the connection
-func (c *connection) disconnect() {
-	c.tcp.Close()
-	c.tcp = nil
-	c.isAlive = false
+func (conn *connection) disconnect() {
+	conn.tcp.Close()
+	conn.tcp = nil
+	conn.isAlive = false
 }

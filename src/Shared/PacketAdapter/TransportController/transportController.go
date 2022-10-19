@@ -7,17 +7,15 @@ import (
 	"github.com/google/gopacket/pcap"
 )
 
-// TransportController is in charge of sending and receiving messages from/to the pod
 type TransportController struct {
 	source      *gopacket.PacketSource
 	connections map[string]*connection
 }
 
+// Currently hardcoded, this will change once we find a way to autodetect the interface
 const interfaceName = "\\Device\\NPF_loopback"
 const connectionCheckDelay = time.Second
 
-// Create a new TransportService instance trying to connect to the given ips through the given ports
-// this will return an error if the packet source couldn't be created. Any invalid ips will be ignored
 func New(ips []string, ports []int) (*TransportController, error) {
 	connections := make(map[string]*connection)
 	for i, ip := range ips {
@@ -32,21 +30,19 @@ func New(ips []string, ports []int) (*TransportController, error) {
 		return nil, err
 	}
 
-	tc := &TransportController{
+	controller := &TransportController{
 		source:      gopacket.NewPacketSource(source, source.LinkType()),
 		connections: connections,
 	}
 
-	go tc.checkConnections(connectionCheckDelay)
+	go controller.checkConnections(connectionCheckDelay)
 
-	return tc, nil
+	return controller, nil
 }
 
-// Periodically checks all connections to make sure every one is alive
-// intended to be run as a goroutine
-func (tc *TransportController) checkConnections(delay time.Duration) {
+func (controller *TransportController) checkConnections(delay time.Duration) {
 	for {
-		for _, conn := range tc.connections {
+		for _, conn := range controller.connections {
 			conn.checkAlive()
 			conn.tryConnect()
 		}
@@ -55,18 +51,16 @@ func (tc *TransportController) checkConnections(delay time.Duration) {
 	}
 }
 
-// Recieve the next packet that isn't meant to be received/sent by/from the backend
-func (tc *TransportController) Receive() []byte {
+func (controller *TransportController) Receive() []byte {
 	for {
-		if packet, err := tc.source.NextPacket(); err == nil && packet != nil && tc.networkFlowFilter(packet) {
+		if packet, err := controller.source.NextPacket(); err == nil && packet != nil && controller.networkFlowFilter(packet) {
 			return packet.ApplicationLayer().Payload()
 		}
 	}
 }
 
-// Send a message to the given ip
-func (tc *TransportController) Send(payload []byte, ip string) {
-	conn, ok := tc.connections[ip]
+func (controller *TransportController) Send(payload []byte, ip string) {
+	conn, ok := controller.connections[ip]
 	if ok && conn.isAlive {
 		_, err := conn.tcp.Write(payload)
 		if err != nil {
@@ -75,11 +69,10 @@ func (tc *TransportController) Send(payload []byte, ip string) {
 	}
 }
 
-// Returns if the packet has been sent between connections
-func (tc *TransportController) networkFlowFilter(packet gopacket.Packet) bool {
+func (controller *TransportController) networkFlowFilter(packet gopacket.Packet) bool {
 	networkLayer := packet.NetworkLayer()
 	flow := networkLayer.NetworkFlow()
-	_, okSrc := tc.connections[flow.Src().String()]
-	_, okDst := tc.connections[flow.Dst().String()]
+	_, okSrc := controller.connections[flow.Src().String()]
+	_, okDst := controller.connections[flow.Dst().String()]
 	return okSrc && okDst
 }
