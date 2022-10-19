@@ -32,21 +32,21 @@ func New(ips []string, ports []int) (*TransportController, error) {
 		return nil, err
 	}
 
-	ts := &TransportController{
+	tc := &TransportController{
 		source:      gopacket.NewPacketSource(source, source.LinkType()),
 		connections: connections,
 	}
 
-	go ts.checkConnections(connectionCheckDelay)
+	go tc.checkConnections(connectionCheckDelay)
 
-	return ts, nil
+	return tc, nil
 }
 
 // Periodically checks all connections to make sure every one is alive
 // intended to be run as a goroutine
-func (ts *TransportController) checkConnections(delay time.Duration) {
+func (tc *TransportController) checkConnections(delay time.Duration) {
 	for {
-		for _, conn := range ts.connections {
+		for _, conn := range tc.connections {
 			conn.checkAlive()
 			conn.tryConnect()
 		}
@@ -56,17 +56,17 @@ func (ts *TransportController) checkConnections(delay time.Duration) {
 }
 
 // Recieve the next packet that isn't meant to be received/sent by/from the backend
-func (ts *TransportController) Receive() []byte {
+func (tc *TransportController) Receive() []byte {
 	for {
-		if packet, err := ts.source.NextPacket(); err == nil && packet != nil && ts.networkFlowFilter(packet) {
+		if packet, err := tc.source.NextPacket(); err == nil && packet != nil && tc.networkFlowFilter(packet) {
 			return packet.ApplicationLayer().Payload()
 		}
 	}
 }
 
 // Send a message to the given ip
-func (ts *TransportController) Send(payload []byte, ip string) {
-	conn, ok := ts.connections[ip]
+func (tc *TransportController) Send(payload []byte, ip string) {
+	conn, ok := tc.connections[ip]
 	if ok && conn.isAlive {
 		_, err := conn.tcp.Write(payload)
 		if err != nil {
@@ -76,10 +76,10 @@ func (ts *TransportController) Send(payload []byte, ip string) {
 }
 
 // Returns if the packet has been sent between connections
-func (ts *TransportController) networkFlowFilter(packet gopacket.Packet) bool {
+func (tc *TransportController) networkFlowFilter(packet gopacket.Packet) bool {
 	networkLayer := packet.NetworkLayer()
 	flow := networkLayer.NetworkFlow()
-	_, okSrc := ts.connections[flow.Src().String()]
-	_, okDst := ts.connections[flow.Dst().String()]
+	_, okSrc := tc.connections[flow.Src().String()]
+	_, okDst := tc.connections[flow.Dst().String()]
 	return okSrc && okDst
 }
