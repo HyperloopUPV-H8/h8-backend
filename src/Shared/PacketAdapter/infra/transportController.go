@@ -1,22 +1,36 @@
 package infra
 
 type TransportController struct {
-	sniffer          *Sniffer
-	aliveConnections map[string]*Connection
-	deadConnections  map[string]*Ping
-	addresses        []string
+	sniffer Sniffer
+	server  Server
 }
 
-func (controller *TransportController) Receive() []byte {
-	// Missing parts
+const (
+	snifferTarget string = ""
+	snifferLive   bool   = true
+
+	serverPort Port = 6000
+)
+
+func New(validAddrs []string) *TransportController {
+	return &TransportController{
+		sniffer: NewSniffer(snifferTarget, snifferLive, nil),
+		server:  OpenServer(serverPort, stringsToIPs(validAddrs)),
+	}
+}
+
+func (controller *TransportController) ReceiveData() []byte {
 	return controller.sniffer.GetNextPacket()
 }
 
+func (controller *TransportController) ReceiveMessage() []byte {
+	return controller.server.Receive()
+}
+
 func (controller *TransportController) Send(addr string, payload []byte) {
-	// TODO
+	controller.server.Send(IP(addr), payload)
 }
 
 func (controller *TransportController) AliveConnections() []string {
-	// TODO
-	return nil
+	return controller.server.ConnectedAddresses()
 }

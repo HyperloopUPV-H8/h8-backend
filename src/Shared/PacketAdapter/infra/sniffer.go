@@ -1,24 +1,26 @@
 package infra
 
 import (
+	"time"
+
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
 )
 
 const (
-	liveHandleSnaplen = 2_147_483_647
-	liveHandlePromisc = true
-	liveHandleTimeout = pcap.BlockForever
+	liveHandleSnaplen int32         = 2147483647 // max int32 value
+	liveHandlePromisc bool          = true
+	liveHandleTimeout time.Duration = pcap.BlockForever
 )
 
 type Sniffer struct {
-	source  *gopacket.PacketSource
+	source  gopacket.PacketSource
 	filters []func(*gopacket.Packet) bool
 }
 
-func NewSniffer(target string, live bool, filters []func(*gopacket.Packet) bool) *Sniffer {
-	return &Sniffer{
-		source:  obtainSource(target, live),
+func NewSniffer(target string, live bool, filters []func(*gopacket.Packet) bool) Sniffer {
+	return Sniffer{
+		source:  *obtainSource(target, live),
 		filters: filters,
 	}
 }
