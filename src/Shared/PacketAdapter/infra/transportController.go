@@ -6,21 +6,18 @@ type TransportController struct {
 }
 
 const (
-	snifferTarget string = ""
-	snifferLive   bool   = true
+	snifferTarget string = ".\\bruh.pcapng"
+	snifferLive   bool   = false
 
 	serverPort Port = 6000
 )
 
-// Use var instead of const because go doesn't allow slices to be constants
-var (
-	snifferFilters []Filterer = []Filterer{NewDifferentEndpointIPFilter("192.168.0.1")}
-)
-
 func New(validAddrs []string) *TransportController {
+	validAddrIPs := stringsToIPs(validAddrs)
+
 	return &TransportController{
-		sniffer: NewSniffer(snifferTarget, snifferLive, snifferFilters),
-		server:  OpenServer(serverPort, stringsToIPs(validAddrs)),
+		sniffer: NewSniffer(snifferTarget, snifferLive, createFilters(validAddrIPs)),
+		server:  OpenServer(serverPort, validAddrIPs),
 	}
 }
 
@@ -37,5 +34,9 @@ func (controller *TransportController) Send(addr string, payload []byte) {
 }
 
 func (controller *TransportController) AliveConnections() []string {
-	return controller.server.ConnectedAddresses()
+	return ipsToStrings(controller.server.ConnectedAddresses())
+}
+
+func createFilters(validAddrIPs []IP) []Filterer {
+	return []Filterer{NewDesiredEndpointsFilter(validAddrIPs)}
 }

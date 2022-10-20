@@ -14,13 +14,13 @@ const (
 )
 
 type Sniffer struct {
-	source  gopacket.PacketSource
+	source  *gopacket.PacketSource
 	filters []Filterer
 }
 
 func NewSniffer(target string, live bool, filters []Filterer) Sniffer {
 	return Sniffer{
-		source:  *obtainSource(target, live),
+		source:  obtainSource(target, live),
 		filters: filters,
 	}
 }
@@ -61,8 +61,16 @@ func (sniffer *Sniffer) GetNextPacket() []byte {
 			continue
 		}
 
-		if sniffer.applyFilters(&packet) {
-			return packet.ApplicationLayer().Payload()
+		if !sniffer.applyFilters(&packet) {
+			continue
 		}
+
+		applicationLayer := packet.ApplicationLayer()
+
+		if applicationLayer == nil {
+			continue
+		}
+
+		return applicationLayer.Payload()
 	}
 }

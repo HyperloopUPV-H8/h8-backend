@@ -3,6 +3,7 @@ package infra
 import (
 	"fmt"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -11,20 +12,16 @@ const (
 )
 
 type Server struct {
-	listener    net.TCPListener
-	connections map[IP]net.TCPConn
+	listener    *net.TCPListener
+	connections map[IP]*net.TCPConn
+	connMutex   *sync.Mutex
 	validAddrs  []IP
 }
 
 func OpenServer(localPort Port, remoteAddrs []IP) Server {
-	laddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf(":%d", localPort))
-	if err != nil {
-		panic(err)
-	}
-
 	server := Server{
-		listener:    bindListener(laddr),
-		connections: make(map[IP]net.TCPConn, len(remoteAddrs)),
+		listener:    bindListener(resolvePortAddr(localPort)),
+		connections: make(map[IP]*net.TCPConn, len(remoteAddrs)),
 		validAddrs:  remoteAddrs,
 	}
 
@@ -33,13 +30,23 @@ func OpenServer(localPort Port, remoteAddrs []IP) Server {
 	return server
 }
 
-func bindListener(addr *net.TCPAddr) net.TCPListener {
+// Only specifying the port makes go to listen for traffic on all ips
+func resolvePortAddr(port Port) *net.TCPAddr {
+	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf(":%d", port))
+	if err != nil {
+		panic(err)
+	}
+
+	return addr
+}
+
+func bindListener(addr *net.TCPAddr) *net.TCPListener {
 	listener, err := net.ListenTCP("tcp", addr)
 	if err != nil {
 		panic(err)
 	}
 
-	return *listener
+	return listener
 }
 
 func (server *Server) listenConnections() {
@@ -55,15 +62,22 @@ func (server *Server) listenConnections() {
 		}
 		connIP := IP(connTCPAddr.IP.String())
 
-		if !server.filterAddr(connIP) {
+		if !server.filterValidAddr(connIP) {
 			continue
 		}
 
-		server.connections[IP(connIP)] = *conn
+		server.connMutex.Lock()
+		defer server.connMutex.Unlock()
+
+		server.connections[IP(connIP)] = conn
+		defer conn.Close()
 	}
 }
 
 func (server *Server) Send(ip IP, payload []byte) {
+	server.connMutex.Lock()
+	defer server.connMutex.Unlock()
+
 	conn, exists := server.connections[ip]
 
 	if !exists {
@@ -78,6 +92,9 @@ func (server *Server) Send(ip IP, payload []byte) {
 }
 
 func (server *Server) Receive() []byte {
+	server.connMutex.Lock()
+	defer server.connMutex.Unlock()
+
 	for _, conn := range server.connections {
 		conn.SetDeadline(time.Now())
 		buf := make([]byte, packetMaxLength)
@@ -90,21 +107,26 @@ func (server *Server) Receive() []byte {
 	return nil
 }
 
-func (server *Server) ConnectedAddresses() []string {
-	addresses := make([]string, 0)
+func (server *Server) ConnectedAddresses() []IP {
+	addresses := make([]IP, 0)
+
+	server.connMutex.Lock()
+	defer server.connMutex.Unlock()
+
 	for k := range server.connections {
-		addresses = append(addresses, string(k))
+		addresses = append(addresses, k)
 	}
 	return addresses
 }
 
 func (server *Server) disconnect(ip IP) {
+	// No need to lock here because it's already locked everywhere it's called
 	conn := server.connections[ip]
 	conn.Close()
 	delete(server.connections, ip)
 }
 
-func (server *Server) filterAddr(addr IP) bool {
+func (server *Server) filterValidAddr(addr IP) bool {
 	for _, ip := range server.validAddrs {
 		if ip == addr {
 			return true
