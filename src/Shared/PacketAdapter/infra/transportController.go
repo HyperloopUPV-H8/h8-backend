@@ -12,9 +12,14 @@ const (
 	serverPort Port = 6000
 )
 
+// Use var instead of const because go doesn't allow slices to be constants
+var (
+	snifferFilters []Filterer = []Filterer{NewDifferentEndpointIPFilter("192.168.0.1")}
+)
+
 func New(validAddrs []string) *TransportController {
 	return &TransportController{
-		sniffer: NewSniffer(snifferTarget, snifferLive, nil),
+		sniffer: NewSniffer(snifferTarget, snifferLive, snifferFilters),
 		server:  OpenServer(serverPort, stringsToIPs(validAddrs)),
 	}
 }

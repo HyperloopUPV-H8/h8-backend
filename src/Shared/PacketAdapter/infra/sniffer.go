@@ -15,10 +15,10 @@ const (
 
 type Sniffer struct {
 	source  gopacket.PacketSource
-	filters []func(*gopacket.Packet) bool
+	filters []Filterer
 }
 
-func NewSniffer(target string, live bool, filters []func(*gopacket.Packet) bool) Sniffer {
+func NewSniffer(target string, live bool, filters []Filterer) Sniffer {
 	return Sniffer{
 		source:  *obtainSource(target, live),
 		filters: filters,
@@ -46,7 +46,7 @@ func obtainSource(target string, live bool) (source *gopacket.PacketSource) {
 
 func (sniffer *Sniffer) applyFilters(packet *gopacket.Packet) bool {
 	for _, filter := range sniffer.filters {
-		if !filter(packet) {
+		if !filter.Filter(*packet) {
 			return false
 		}
 	}
