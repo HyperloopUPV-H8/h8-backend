@@ -10,9 +10,8 @@ type Sheet struct {
 }
 
 type Table struct {
-	Name    string
-	Rows    []Row
-	Headers map[string]Row
+	Name string
+	Rows []Row
 }
 
 type Row = []Cell
