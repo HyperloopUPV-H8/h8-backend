@@ -1,4 +1,4 @@
-package infra
+package PacketAdapter
 
 import (
 	"fmt"
@@ -67,10 +67,8 @@ func (server *Server) listenConnections() {
 		}
 
 		server.connMutex.Lock()
-		defer server.connMutex.Unlock()
-
 		server.connections[IP(connIP)] = conn
-		defer conn.Close()
+		server.connMutex.Unlock()
 	}
 }
 

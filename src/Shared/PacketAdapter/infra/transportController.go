@@ -1,4 +1,4 @@
-package infra
+package PacketAdapter
 
 type TransportController struct {
 	sniffer Sniffer
@@ -12,7 +12,7 @@ const (
 	serverPort Port = 6000
 )
 
-func New(validAddrs []string) *TransportController {
+func NewTransportController(validAddrs []string) *TransportController {
 	validAddrIPs := stringsToIPs(validAddrs)
 
 	return &TransportController{
