@@ -31,26 +31,25 @@ func ErrorsReadingExcel(desc string, err error) {
 	}
 }
 
-func PrintSheetsName(m map[int]string) {
+func PrintSheetsName(sheetNamesMap map[int]string) {
 
-	for index, name := range m {
+	for index, name := range sheetNamesMap {
 		fmt.Println(index, name)
 	}
 }
 
-// Convert Sheets Map To Our Structure
-func GetSheets(f *excelize.File) map[string]Sheet {
+func GetSheets(file *excelize.File) map[string]Sheet {
 	newMap := make(map[string]Sheet)
-	namesMap := f.GetSheetMap()
+	namesMap := file.GetSheetMap()
 	for _, name := range namesMap {
-		sheet := getSheet(name, f)
+		sheet := getSheet(name, file)
 		newMap[name] = sheet
 	}
 	return newMap
 }
 
-func getSheet(name string, f *excelize.File) Sheet {
-	sheetContent, _ := f.GetRows(name)
+func getSheet(name string, file *excelize.File) Sheet {
+	sheetContent, _ := file.GetRows(name)
 	tables := getTables(sheetContent)
 	sheet := Sheet{
 		Name:   name,
@@ -143,7 +142,7 @@ func getTable(sheetContent [][]string, axis [2]int) Table {
 	return table
 }
 
-// POR IMPLEMENTAR, NO SÉ SI ES CORRECTO
+// POR IMPLEMENTAR, NO SÉ SI ES CORRECTO, falta revisión
 func getRectangularTable(sheetContent [][]string, maxRowLength int, numberRows int, initDatesOfTable [2]int) [][]string {
 	rectangularTable := make([][]string, maxRowLength)
 	finalRow := initDatesOfTable[0] + numberRows - 1       //pos row + number of rows
