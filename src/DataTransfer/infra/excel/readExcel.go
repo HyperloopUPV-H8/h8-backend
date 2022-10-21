@@ -54,6 +54,8 @@ func GetSheets(f *excelize.File) map[string]Sheet {
 	return newMap
 }
 
+//QUIZÁ CREAR MÉTODO QUE HAGA COPIA RECTANGULAR DE LA SHEET COMPLETA? EN VEZ DE TENER QUE COMPROBARLO PARA CADA TABLA
+
 // POR IMPLEMENTAR
 func getTables(sheetContent [][]string) map[string]Table {
 	tables := make(map[string]Table)
@@ -62,7 +64,7 @@ func getTables(sheetContent [][]string) map[string]Table {
 		axis = getInitOfTable(sheetContent, axis)
 		tableName := sheetContent[axis[0]][axis[1]]
 
-		var tableContent [][]string //FALTA DE IMPLEMENTAR
+		var tableContent [][]string //FALTA DE IMPLEMENTAR, hacer copia de la sheet que sea rectangular
 		rows := getRowsOfTable(tableContent)
 
 		table := Table{
