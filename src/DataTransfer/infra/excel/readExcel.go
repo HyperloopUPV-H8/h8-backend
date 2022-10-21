@@ -59,18 +59,6 @@ func getSheet(name string, f *excelize.File) Sheet {
 	return sheet
 }
 
-// QUIZÁ CREAR MÉTODO QUE HAGA COPIA RECTANGULAR DE LA SHEET COMPLETA? EN VEZ DE TENER QUE COMPROBARLO PARA CADA TABLA
-// en segunda fila están todas las cabeceras
-// func getMaxRowLengthOfSheet(sheetContent [][]string) int {
-// 	maxRowLength := -1
-// 	for i := 0; i < len(sheetContent); i++ {
-// 		if maxRowLength < len(sheetContent[i]) {
-// 			maxRowLength = len(sheetContent[i])
-// 		}
-// 	}
-// 	return maxRowLength
-// }
-
 func getMaxRowLength(propertiesRow []string, initColumn int) int {
 	maxRowLength := 0
 	emptyCell := false
@@ -145,9 +133,7 @@ func getTable(sheetContent [][]string, axis [2]int) Table {
 	var initDates [2]int = [2]int{axis[0] + 2, axis[1]}
 	numberRows := getNumberRows(sheetContent, initDates)
 	rectangularTable := getRectangularTable(sheetContent, rowLengthTable, numberRows, initDates)
-
-	var tableContent [][]string //FALTA DE IMPLEMENTAR, hacer copia de la sheet que sea rectangular
-	rows := getRowsOfTable(tableContent)
+	rows := getRowsOfTable(rectangularTable)
 
 	table := Table{
 		Name: tableName,
@@ -157,21 +143,36 @@ func getTable(sheetContent [][]string, axis [2]int) Table {
 	return table
 }
 
-// POR IMPLEMENTAR
+// POR IMPLEMENTAR, NO SÉ SI ES CORRECTO
 func getRectangularTable(sheetContent [][]string, maxRowLength int, numberRows int, initDatesOfTable [2]int) [][]string {
 	rectangularTable := make([][]string, maxRowLength)
+	finalRow := initDatesOfTable[0] + numberRows - 1       //pos row + number of rows
+	finalCellRow := initDatesOfTable[1] + maxRowLength - 1 //pos column + number of dates
+
+	for i, iR := initDatesOfTable[0], 0; i <= finalRow; i, iR = i+1, iR+1 {
+		for j, jR := initDatesOfTable[1], 0; j <= finalCellRow; j, jR = j+1, jR+1 {
+			rectangularTable[iR][jR] = sheetContent[i][j] //NO SÉ SI ES CORRECTO
+		}
+	}
+
+	//check that it is rectangular
+	for i := 0; i < len(rectangularTable); i++ {
+		for len(rectangularTable[i]) < maxRowLength {
+			rectangularTable[i] = append(rectangularTable[i], "")
+		}
+	}
 
 	return rectangularTable
 }
 
 // Recibes la hoja cortada
-func getRowsOfTable(parcialSheet [][]string) []Row {
-	numRows := len(parcialSheet)
+func getRowsOfTable(rectangularTable [][]string) []Row {
+	numRows := len(rectangularTable)
 	rows := make([]Row, numRows)
-	length := len(parcialSheet[0])
+	length := len(rectangularTable)
 
 	for i := 0; i < length; i++ {
-		row := parcialSheet[i]
+		row := rectangularTable[i]
 		rows = append(rows, row)
 	}
 	return rows
