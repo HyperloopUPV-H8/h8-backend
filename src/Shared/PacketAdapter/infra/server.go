@@ -23,6 +23,7 @@ func OpenServer(localPort Port, remoteAddrs []IP) Server {
 		listener:    bindListener(resolvePortAddr(localPort)),
 		connections: make(map[IP]*net.TCPConn, len(remoteAddrs)),
 		validAddrs:  remoteAddrs,
+		connMutex:   &sync.Mutex{},
 	}
 
 	go server.listenConnections()
@@ -51,31 +52,33 @@ func bindListener(addr *net.TCPAddr) *net.TCPListener {
 
 func (server *Server) listenConnections() {
 	for {
-		conn, err := server.listener.AcceptTCP()
+		conn, err := server.accept()
 		if err != nil {
 			continue
 		}
 
-		connTCPAddr, err := net.ResolveTCPAddr("tcp", conn.LocalAddr().String())
-		if err != nil {
-			panic(err)
-		}
-		connIP := IP(connTCPAddr.IP.String())
-
+		connIP := getTCPConnIP(conn)
 		if !server.filterValidAddr(connIP) {
 			continue
 		}
 
-		server.connMutex.Lock()
-		server.connections[IP(connIP)] = conn
-		server.connMutex.Unlock()
+		server.addConnection(connIP, conn)
 	}
 }
 
-func (server *Server) Send(ip IP, payload []byte) {
-	server.connMutex.Lock()
-	defer server.connMutex.Unlock()
+func (server *Server) accept() (*net.TCPConn, error) {
+	return server.listener.AcceptTCP()
+}
 
+func getTCPConnIP(conn *net.TCPConn) IP {
+	connTCPAddr, err := net.ResolveTCPAddr("tcp", conn.LocalAddr().String())
+	if err != nil {
+		panic(err)
+	}
+	return IP(connTCPAddr.IP.String())
+}
+
+func (server *Server) Send(ip IP, payload []byte) {
 	conn, exists := server.connections[ip]
 
 	if !exists {
@@ -85,24 +88,22 @@ func (server *Server) Send(ip IP, payload []byte) {
 	_, err := conn.Write(payload)
 
 	if err != nil {
-		server.disconnect(ip)
+		server.removeConnection(ip)
 	}
 }
 
 func (server *Server) Receive() []byte {
-	server.connMutex.Lock()
-	defer server.connMutex.Unlock()
-
-	for _, conn := range server.connections {
-		conn.SetDeadline(time.Now())
-		buf := make([]byte, packetMaxLength)
-		_, err := conn.Read(buf)
-		if err != nil {
-			continue
+	for {
+		for _, conn := range server.connections {
+			conn.SetDeadline(time.Now().Add(time.Microsecond))
+			buf := make([]byte, packetMaxLength)
+			_, err := conn.Read(buf)
+			if err != nil {
+				continue
+			}
+			return buf
 		}
-		return buf
 	}
-	return nil
 }
 
 func (server *Server) ConnectedAddresses() []IP {
@@ -117,13 +118,6 @@ func (server *Server) ConnectedAddresses() []IP {
 	return addresses
 }
 
-func (server *Server) disconnect(ip IP) {
-	// No need to lock here because it's already locked everywhere it's called
-	conn := server.connections[ip]
-	conn.Close()
-	delete(server.connections, ip)
-}
-
 func (server *Server) filterValidAddr(addr IP) bool {
 	for _, ip := range server.validAddrs {
 		if ip == addr {
@@ -132,4 +126,18 @@ func (server *Server) filterValidAddr(addr IP) bool {
 	}
 
 	return false
+}
+
+func (server *Server) addConnection(ip IP, conn *net.TCPConn) {
+	server.connMutex.Lock()
+	defer server.connMutex.Unlock()
+	server.connections[ip] = conn
+}
+
+func (server *Server) removeConnection(ip IP) {
+	server.connMutex.Lock()
+	defer server.connMutex.Unlock()
+	conn := server.connections[ip]
+	conn.Close()
+	delete(server.connections, ip)
 }

@@ -5,9 +5,9 @@ type TransportController struct {
 	server  Server
 }
 
-const (
-	snifferTarget string = ".\\bruh.pcapng"
-	snifferLive   bool   = false
+var (
+	snifferTarget string = "\\Device\\NPF_Loopback"
+	snifferLive   bool   = true
 
 	serverPort Port = 6000
 )
