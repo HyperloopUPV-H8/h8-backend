@@ -38,7 +38,6 @@ func PrintSheetsName(m map[int]string) {
 	}
 }
 
-// m map[int]string
 // Convert Sheets Map To Our Structure
 func GetSheets(f *excelize.File) map[string]Sheet {
 	newMap := make(map[string]Sheet)
@@ -61,6 +60,19 @@ func getTables(sheetContent [][]string) map[string]Table {
 	var axis [2]int = [2]int{0, 0}
 	for axis[0] < len(sheetContent) {
 		axis = getInitOfTable(sheetContent, axis)
+		tableName := sheetContent[axis[0]][axis[1]]
+
+		var tableContent [][]string //FALTA DE IMPLEMENTAR
+		rows := getRowsOfTable(tableContent)
+
+		table := Table{
+			Name: tableName,
+			Rows: rows,
+		}
+		tables[tableName] = table
+
+		axis[1]++
+
 	}
 
 	return tables
@@ -90,19 +102,14 @@ func getInitOfTable(sheetContent [][]string, axis [2]int) [2]int {
 }
 
 // Recibes la hoja cortada
-func getRowsOfTable(parcialSheet [][]string, numRows int, initRow int, column string, numColumns int) []Row {
+func getRowsOfTable(parcialSheet [][]string) []Row {
+	numRows := len(parcialSheet)
 	rows := make([]Row, numRows)
 	length := len(parcialSheet[0])
 
 	for i := 0; i < length; i++ {
-		row := getRowOfTable(parcialSheet[i])
+		row := parcialSheet[i]
 		rows = append(rows, row)
 	}
 	return rows
-}
-
-func getRowOfTable(rowTable []string) Row {
-	row := make([]Cell, len(rowTable))
-	row = rowTable
-	return row
 }
