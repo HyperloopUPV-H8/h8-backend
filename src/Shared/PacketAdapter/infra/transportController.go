@@ -12,10 +12,10 @@ var (
 	serverPort Port = 6000
 )
 
-func NewTransportController(validAddrs []string) *TransportController {
+func NewTransportController(validAddrs []string) TransportController {
 	validAddrIPs := stringsToIPs(validAddrs)
 
-	return &TransportController{
+	return TransportController{
 		sniffer: NewSniffer(snifferTarget, snifferLive, createFilters(validAddrIPs)),
 		server:  OpenServer(serverPort, validAddrIPs),
 	}

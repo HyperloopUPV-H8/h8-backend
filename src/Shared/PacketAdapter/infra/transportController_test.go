@@ -8,46 +8,41 @@ import (
 	"time"
 )
 
-// Check that NewTransportController returns a valid pointer to a TransportController all the time
+// Check that NewTransportController wont panic when being called
 func TestNewTransportController(t *testing.T) {
-	type args struct {
-		validAddrs []string
-	}
-	tests := []struct {
-		name string
-		args args
-	}{
-		{
-			name: "empty ip list",
-			args: args{
-				validAddrs: []string{},
-			},
-		},
+	t.Run("no addr", func(t *testing.T) {
+		NewTransportController([]string{})
+	})
+	serverPort++
 
-		{
-			name: "one ip",
-			args: args{
-				validAddrs: []string{"127.0.0.1"},
-			},
-		},
+	t.Run("one addr", func(t *testing.T) {
+		NewTransportController([]string{"127.0.0.1"})
 
-		{
-			name: "multiple ips",
-			args: args{
-				validAddrs: []string{"127.0.0.1", "127.0.0.2", "127.0.0.3"},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if NewTransportController(tt.args.validAddrs) == nil {
-				t.Errorf("Expected TransportController, got nil\n")
-			}
-		})
-		serverPort++
-	}
+	})
+	serverPort++
+
+	t.Run("one invalid addr", func(t *testing.T) {
+		NewTransportController([]string{"abcd"})
+	})
+	serverPort++
+
+	t.Run("invalid addr", func(t *testing.T) {
+		NewTransportController([]string{"127.0.0.1", "abcd"})
+	})
+	serverPort++
+
+	t.Run("duped", func(t *testing.T) {
+		NewTransportController([]string{"127.0.0.1", "127.0.0.1"})
+	})
+	serverPort++
+
+	t.Run("multiple addr", func(t *testing.T) {
+		NewTransportController([]string{"127.0.0.1", "127.0.0.2"})
+	})
+	serverPort++
 }
 
+// Check that receive message will receive the correct message each time and block when there are no more messages
 func TestReceiveMessage(t *testing.T) {
 	controller := NewTransportController([]string{"127.0.0.1"})
 
@@ -113,6 +108,7 @@ func TestReceiveMessage(t *testing.T) {
 	serverPort++
 }
 
+// Check that receive data will always return something and block when there is nothing to return
 func TestReceiveData(t *testing.T) {
 	snifferTarget = "tests/udptraffic.pcapng"
 	snifferLive = false
@@ -148,6 +144,7 @@ func TestReceiveData(t *testing.T) {
 	serverPort++
 }
 
+// Test that send will send exactly what it's told to send
 func TestSend(t *testing.T) {
 	controller := NewTransportController([]string{"127.0.0.2"})
 
@@ -196,6 +193,7 @@ func TestSend(t *testing.T) {
 	serverPort++
 }
 
+// Check that AliveConnections will only return the connections that are alive
 func TestAliveConnections(t *testing.T) {
 	controller := NewTransportController([]string{"127.0.0.2", "127.0.0.3"})
 
