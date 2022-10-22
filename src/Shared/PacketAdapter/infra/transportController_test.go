@@ -46,18 +46,7 @@ func TestReceiveMessage(t *testing.T) {
 	controller := NewTransportController([]string{"127.0.0.1"})
 
 	go func() {
-		laddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:5999")
-		if err != nil {
-			panic(err)
-		}
-		raddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("127.0.0.1:%d", serverPort))
-		if err != nil {
-			panic(err)
-		}
-		conn, err := net.DialTCP("tcp", laddr, raddr)
-		if err != nil {
-			panic(err)
-		}
+		conn := dialTCP("127.0.0.1:5999", fmt.Sprintf("127.0.0.1:%d", serverPort))
 
 		for i := 0; i < 5; i++ {
 			conn.Write([]byte{1, 2, 3, 4, 5})
@@ -149,18 +138,7 @@ func TestSend(t *testing.T) {
 
 	done := make(chan bool)
 	go func() {
-		laddr, err := net.ResolveTCPAddr("tcp", "127.0.0.2:5999")
-		if err != nil {
-			panic(err)
-		}
-		raddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("127.0.0.1:%d", serverPort))
-		if err != nil {
-			panic(err)
-		}
-		conn, err := net.DialTCP("tcp", laddr, raddr)
-		if err != nil {
-			panic(err)
-		}
+		conn := dialTCP("127.0.0.2:5999", fmt.Sprintf("127.0.0.1:%d", serverPort))
 		done <- true
 
 		for i := 0; i < 5; i++ {
@@ -205,18 +183,7 @@ func TestAliveConnections(t *testing.T) {
 	t.Run("one connection alive", func(t *testing.T) {
 		done := make(chan bool)
 		go func() {
-			laddr, err := net.ResolveTCPAddr("tcp", "127.0.0.3:5999")
-			if err != nil {
-				panic(err)
-			}
-			raddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("127.0.0.1:%d", serverPort))
-			if err != nil {
-				panic(err)
-			}
-			conn, err := net.DialTCP("tcp", laddr, raddr)
-			if err != nil {
-				panic(err)
-			}
+			conn := dialTCP("127.0.0.3:5999", fmt.Sprintf("127.0.0.1:%d", serverPort))
 			done <- true
 			conn.Close()
 		}()
@@ -231,18 +198,7 @@ func TestAliveConnections(t *testing.T) {
 	t.Run("all connections alive", func(t *testing.T) {
 		done := make(chan bool)
 		go func() {
-			laddr, err := net.ResolveTCPAddr("tcp", "127.0.0.2:5999")
-			if err != nil {
-				panic(err)
-			}
-			raddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("127.0.0.1:%d", serverPort))
-			if err != nil {
-				panic(err)
-			}
-			conn, err := net.DialTCP("tcp", laddr, raddr)
-			if err != nil {
-				panic(err)
-			}
+			conn := dialTCP("127.0.0.2:5999", fmt.Sprintf("127.0.0.1:%d", serverPort))
 			done <- true
 			conn.Close()
 		}()
@@ -253,4 +209,21 @@ func TestAliveConnections(t *testing.T) {
 			t.Errorf("expected two connections to be alive")
 		}
 	})
+}
+
+func dialTCP(laddr, raddr string) net.TCPConn {
+	validLAddr, err := net.ResolveTCPAddr("tcp", laddr)
+	if err != nil {
+		panic(err)
+	}
+	validRAddr, err := net.ResolveTCPAddr("tcp", raddr)
+	if err != nil {
+		panic(err)
+	}
+	conn, err := net.DialTCP("tcp", validLAddr, validRAddr)
+	if err != nil {
+		panic(err)
+	}
+
+	return *conn
 }
