@@ -54,23 +54,30 @@ func (sniffer *Sniffer) applyFilters(packet *gopacket.Packet) bool {
 	return true
 }
 
-func (sniffer *Sniffer) GetNextPacket() []byte {
+func (sniffer *Sniffer) GetNextValidPayload() Payload {
 	for {
-		packet, err := sniffer.source.NextPacket()
-		if err != nil {
-			continue
+		nextPayload := sniffer.getNextPayload()
+		if nextPayload != nil {
+			return nextPayload
 		}
-
-		if !sniffer.applyFilters(&packet) {
-			continue
-		}
-
-		applicationLayer := packet.ApplicationLayer()
-
-		if applicationLayer == nil {
-			continue
-		}
-
-		return applicationLayer.Payload()
 	}
+}
+
+func (sniffer *Sniffer) getNextPayload() (payload Payload) {
+	packet, err := sniffer.source.NextPacket()
+	if err != nil {
+		return
+	}
+
+	if !sniffer.applyFilters(&packet) {
+		return
+	}
+
+	transportLayer := packet.TransportLayer()
+
+	if transportLayer == nil {
+		return
+	}
+
+	return transportLayer.LayerPayload()
 }

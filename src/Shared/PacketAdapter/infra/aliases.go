@@ -11,7 +11,7 @@ func stringsToIPs(strings []string) (ips []IP) {
 		ips[i] = IP(str)
 	}
 
-	return
+	return ips
 }
 
 func ipsToStrings(ips []IP) (strings []string) {
@@ -20,7 +20,18 @@ func ipsToStrings(ips []IP) (strings []string) {
 		strings[i] = string(ip)
 	}
 
-	return
+	return strings
 }
 
 type Port uint16
+
+type Payload []byte
+
+func payloadsToBytes(payloads []Payload) (bytes [][]byte) {
+	bytes = make([][]byte, len(payloads))
+	for i, payload := range payloads {
+		bytes[i] = payload
+	}
+
+	return bytes
+}

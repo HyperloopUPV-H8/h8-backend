@@ -47,8 +47,8 @@ func TestNewTransportController(t *testing.T) {
 	}
 }
 
-// Check that transport controller correctly receives all messages but blocks when there are no messages left to read
-func TestTransportController_ReceiveMessage(t *testing.T) {
+// Check that transport controller correctly receives all direct messages but blocks when there are no messages left to read
+func TestReceiveMessage(t *testing.T) {
 	controller := NewTransportController([]string{"127.0.0.1"})
 
 	go func() {
@@ -81,6 +81,38 @@ func TestTransportController_ReceiveMessage(t *testing.T) {
 	done := make(chan bool)
 	go func() {
 		controller.ReceiveMessage()
+
+		done <- true
+	}()
+
+	timeout := time.NewTimer(time.Second * 5)
+
+	select {
+	case <-done:
+		t.Errorf("Expected blocking, got value")
+	case <-timeout.C:
+		break
+	}
+
+	serverPort++
+}
+
+// Check that transport controller correctly receives all data but blocks when there is no data
+func TestReceiveData(t *testing.T) {
+	snifferTarget = "tests/udptraffic.pcapng"
+	snifferLive = false
+
+	controller := NewTransportController([]string{"127.0.0.2", "127.0.0.3", "127.0.0.4"})
+
+	for i := 0; i < 5; i++ {
+		if got := controller.ReceiveData(); got == nil {
+			t.Errorf("Expected []byte, got nil")
+		}
+	}
+
+	done := make(chan bool)
+	go func() {
+		controller.ReceiveData()
 
 		done <- true
 	}()

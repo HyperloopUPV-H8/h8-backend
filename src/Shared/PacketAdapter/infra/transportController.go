@@ -22,11 +22,11 @@ func NewTransportController(validAddrs []string) *TransportController {
 }
 
 func (controller *TransportController) ReceiveData() []byte {
-	return controller.sniffer.GetNextPacket()
+	return controller.sniffer.GetNextValidPayload()
 }
 
-func (controller *TransportController) ReceiveMessage() []byte {
-	return controller.server.Receive()
+func (controller *TransportController) ReceiveMessage() [][]byte {
+	return payloadsToBytes(controller.server.Receive())
 }
 
 func (controller *TransportController) Send(addr string, payload []byte) {
@@ -38,5 +38,5 @@ func (controller *TransportController) AliveConnections() []string {
 }
 
 func createFilters(validAddrIPs []IP) []Filterer {
-	return []Filterer{NewDesiredEndpointsFilter(validAddrIPs)}
+	return []Filterer{DesiredEndpointsFilter{validAddrIPs}}
 }
