@@ -31,7 +31,7 @@ func isNumber(id string) bool {
 	return numberExp.MatchString(id)
 }
 
-func getIdParts(id string) (string, string, string) {
+func getIdParts(id string) (prefix string, begin string, end string) {
 	expandExp, err := regexp.Compile(`^(\d*)\[(\d+),(\d+)\]$`)
 
 	if err != nil {
@@ -71,7 +71,7 @@ func getRange(n1 int, n2 int) []int {
 func rangeToString(numRange []int) []string {
 	rangeInString := make([]string, 0)
 	for _, num := range numRange {
-		str := strconv.Itoa(int(num))
+		str := strconv.Itoa(num)
 		rangeInString = append(rangeInString, str)
 	}
 	return rangeInString

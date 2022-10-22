@@ -5,7 +5,7 @@ type StructureDTO struct {
 	measurements []string
 }
 
-func newStructure(column []string) StructureDTO {
+func newStructureDTO(column []string) StructureDTO {
 	return StructureDTO{
 		packetName:   column[0],
 		measurements: column[1:],

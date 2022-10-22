@@ -16,7 +16,7 @@ type PacketDTO struct {
 	Measurements []MeasurementDTO
 }
 
-func (p *PacketDTO) toPacket() podDataCreator.Packet {
+func (p PacketDTO) toPacket() podDataCreator.Packet {
 	id, err := strconv.Atoi(p.Description.Id)
 
 	if err != nil {
@@ -33,7 +33,7 @@ func (p *PacketDTO) toPacket() podDataCreator.Packet {
 	}
 }
 
-func (p *PacketDTO) getMeasurements() map[string]*measurement.Measurement {
+func (p PacketDTO) getMeasurements() map[string]*measurement.Measurement {
 	measurements := make(map[string]*measurement.Measurement, 0)
 	for _, mDTO := range p.Measurements {
 		measurement := mDTO.toMeasurement()
