@@ -43,6 +43,7 @@ func bindListener(addr net.TCPAddr) net.TCPListener {
 }
 
 func (server Server) listenConnections() {
+	defer server.pipes.Close()
 	for {
 		if conn, err := server.accept(); err == nil && server.isValidAddr(getTCPConnIP(conn)) {
 			server.pipes.AddConnection(getTCPConnIP(conn), conn)
@@ -56,7 +57,7 @@ func (server Server) accept() (net.TCPConn, error) {
 }
 
 func getTCPConnIP(conn net.TCPConn) IP {
-	connTCPAddr, err := net.ResolveTCPAddr("tcp", conn.LocalAddr().String())
+	connTCPAddr, err := net.ResolveTCPAddr("tcp", conn.RemoteAddr().String())
 	if err != nil {
 		panic(err)
 	}
