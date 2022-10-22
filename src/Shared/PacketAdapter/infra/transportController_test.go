@@ -17,7 +17,6 @@ func TestNewTransportController(t *testing.T) {
 
 	t.Run("one addr", func(t *testing.T) {
 		NewTransportController([]string{"127.0.0.1"})
-
 	})
 	serverPort++
 
