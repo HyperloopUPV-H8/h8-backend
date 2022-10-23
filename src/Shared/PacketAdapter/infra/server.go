@@ -7,7 +7,7 @@ import (
 
 type Server struct {
 	listener   net.TCPListener
-	pipes      SyncPipes
+	pipes      Pipes
 	validAddrs []IP
 }
 
@@ -65,10 +65,7 @@ func getTCPConnIP(conn net.TCPConn) IP {
 }
 
 func (server Server) Send(ip IP, payload Payload) {
-	err := server.pipes.Send(ip, payload)
-	if err != nil {
-		server.pipes.RemoveConnection(ip)
-	}
+	server.pipes.Send(ip, payload)
 }
 
 func (server Server) Receive() []Payload {

@@ -10,26 +10,26 @@ const (
 	packetMaxLength int = 1024
 )
 
-type SyncPipes struct {
+type Pipes struct {
 	conns map[IP]net.TCPConn
 	guard *sync.Mutex
 }
 
-func NewPipes(expectedPipes int) SyncPipes {
-	return SyncPipes{
+func NewPipes(expectedPipes int) Pipes {
+	return Pipes{
 		conns: make(map[IP]net.TCPConn, expectedPipes),
 		guard: &sync.Mutex{},
 	}
 }
 
-func (pipes SyncPipes) AddConnection(ip IP, conn net.TCPConn) {
+func (pipes Pipes) AddConnection(ip IP, conn net.TCPConn) {
 	pipes.guard.Lock()
 	defer pipes.guard.Unlock()
 
 	pipes.conns[ip] = conn
 }
 
-func (pipes SyncPipes) RemoveConnection(ip IP) {
+func (pipes Pipes) RemoveConnection(ip IP) {
 	pipes.guard.Lock()
 	defer pipes.guard.Unlock()
 
@@ -41,7 +41,7 @@ func (pipes SyncPipes) RemoveConnection(ip IP) {
 	delete(pipes.conns, ip)
 }
 
-func (pipes SyncPipes) Close() {
+func (pipes Pipes) Close() {
 	pipes.guard.Lock()
 	defer pipes.guard.Unlock()
 
@@ -50,7 +50,7 @@ func (pipes SyncPipes) Close() {
 	}
 }
 
-func (pipes SyncPipes) Receive() []Payload {
+func (pipes Pipes) Receive() []Payload {
 	pipes.guard.Lock()
 	defer pipes.guard.Unlock()
 
@@ -68,20 +68,24 @@ func (pipes SyncPipes) Receive() []Payload {
 	return data
 }
 
-func (pipes SyncPipes) Send(ip IP, payload Payload) error {
+func (pipes Pipes) Send(ip IP, payload Payload) {
 	pipes.guard.Lock()
 	defer pipes.guard.Unlock()
 
 	conn, exists := pipes.conns[ip]
 	if !exists {
-		return nil
+		return
 	}
 
 	_, err := conn.Write(payload)
-	return err
+
+	// We use a goroutine because Close will attempt to lock but we still have the lock in Send
+	if err != nil {
+		go pipes.Close()
+	}
 }
 
-func (pipes SyncPipes) ConnectedIPs() []IP {
+func (pipes Pipes) ConnectedIPs() []IP {
 	pipes.guard.Lock()
 	defer pipes.guard.Unlock()
 

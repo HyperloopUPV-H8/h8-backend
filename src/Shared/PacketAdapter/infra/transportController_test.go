@@ -181,30 +181,22 @@ func TestAliveConnections(t *testing.T) {
 	})
 
 	t.Run("one connection alive", func(t *testing.T) {
-		done := make(chan bool)
-		go func() {
-			conn := dialTCP("127.0.0.3:5999", fmt.Sprintf("127.0.0.1:%d", serverPort))
-			done <- true
-			conn.Close()
-		}()
+		conn := dialTCP("127.0.0.3:5999", fmt.Sprintf("127.0.0.1:%d", serverPort))
+		conn.Close()
 
-		<-done
-		<-time.After(time.Microsecond)
+		<-time.After(time.Millisecond)
+
 		if !reflect.DeepEqual(controller.AliveConnections(), []string{"127.0.0.3"}) {
 			t.Errorf("expected one connection to be alive")
 		}
 	})
 
 	t.Run("all connections alive", func(t *testing.T) {
-		done := make(chan bool)
-		go func() {
-			conn := dialTCP("127.0.0.2:5999", fmt.Sprintf("127.0.0.1:%d", serverPort))
-			done <- true
-			conn.Close()
-		}()
+		conn := dialTCP("127.0.0.2:5999", fmt.Sprintf("127.0.0.1:%d", serverPort))
+		conn.Close()
 
-		<-done
-		<-time.After(time.Microsecond)
+		<-time.After(time.Millisecond)
+
 		if !reflect.DeepEqual(controller.AliveConnections(), []string{"127.0.0.3", "127.0.0.2"}) {
 			t.Errorf("expected two connections to be alive")
 		}
