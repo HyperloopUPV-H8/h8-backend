@@ -1,10 +1,9 @@
-package testing
+package excel
 
 import (
 	"fmt"
 	"log"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/infra/excel"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -13,7 +12,7 @@ func ReadExcel() {
 	DocumentExcel := OpenExcelFile(name)
 	mapa := DocumentExcel.GetSheetMap()
 	PrintSheetsName(mapa)
-	document := excel.GetDocument(DocumentExcel)
+	document := GetDocument(DocumentExcel)
 	fmt.Println("Objeto creado: ", document)
 
 }
