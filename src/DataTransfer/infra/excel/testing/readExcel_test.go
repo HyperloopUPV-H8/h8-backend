@@ -1,4 +1,4 @@
-package excel
+package testing
 
 import (
 	"fmt"
@@ -13,11 +13,8 @@ func ReadExcel() {
 	DocumentExcel := OpenExcelFile(name)
 	mapa := DocumentExcel.GetSheetMap()
 	PrintSheetsName(mapa)
-	//fmt.Println(mapa)
-	//hoja1, _ := DocumentExcel.GetRows("Hoja1")
-	//fmt.Println(hoja1)
 	document := excel.GetDocument(DocumentExcel)
-	fmt.Println(document)
+	fmt.Println("Objeto creado: ", document)
 
 }
 
