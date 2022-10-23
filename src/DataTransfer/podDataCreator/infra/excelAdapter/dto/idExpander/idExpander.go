@@ -14,9 +14,9 @@ func GetAllIds(id string) []string {
 
 	prefix, begin, end := getIdParts(id)
 	idRange := getIdRange(begin, end)
-	finalIds := make([]string, 0)
-	for _, sufix := range idRange {
-		finalIds = append(finalIds, prefix+sufix)
+	finalIds := make([]string, len(idRange))
+	for index, sufix := range idRange {
+		finalIds[index] = prefix + sufix
 	}
 	return finalIds
 }
@@ -61,18 +61,19 @@ func stringToInt(num string) int {
 }
 
 func getRange(n1 int, n2 int) []int {
-	numRange := make([]int, 0)
+	numRange := make([]int, n2-n1+1)
 	for n := n1; n <= n2; n++ {
-		numRange = append(numRange, n)
+		index := n - n1
+		numRange[index] = n
 	}
 	return numRange
 }
 
 func rangeToString(numRange []int) []string {
-	rangeInString := make([]string, 0)
-	for _, num := range numRange {
+	rangeInString := make([]string, len(numRange))
+	for index, num := range numRange {
 		str := strconv.Itoa(num)
-		rangeInString = append(rangeInString, str)
+		rangeInString[index] = str
 	}
 	return rangeInString
 }

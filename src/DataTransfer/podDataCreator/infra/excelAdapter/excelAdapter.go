@@ -6,7 +6,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/infra/excelAdapter/dto"
 )
 
-func GetPackets(tables map[string]excelRetreiver.Table) map[uint16]*podDataCreator.Packet {
+func GetPackets(tables map[string]excelRetreiver.Table) map[dto.Id]*podDataCreator.Packet {
 	boardDTO := dto.NewBoardDTO(tables)
 	packets := boardDTO.GetPackets()
 

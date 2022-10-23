@@ -36,10 +36,10 @@ func newMeasurementDTO(row excel.Row) MeasurementDTO {
 }
 
 func getMeasurementsWithSufix(sufix string, measurements []MeasurementDTO) []MeasurementDTO {
-	mArr := make([]MeasurementDTO, 0)
-	for _, measurement := range measurements {
+	mArr := make([]MeasurementDTO, len(measurements))
+	for index, measurement := range measurements {
 		measurement.Name += sufix
-		mArr = append(mArr, measurement)
+		mArr[index] = measurement
 	}
 	return mArr
 }

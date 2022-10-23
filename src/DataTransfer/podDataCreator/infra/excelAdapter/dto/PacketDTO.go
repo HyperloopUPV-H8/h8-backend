@@ -34,7 +34,7 @@ func (p PacketDTO) toPacket() podDataCreator.Packet {
 }
 
 func (p PacketDTO) getMeasurements() map[string]*measurement.Measurement {
-	measurements := make(map[string]*measurement.Measurement, 0)
+	measurements := make(map[Name]*measurement.Measurement, 0)
 	for _, mDTO := range p.Measurements {
 		measurement := mDTO.toMeasurement()
 		measurements[measurement.Name] = &measurement
@@ -45,13 +45,13 @@ func (p PacketDTO) getMeasurements() map[string]*measurement.Measurement {
 
 func expandPacketDTO(description DescriptionDTO, measurements []MeasurementDTO) []PacketDTO {
 	ids := idExpander.GetAllIds(description.Id)
-	packetDTOs := make([]PacketDTO, 0)
+	packetDTOs := make([]PacketDTO, len(ids))
 	for index, id := range ids {
 		newPacket := PacketDTO{Description: description, Measurements: measurements}
 		newPacket.Description.Id = id
 		sufix := fmt.Sprintf("_%v", index)
 		newPacket = getWithSufix(newPacket, sufix)
-		packetDTOs = append(packetDTOs, newPacket)
+		packetDTOs[index] = newPacket
 	}
 
 	return packetDTOs
