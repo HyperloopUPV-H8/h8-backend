@@ -6,7 +6,7 @@ import (
 )
 
 type Server struct {
-	listener   net.TCPListener
+	listener   *net.TCPListener
 	pipes      Pipes
 	validAddrs []IP
 }
@@ -24,39 +24,35 @@ func OpenServer(localPort Port, remoteAddrs []IP) Server {
 }
 
 // Only specifying the port makes go to listen for traffic on all ips
-func resolvePortAddr(port Port) net.TCPAddr {
+func resolvePortAddr(port Port) *net.TCPAddr {
 	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		panic(err)
 	}
 
-	return *addr
+	return addr
 }
 
-func bindListener(addr net.TCPAddr) net.TCPListener {
-	listener, err := net.ListenTCP("tcp", &addr)
+func bindListener(addr *net.TCPAddr) *net.TCPListener {
+	listener, err := net.ListenTCP("tcp", addr)
 	if err != nil {
+		fmt.Println(err)
 		panic(err)
 	}
 
-	return *listener
+	return listener
 }
 
-func (server Server) listenConnections() {
-	defer server.pipes.Close()
+func (server *Server) listenConnections() {
 	for {
-		if conn, err := server.accept(); err == nil && server.isValidAddr(getTCPConnIP(conn)) {
+		conn, err := server.listener.AcceptTCP()
+		if err == nil && server.isValidAddr(getTCPConnIP(conn)) {
 			server.pipes.AddConnection(getTCPConnIP(conn), conn)
 		}
 	}
 }
 
-func (server Server) accept() (net.TCPConn, error) {
-	conn, err := server.listener.AcceptTCP()
-	return *conn, err
-}
-
-func getTCPConnIP(conn net.TCPConn) IP {
+func getTCPConnIP(conn *net.TCPConn) IP {
 	connTCPAddr, err := net.ResolveTCPAddr("tcp", conn.RemoteAddr().String())
 	if err != nil {
 		panic(err)
@@ -64,24 +60,24 @@ func getTCPConnIP(conn net.TCPConn) IP {
 	return IP(connTCPAddr.IP.String())
 }
 
-func (server Server) Send(ip IP, payload Payload) {
+func (server *Server) Send(ip IP, payload Payload) {
 	server.pipes.Send(ip, payload)
 }
 
-func (server Server) Receive() []Payload {
+func (server *Server) ReceiveNext() Payload {
 	for {
-		payloads := server.pipes.Receive()
-		if len(payloads) != 0 {
-			return payloads
+		payload := server.pipes.Receive()
+		if payload != nil {
+			return payload
 		}
 	}
 }
 
-func (server Server) ConnectedAddresses() []IP {
+func (server *Server) ConnectedAddresses() []IP {
 	return server.pipes.ConnectedIPs()
 }
 
-func (server Server) isValidAddr(addr IP) bool {
+func (server *Server) isValidAddr(addr IP) bool {
 	for _, ip := range server.validAddrs {
 		if ip == addr {
 			return true
@@ -89,4 +85,9 @@ func (server Server) isValidAddr(addr IP) bool {
 	}
 
 	return false
+}
+
+func (server *Server) Close() {
+	server.listener.Close()
+	server.pipes.Close()
 }

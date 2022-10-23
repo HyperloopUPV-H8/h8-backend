@@ -6,30 +6,30 @@ import (
 	"time"
 )
 
-const (
+var (
 	packetMaxLength int = 1024
 )
 
 type Pipes struct {
-	conns map[IP]net.TCPConn
+	conns map[IP]*net.TCPConn
 	guard *sync.Mutex
 }
 
 func NewPipes(expectedPipes int) Pipes {
 	return Pipes{
-		conns: make(map[IP]net.TCPConn, expectedPipes),
+		conns: make(map[IP]*net.TCPConn, expectedPipes),
 		guard: &sync.Mutex{},
 	}
 }
 
-func (pipes Pipes) AddConnection(ip IP, conn net.TCPConn) {
+func (pipes *Pipes) AddConnection(ip IP, conn *net.TCPConn) {
 	pipes.guard.Lock()
 	defer pipes.guard.Unlock()
 
 	pipes.conns[ip] = conn
 }
 
-func (pipes Pipes) RemoveConnection(ip IP) {
+func (pipes *Pipes) RemoveConnection(ip IP) {
 	pipes.guard.Lock()
 	defer pipes.guard.Unlock()
 
@@ -41,7 +41,7 @@ func (pipes Pipes) RemoveConnection(ip IP) {
 	delete(pipes.conns, ip)
 }
 
-func (pipes Pipes) Close() {
+func (pipes *Pipes) Close() {
 	pipes.guard.Lock()
 	defer pipes.guard.Unlock()
 
@@ -50,25 +50,23 @@ func (pipes Pipes) Close() {
 	}
 }
 
-func (pipes Pipes) Receive() []Payload {
+func (pipes *Pipes) Receive() Payload {
 	pipes.guard.Lock()
 	defer pipes.guard.Unlock()
 
-	data := make([]Payload, 0)
-
 	for _, conn := range pipes.conns {
-		conn.SetDeadline(time.Now().Add(time.Microsecond))
+		conn.SetDeadline(time.Now().Add(time.Nanosecond))
 		buf := make(Payload, packetMaxLength)
 		n, _ := conn.Read(buf)
 		if n > 0 {
-			data = append(data, buf)
+			return buf
 		}
 	}
 
-	return data
+	return nil
 }
 
-func (pipes Pipes) Send(ip IP, payload Payload) {
+func (pipes *Pipes) Send(ip IP, payload Payload) {
 	pipes.guard.Lock()
 	defer pipes.guard.Unlock()
 
@@ -85,7 +83,7 @@ func (pipes Pipes) Send(ip IP, payload Payload) {
 	}
 }
 
-func (pipes Pipes) ConnectedIPs() []IP {
+func (pipes *Pipes) ConnectedIPs() []IP {
 	pipes.guard.Lock()
 	defer pipes.guard.Unlock()
 

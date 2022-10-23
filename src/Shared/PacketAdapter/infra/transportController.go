@@ -21,20 +21,24 @@ func NewTransportController(validAddrs []string) TransportController {
 	}
 }
 
-func (controller *TransportController) ReceiveData() []byte {
+func (controller TransportController) ReceiveData() []byte {
 	return controller.sniffer.GetNextValidPayload()
 }
 
-func (controller *TransportController) ReceiveMessage() [][]byte {
-	return payloadsToBytes(controller.server.Receive())
+func (controller TransportController) ReceiveMessage() []byte {
+	return controller.server.ReceiveNext()
 }
 
-func (controller *TransportController) Send(addr string, payload []byte) {
+func (controller TransportController) Send(addr string, payload []byte) {
 	controller.server.Send(IP(addr), payload)
 }
 
-func (controller *TransportController) AliveConnections() []string {
+func (controller TransportController) AliveConnections() []string {
 	return ipsToStrings(controller.server.ConnectedAddresses())
+}
+
+func (controller TransportController) Close() {
+	controller.server.Close()
 }
 
 func createFilters(validAddrIPs []IP) []Filterer {
