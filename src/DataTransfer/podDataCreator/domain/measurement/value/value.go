@@ -1,14 +1,12 @@
 package value
 
-import (
-	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain/measurement/value/number"
-)
+import "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain/measurement/value/number"
 
 type Value interface {
 	ToDisplayString() string
 }
 
-func NewDefault(valueType string) Value {
+func NewDefault(valueType string, podUnits string, displayUnits string) Value {
 	switch valueType {
 	case "bool":
 		return new(Bool)
@@ -16,7 +14,7 @@ func NewDefault(valueType string) Value {
 		if isEnum(valueType) {
 			return new(String)
 		} else if isNumber(valueType) {
-			return new(number.Number)
+			return number.NewNumber(podUnits, displayUnits)
 		} else {
 			panic("Invalid type")
 		}
