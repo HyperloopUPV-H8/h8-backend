@@ -110,7 +110,7 @@ func TestReceiveMessage(t *testing.T) {
 							got += uint(b)
 						}
 					}
-				case <-time.After(time.Second):
+				case <-time.After(time.Millisecond * 500):
 					break loop
 				}
 			}
@@ -134,7 +134,7 @@ func TestReceiveMessage(t *testing.T) {
 		select {
 		case <-payloadsChan:
 			t.Error("expected read to block")
-		case <-time.After(time.Second * 5):
+		case <-time.After(time.Second):
 		}
 	})
 	serverPort++
@@ -159,7 +159,7 @@ func TestReceiveMessage(t *testing.T) {
 				} else {
 					break loop
 				}
-			case <-time.After(time.Second * 5):
+			case <-time.After(time.Second):
 				if !connected {
 					sendTCP("127.0.0.2:5999", fmt.Sprintf("127.0.0.1:%d", serverPort), []byte{0xff}, 1, 0, t)
 					connected = true
@@ -174,7 +174,62 @@ func TestReceiveMessage(t *testing.T) {
 }
 
 func TestReceiveData(t *testing.T) {
+	type testCase struct {
+		Name     string
+		File     string
+		Expected [][]byte
+	}
 
+	cases := []testCase{
+		{
+			Name:     "udp packets",
+			File:     "tests/udp.pcapng",
+			Expected: [][]byte{{0xff}, {0xff}},
+		},
+		{
+			Name:     "tcp packets",
+			File:     "tests/tcp.pcapng",
+			Expected: [][]byte{},
+		},
+		{
+			Name:     "mixed packets",
+			File:     "tests/mixed.pcapng",
+			Expected: [][]byte{{0xff}, {0xff}, {0xff}},
+		},
+	}
+
+	for _, test := range cases {
+		t.Run(test.Name, func(t *testing.T) {
+			snifferTarget = test.File
+			snifferLive = false
+
+			controller := NewTransportController([]string{"127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5", "127.0.0.6"})
+			defer controller.Close()
+
+			payloadChan := make(chan []byte)
+			i := 0
+		loop:
+			for {
+				go func() {
+					payloadChan <- controller.ReceiveData()
+				}()
+
+				select {
+				case payload := <-payloadChan:
+					if !reflect.DeepEqual(payload, test.Expected[i]) {
+						t.Errorf("expected %v, got %v", payload, test.Expected[i])
+					}
+					i++
+				case <-time.After(time.Second):
+					if i != len(test.Expected) {
+						t.Errorf("expected more data")
+					}
+					break loop
+				}
+			}
+		})
+		serverPort++
+	}
 }
 
 func TestSend(t *testing.T) {
@@ -283,7 +338,7 @@ func TestAliveConnections(t *testing.T) {
 			}
 
 			// Need to wait because the controller might or might not be busy when accepting the connection
-			<-time.After(time.Millisecond * 200)
+			<-time.After(time.Millisecond * 500)
 			sort.Strings(test.Expected)
 			got := controller.AliveConnections()
 			sort.Strings(got)
@@ -376,41 +431,4 @@ func sumUint(input []uint) (sum uint) {
 		sum += n
 	}
 	return
-}
-
-func packetUDP(payload []byte, src, dst string, t *testing.T) {
-	srcAddr, err := net.ResolveUDPAddr("udp", src)
-	if err != nil {
-		t.Error(err)
-	}
-
-	dstAddr, err := net.ResolveUDPAddr("udp", dst)
-	if err != nil {
-		t.Error(err)
-	}
-
-	go func() {
-		conn, err := net.DialUDP("udp", srcAddr, dstAddr)
-		if err != nil {
-			t.Error(err)
-		}
-
-		_, err = conn.Write(payload)
-		if err != nil {
-			t.Error(err)
-		}
-	}()
-
-	go func() {
-		listener, err := net.ListenUDP("udp", dstAddr)
-		if err != nil {
-			t.Error(err)
-		}
-
-		buf := make([]byte, len(payload))
-		_, err = listener.Read(buf)
-		if err != nil {
-			t.Error(err)
-		}
-	}()
 }
