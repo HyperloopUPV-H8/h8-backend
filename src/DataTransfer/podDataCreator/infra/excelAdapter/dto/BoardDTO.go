@@ -83,12 +83,17 @@ func getStructureDTOs(table excelRetreiver.Table) map[Name]StructureDTO {
 func getColumns(table excelRetreiver.Table) [][]string {
 	columns := make([][]string, len(table.Rows[0]))
 	for i := 0; i < len(table.Rows[0]); i++ {
-		column := make([]string, len(table.Rows))
-		for j := 0; j < len(table.Rows); j++ {
-			column[j] = table.Rows[j][i]
-		}
-		columns[i] = column
+		columns[i] = getColumn(i, table)
 	}
 
 	return columns
+}
+
+func getColumn(i int, table excelRetreiver.Table) []string {
+	column := make([]string, len(table.Rows))
+	for j := 0; j < len(table.Rows); j++ {
+		column[j] = table.Rows[j][i]
+	}
+
+	return column
 }
