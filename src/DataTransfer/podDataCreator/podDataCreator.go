@@ -6,7 +6,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/infra/excelAdapter"
 )
 
-func New() domain.PodData {
+func Run() domain.PodData {
 	structure := excelRetreiver.GetStructure()
 	podData := domain.PodData{}
 	podData.Boards = getBoards(structure)
