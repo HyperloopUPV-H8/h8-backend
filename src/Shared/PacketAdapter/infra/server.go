@@ -36,7 +36,6 @@ func resolvePortAddr(port Port) *net.TCPAddr {
 func bindListener(addr *net.TCPAddr) *net.TCPListener {
 	listener, err := net.ListenTCP("tcp", addr)
 	if err != nil {
-		fmt.Println(err)
 		panic(err)
 	}
 
@@ -64,11 +63,11 @@ func (server *Server) Send(ip IP, payload Payload) {
 	server.pipes.Send(ip, payload)
 }
 
-func (server *Server) ReceiveNext() Payload {
+func (server *Server) ReceiveNext() []Payload {
 	for {
-		payload := server.pipes.Receive()
-		if payload != nil {
-			return payload
+		payloads := server.pipes.Receive()
+		if len(payloads) != 0 {
+			return payloads
 		}
 	}
 }

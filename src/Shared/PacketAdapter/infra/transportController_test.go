@@ -5,6 +5,7 @@ import (
 	"net"
 	"reflect"
 	"sort"
+	"sync"
 	"testing"
 	"time"
 )
@@ -82,14 +83,6 @@ func TestReceiveMessage(t *testing.T) {
 			Delay:    []time.Duration{time.Microsecond * 8, time.Microsecond * 12, time.Microsecond * 16, time.Microsecond * 20, time.Microsecond * 24},
 			Expected: 51000,
 		},
-		{
-			Name:     "zero ends",
-			Payloads: [][]byte{},
-			Amounts:  []uint{},
-			From:     []string{},
-			Delay:    []time.Duration{},
-			Expected: 0,
-		},
 	}
 
 	// Check that receive message will receive the total amount of bytes initially sent
@@ -99,10 +92,10 @@ func TestReceiveMessage(t *testing.T) {
 			defer controller.Close()
 
 			for i, src := range test.From {
-				go sendToTCP(src, fmt.Sprintf("127.0.0.1:%d", serverPort), test.Payloads[i], test.Amounts[i], test.Delay[i], t)
+				go sendTCP(src, fmt.Sprintf("127.0.0.1:%d", serverPort), test.Payloads[i], test.Amounts[i], test.Delay[i], t)
 			}
 
-			payloadsChan := make(chan []byte, sumUint(test.Amounts))
+			payloadsChan := make(chan [][]byte, sumUint(test.Amounts))
 			got := uint(0)
 		loop:
 			for {
@@ -111,9 +104,11 @@ func TestReceiveMessage(t *testing.T) {
 				}()
 
 				select {
-				case payload := <-payloadsChan:
-					for _, b := range payload {
-						got += uint(b)
+				case payloads := <-payloadsChan:
+					for _, payload := range payloads {
+						for _, b := range payload {
+							got += uint(b)
+						}
 					}
 				case <-time.After(time.Second):
 					break loop
@@ -131,7 +126,7 @@ func TestReceiveMessage(t *testing.T) {
 		controller := NewTransportController([]string{"127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5", "127.0.0.6"})
 		defer controller.Close()
 
-		payloadsChan := make(chan []byte)
+		payloadsChan := make(chan [][]byte)
 		go func() {
 			payloadsChan <- controller.ReceiveMessage()
 		}()
@@ -140,7 +135,6 @@ func TestReceiveMessage(t *testing.T) {
 		case <-payloadsChan:
 			t.Error("expected read to block")
 		case <-time.After(time.Second * 5):
-			t.Log("blocked")
 		}
 	})
 	serverPort++
@@ -150,7 +144,7 @@ func TestReceiveMessage(t *testing.T) {
 		controller := NewTransportController([]string{"127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5", "127.0.0.6"})
 		defer controller.Close()
 
-		payloadsChan := make(chan []byte)
+		payloadsChan := make(chan [][]byte)
 		go func() {
 			payloadsChan <- controller.ReceiveMessage()
 		}()
@@ -167,7 +161,7 @@ func TestReceiveMessage(t *testing.T) {
 				}
 			case <-time.After(time.Second * 5):
 				if !connected {
-					sendToTCP("127.0.0.2:5999", fmt.Sprintf("127.0.0.1:%d", serverPort), []byte{0xff}, 1, 0, t)
+					sendTCP("127.0.0.2:5999", fmt.Sprintf("127.0.0.1:%d", serverPort), []byte{0xff}, 1, 0, t)
 					connected = true
 				} else {
 					t.Error("expected to receive message, got block on read")
@@ -184,7 +178,74 @@ func TestReceiveData(t *testing.T) {
 }
 
 func TestSend(t *testing.T) {
+	type testCase struct {
+		Name     string
+		Payloads [][]byte
+		Amounts  []uint
+		From     []string
+		Expected []uint
+	}
 
+	cases := []testCase{
+		{
+			Name:     "single end",
+			Payloads: [][]byte{{0xff}},
+			Amounts:  []uint{20},
+			From:     []string{"127.0.0.2"},
+			Expected: []uint{5100},
+		},
+		{
+			Name:     "multiple ends",
+			Payloads: [][]byte{{0xff}, {0xff, 0xff}, {0xff, 0xff, 0xff}, {0xff, 0xff, 0xff, 0xff}},
+			Amounts:  []uint{10, 10, 10, 10, 10},
+			From:     []string{"127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5"},
+			Expected: []uint{2550, 5100, 7650, 10200},
+		},
+	}
+
+	// Check that receive message will receive the total amount of bytes initially sent
+	for _, test := range cases {
+		t.Run(test.Name, func(t *testing.T) {
+			controller := NewTransportController([]string{"127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5", "127.0.0.6"})
+			defer controller.Close()
+
+			var wait *sync.WaitGroup = &sync.WaitGroup{}
+			for i, src := range test.From {
+				wait.Add(1)
+				go receiveTCP(fmt.Sprintf("%s:5999", src), fmt.Sprintf("127.0.0.1:%d", serverPort), len(test.Payloads[i]), test.Expected[i], time.Second, wait, t)
+				<-time.After(time.Millisecond * 100)
+				for j := uint(0); j < test.Amounts[i]; j++ {
+					controller.Send(src, test.Payloads[i])
+				}
+			}
+
+			wait.Wait()
+		})
+		serverPort++
+	}
+
+	t.Run("delete closed", func(t *testing.T) {
+		controller := NewTransportController([]string{"127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5", "127.0.0.6"})
+		defer controller.Close()
+
+		var wait *sync.WaitGroup = &sync.WaitGroup{}
+		wait.Add(1)
+		go receiveTCP("127.0.0.2:5999", fmt.Sprintf("127.0.0.1:%d", serverPort), 5, 1275, time.Second, wait, t)
+		<-time.After(time.Millisecond * 100)
+		controller.Send("127.0.0.2", []byte{0xff, 0xff, 0xff, 0xff, 0xff})
+		if !reflect.DeepEqual(controller.AliveConnections(), []string{"127.0.0.2"}) {
+			t.Error("connection should be alive")
+		}
+		wait.Wait()
+		<-time.After(time.Second)
+
+		controller.Send("127.0.0.2", []byte{0xff})
+		<-time.After(time.Millisecond * 100)
+		if !reflect.DeepEqual(controller.AliveConnections(), []string{}) {
+			t.Error("connection should be dead")
+		}
+	})
+	serverPort++
 }
 
 func TestAliveConnections(t *testing.T) {
@@ -218,11 +279,11 @@ func TestAliveConnections(t *testing.T) {
 			defer controller.Close()
 
 			for _, src := range test.Connected {
-				sendToTCP(src, fmt.Sprintf("127.0.0.1:%d", serverPort), []byte{}, 0, 0, t)
+				sendTCP(src, fmt.Sprintf("127.0.0.1:%d", serverPort), []byte{}, 0, 0, t)
 			}
 
 			// Need to wait because the controller might or might not be busy when accepting the connection
-			<-time.After(time.Millisecond)
+			<-time.After(time.Millisecond * 200)
 			sort.Strings(test.Expected)
 			got := controller.AliveConnections()
 			sort.Strings(got)
@@ -249,17 +310,17 @@ func dialTCP(src, dst string, t *testing.T) *net.TCPConn {
 	if err != nil {
 		t.Fatal(err)
 	}
+	conn.SetLinger(0)
 
 	return conn
 }
 
-func sendToTCP(src, dst string, payload []byte, amount uint, delay time.Duration, t *testing.T) {
+func sendTCP(src, dst string, payload []byte, amount uint, delay time.Duration, t *testing.T) {
 	<-time.After(delay)
 	conn := dialTCP(src, dst, t)
 	if conn == nil {
 		return
 	}
-	defer conn.Close()
 
 	for i := uint(0); i < amount; i++ {
 		<-time.After(delay)
@@ -271,9 +332,85 @@ func sendToTCP(src, dst string, payload []byte, amount uint, delay time.Duration
 	}
 }
 
+func receiveTCP(src, dst string, packetLen int, expected uint, delay time.Duration, wait *sync.WaitGroup, t *testing.T) {
+	defer wait.Done()
+
+	conn := dialTCP(src, dst, t)
+	if conn == nil {
+		fmt.Println("no conn")
+		return
+	}
+	defer func() {
+		conn.Close()
+	}()
+
+	payloadsChan := make(chan []byte)
+
+	got := uint(0)
+
+loop:
+	for {
+		go func() {
+			buf := make([]byte, packetLen)
+			conn.Read(buf)
+			payloadsChan <- buf
+		}()
+
+		select {
+		case payload := <-payloadsChan:
+			for _, b := range payload {
+				got += uint(b)
+			}
+		case <-time.After(delay):
+			break loop
+		}
+	}
+
+	if got != expected {
+		t.Errorf("expected %d, got %d", expected, got)
+	}
+}
+
 func sumUint(input []uint) (sum uint) {
 	for _, n := range input {
 		sum += n
 	}
 	return
+}
+
+func packetUDP(payload []byte, src, dst string, t *testing.T) {
+	srcAddr, err := net.ResolveUDPAddr("udp", src)
+	if err != nil {
+		t.Error(err)
+	}
+
+	dstAddr, err := net.ResolveUDPAddr("udp", dst)
+	if err != nil {
+		t.Error(err)
+	}
+
+	go func() {
+		conn, err := net.DialUDP("udp", srcAddr, dstAddr)
+		if err != nil {
+			t.Error(err)
+		}
+
+		_, err = conn.Write(payload)
+		if err != nil {
+			t.Error(err)
+		}
+	}()
+
+	go func() {
+		listener, err := net.ListenUDP("udp", dstAddr)
+		if err != nil {
+			t.Error(err)
+		}
+
+		buf := make([]byte, len(payload))
+		_, err = listener.Read(buf)
+		if err != nil {
+			t.Error(err)
+		}
+	}()
 }

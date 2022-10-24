@@ -9,7 +9,7 @@ var (
 	snifferTarget string = "\\Device\\NPF_Loopback"
 	snifferLive   bool   = true
 
-	serverPort Port = 6000
+	serverPort Port = 6030
 )
 
 func NewTransportController(validAddrs []string) TransportController {
@@ -25,8 +25,8 @@ func (controller TransportController) ReceiveData() []byte {
 	return controller.sniffer.GetNextValidPayload()
 }
 
-func (controller TransportController) ReceiveMessage() []byte {
-	return controller.server.ReceiveNext()
+func (controller TransportController) ReceiveMessage() [][]byte {
+	return payloadsToBytes(controller.server.ReceiveNext())
 }
 
 func (controller TransportController) Send(addr string, payload []byte) {

@@ -50,20 +50,21 @@ func (pipes *Pipes) Close() {
 	}
 }
 
-func (pipes *Pipes) Receive() Payload {
+func (pipes *Pipes) Receive() []Payload {
 	pipes.guard.Lock()
 	defer pipes.guard.Unlock()
 
+	payloads := make([]Payload, 0, len(pipes.conns))
 	for _, conn := range pipes.conns {
 		conn.SetDeadline(time.Now().Add(time.Nanosecond))
 		buf := make(Payload, packetMaxLength)
 		n, _ := conn.Read(buf)
 		if n > 0 {
-			return buf
+			payloads = append(payloads, buf)
 		}
 	}
 
-	return nil
+	return payloads
 }
 
 func (pipes *Pipes) Send(ip IP, payload Payload) {
@@ -79,7 +80,7 @@ func (pipes *Pipes) Send(ip IP, payload Payload) {
 
 	// We use a goroutine because Close will attempt to lock but we still have the lock in Send
 	if err != nil {
-		go pipes.Close()
+		go pipes.RemoveConnection(ip)
 	}
 }
 
