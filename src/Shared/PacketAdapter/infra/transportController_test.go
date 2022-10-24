@@ -183,17 +183,17 @@ func TestReceiveData(t *testing.T) {
 	cases := []testCase{
 		{
 			Name:     "udp packets",
-			File:     "tests/udp.pcapng",
+			File:     "tests/resources/udp.pcapng",
 			Expected: [][]byte{{0xff}, {0xff}},
 		},
 		{
 			Name:     "tcp packets",
-			File:     "tests/tcp.pcapng",
+			File:     "tests/resources/tcp.pcapng",
 			Expected: [][]byte{},
 		},
 		{
 			Name:     "mixed packets",
-			File:     "tests/mixed.pcapng",
+			File:     "tests/resources/mixed.pcapng",
 			Expected: [][]byte{{0xff}, {0xff}, {0xff}},
 		},
 	}
