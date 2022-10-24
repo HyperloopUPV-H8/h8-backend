@@ -1,13 +1,23 @@
 package value
 
-import "bytes"
+import (
+	"fmt"
+)
 
 type Bool bool
 
-func (b *Bool) current() Value {
-	return b
-}
-func (i *Bool) fromBuffer(b bytes.Buffer) {
-	n := numberFromBuffer(b, 1)
-	*i = n == 1
+// func (b *Bool) current() Value {
+// 	return b
+// }
+
+// func (i *Bool) fromBuffer(b *bytes.Buffer) {
+// 	binary.Read(b, binary.BigEndian, i)
+// }
+
+// func (b *Bool) toString() string {
+// 	return fmt.Sprintf("%v", b)
+// }
+
+func (b *Bool) ToDisplayString() string {
+	return fmt.Sprintf("%v", b)
 }
