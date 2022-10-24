@@ -3,11 +3,12 @@ package excel
 import (
 	"fmt"
 	"log"
+	"testing"
 
 	"github.com/xuri/excelize/v2"
 )
 
-func ReadExcel() {
+func TestReadExcel(t *testing.T) {
 	name := "simple.xlsx" //TO DEFINE
 	DocumentExcel := OpenExcelFile(name)
 	mapa := DocumentExcel.GetSheetMap()
