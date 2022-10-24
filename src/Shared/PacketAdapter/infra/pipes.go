@@ -87,7 +87,7 @@ func (pipes *Pipes) ConnectedIPs() []IP {
 	pipes.guard.Lock()
 	defer pipes.guard.Unlock()
 
-	ips := make([]IP, 0)
+	ips := make([]IP, 0, len(pipes.conns))
 	for ip := range pipes.conns {
 		ips = append(ips, ip)
 	}

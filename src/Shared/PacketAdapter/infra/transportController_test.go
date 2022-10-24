@@ -3,6 +3,8 @@ package PacketAdapter
 import (
 	"fmt"
 	"net"
+	"reflect"
+	"sort"
 	"testing"
 	"time"
 )
@@ -53,11 +55,7 @@ func TestNewTransportController(t *testing.T) {
 	}
 }
 
-// Check that receive message will receive the correct message each time and block when there are no more messages
 func TestReceiveMessage(t *testing.T) {
-	controller := NewTransportController([]string{"127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5", "127.0.0.6", "127.0.0.7"})
-	defer controller.Close()
-
 	type testCase struct {
 		Name     string
 		Payloads [][]byte
@@ -72,22 +70,34 @@ func TestReceiveMessage(t *testing.T) {
 			Name:     "single end",
 			Payloads: [][]byte{{0xff}},
 			Amounts:  []uint{20},
-			From:     []string{"127.0.0.7:5999"},
+			From:     []string{"127.0.0.2:5999"},
 			Delay:    []time.Duration{time.Microsecond * 16},
 			Expected: 5100,
 		},
 		{
 			Name:     "multiple ends",
-			Payloads: [][]byte{{0xff}, {0xff, 0xff}, {0xff, 0xff, 0xff}, {0xff, 0xff, 0xff, 0xff}, {0xff, 0xff, 0xff, 0xff, 0xff}},
+			Payloads: [][]byte{{0xff}, {0xff, 0xff}, {0xff, 0xff, 0xff}, {0xff, 0xff, 0xff, 0xff}},
 			Amounts:  []uint{20, 20, 20, 20, 20},
-			From:     []string{"127.0.0.2:5999", "127.0.0.3:5999", "127.0.0.4:5999", "127.0.0.5:5999", "127.0.0.6:5999"},
+			From:     []string{"127.0.0.2:5999", "127.0.0.3:5999", "127.0.0.4:5999", "127.0.0.5:5999"},
 			Delay:    []time.Duration{time.Microsecond * 8, time.Microsecond * 12, time.Microsecond * 16, time.Microsecond * 20, time.Microsecond * 24},
-			Expected: 76500,
+			Expected: 51000,
+		},
+		{
+			Name:     "zero ends",
+			Payloads: [][]byte{},
+			Amounts:  []uint{},
+			From:     []string{},
+			Delay:    []time.Duration{},
+			Expected: 0,
 		},
 	}
 
+	// Check that receive message will receive the total amount of bytes initially sent
 	for _, test := range cases {
 		t.Run(test.Name, func(t *testing.T) {
+			controller := NewTransportController([]string{"127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5", "127.0.0.6"})
+			defer controller.Close()
+
 			for i, src := range test.From {
 				go sendToTCP(src, fmt.Sprintf("127.0.0.1:%d", serverPort), test.Payloads[i], test.Amounts[i], test.Delay[i], t)
 			}
@@ -114,25 +124,114 @@ func TestReceiveMessage(t *testing.T) {
 				t.Errorf("expected sum of %v, got %v", test.Expected, got)
 			}
 		})
-		controller.Close()
 		serverPort++
-		controller = NewTransportController([]string{"127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5", "127.0.0.6", "127.0.0.7"})
 	}
+
+	t.Run("block on read", func(t *testing.T) {
+		controller := NewTransportController([]string{"127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5", "127.0.0.6"})
+		defer controller.Close()
+
+		payloadsChan := make(chan []byte)
+		go func() {
+			payloadsChan <- controller.ReceiveMessage()
+		}()
+
+		select {
+		case <-payloadsChan:
+			t.Error("expected read to block")
+		case <-time.After(time.Second * 5):
+			t.Log("blocked")
+		}
+	})
+	serverPort++
+
+	// Check that a connection can connect midway through a read and still give results
+	t.Run("hotplug", func(t *testing.T) {
+		controller := NewTransportController([]string{"127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5", "127.0.0.6"})
+		defer controller.Close()
+
+		payloadsChan := make(chan []byte)
+		go func() {
+			payloadsChan <- controller.ReceiveMessage()
+		}()
+
+		connected := false
+	loop:
+		for {
+			select {
+			case <-payloadsChan:
+				if !connected {
+					t.Error("expected to block, got message")
+				} else {
+					break loop
+				}
+			case <-time.After(time.Second * 5):
+				if !connected {
+					sendToTCP("127.0.0.2:5999", fmt.Sprintf("127.0.0.1:%d", serverPort), []byte{0xff}, 1, 0, t)
+					connected = true
+				} else {
+					t.Error("expected to receive message, got block on read")
+					break loop
+				}
+			}
+		}
+	})
+	serverPort++
 }
 
-// Check that receive data will always return something and block when there is nothing to return
 func TestReceiveData(t *testing.T) {
 
 }
 
-// Test that send will send exactly what it's told to send
 func TestSend(t *testing.T) {
 
 }
 
-// Check that AliveConnections will only return the connections that are alive
 func TestAliveConnections(t *testing.T) {
+	type testCase struct {
+		Name      string
+		Connected []string
+		Expected  []string
+	}
 
+	cases := []testCase{
+		{
+			Name:      "single end",
+			Connected: []string{"127.0.0.2:5999"},
+			Expected:  []string{"127.0.0.2"},
+		},
+		{
+			Name:      "multiple ends",
+			Connected: []string{"127.0.0.2:5999", "127.0.0.3:5999", "127.0.0.4:5999", "127.0.0.5:5999", "127.0.0.6:5999"},
+			Expected:  []string{"127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5", "127.0.0.6"},
+		},
+		{
+			Name:      "invalid ends",
+			Connected: []string{"127.0.0.2:5999", "127.0.0.10:5999", "127.0.0.14:5999", "127.0.0.5:5999", "127.0.0.7:5999"},
+			Expected:  []string{"127.0.0.2", "127.0.0.5"},
+		},
+	}
+
+	for _, test := range cases {
+		t.Run(test.Name, func(t *testing.T) {
+			controller := NewTransportController([]string{"127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5", "127.0.0.6"})
+			defer controller.Close()
+
+			for _, src := range test.Connected {
+				sendToTCP(src, fmt.Sprintf("127.0.0.1:%d", serverPort), []byte{}, 0, 0, t)
+			}
+
+			// Need to wait because the controller might or might not be busy when accepting the connection
+			<-time.After(time.Millisecond)
+			sort.Strings(test.Expected)
+			got := controller.AliveConnections()
+			sort.Strings(got)
+			if !reflect.DeepEqual(test.Expected, got) {
+				t.Errorf("expected %v, got %v", test.Expected, got)
+			}
+		})
+		serverPort++
+	}
 }
 
 func dialTCP(src, dst string, t *testing.T) *net.TCPConn {
@@ -148,7 +247,6 @@ func dialTCP(src, dst string, t *testing.T) *net.TCPConn {
 
 	conn, err := net.DialTCP("tcp", srcAddr, dstAddr)
 	if err != nil {
-		fmt.Println(err)
 		t.Fatal(err)
 	}
 
@@ -166,11 +264,9 @@ func sendToTCP(src, dst string, payload []byte, amount uint, delay time.Duration
 	for i := uint(0); i < amount; i++ {
 		<-time.After(delay)
 
-		n, err := conn.Write(payload)
+		_, err := conn.Write(payload)
 		if err != nil {
 			t.Error(err)
-		} else {
-			t.Log(n)
 		}
 	}
 }
