@@ -338,7 +338,7 @@ func TestAliveConnections(t *testing.T) {
 			}
 
 			// Need to wait because the controller might or might not be busy when accepting the connection
-			<-time.After(time.Millisecond * 500)
+			<-time.After(time.Millisecond * 700)
 			sort.Strings(test.Expected)
 			got := controller.AliveConnections()
 			sort.Strings(got)
