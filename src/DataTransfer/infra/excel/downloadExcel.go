@@ -13,7 +13,7 @@ import (
 	"google.golang.org/api/option"
 )
 
-func downloadExcel(spreadsheetID string) {
+func downloadExcel(spreadsheetID string, filename string) {
 	ctx := context.Background()
 
 	driveService, err := drive.NewService(ctx, option.WithCredentialsFile("secret.json"))
@@ -28,7 +28,7 @@ func downloadExcel(spreadsheetID string) {
 		log.Fatal(err, "sheet")
 	}
 
-	errDownloading := download(response, "excelDownloaded.xlsx")
+	errDownloading := download(response, filename)
 
 	if errDownloading != nil {
 		log.Fatal(err)

@@ -8,14 +8,14 @@ import (
 )
 
 func GetDocument(file *excelize.File) Document {
-	sheets := GetSheets(file)
+	sheets := getSheets(file)
 	document := Document{
 		Sheets: sheets,
 	}
 	return document
 }
 
-func GetSheets(file *excelize.File) map[string]Sheet {
+func getSheets(file *excelize.File) map[string]Sheet {
 	newMap := make(map[string]Sheet)
 	namesMap := file.GetSheetMap()
 	for _, name := range namesMap {
