@@ -26,8 +26,8 @@ require (
 	github.com/xuri/efp v0.0.0-20220603152613-6918739fd470 // indirect
 	github.com/xuri/nfp v0.0.0-20220409054826-5e722a1d9e22 // indirect
 	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8 // indirect
-	golang.org/x/net v0.1.0 // indirect
-	golang.org/x/oauth2 v0.1.0
+	golang.org/x/net v0.1.0
+	golang.org/x/oauth2 v0.1.0 // indirect
 	golang.org/x/text v0.4.0 // indirect
 	google.golang.org/api v0.100.0
 )

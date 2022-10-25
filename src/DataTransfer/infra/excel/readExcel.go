@@ -35,17 +35,12 @@ func getSheet(name string, file *excelize.File) Sheet {
 
 func getMaxRowLength(propertiesRow []string, initColumn int) int {
 	maxRowLength := 0
-	emptyCell := false
-	i := initColumn
-	for i < len(propertiesRow) {
-		emptyCell = propertiesRow[i] == ""
-		if emptyCell {
-			break
+
+	for i := initColumn; i < len(propertiesRow); i++ {
+		if propertiesRow[i] != "" {
+			maxRowLength++
 		}
-		maxRowLength++
-		i++
 	}
-	fmt.Println("MaxRowLength: ", maxRowLength)
 	return maxRowLength
 }
 
@@ -92,17 +87,14 @@ func getTables(sheetContent [][]string) map[string]Table {
 
 func getInitOfTables(sheetContent [][]string) [][2]int {
 	initString := "[TABLE]"
-	found := false
 	var initCells [][2]int
 
 	for i := 0; i < len(sheetContent); i++ {
 		for j := 0; j < len(sheetContent[i]); j++ {
 			cellValue := sheetContent[i][j]
-			found = strings.Contains(cellValue, initString)
-			if found {
+			if strings.Contains(cellValue, initString) {
 				var initCell [2]int = [2]int{i, j}
 				initCells = append(initCells, initCell)
-				found = false
 			}
 		}
 
@@ -113,12 +105,11 @@ func getInitOfTables(sheetContent [][]string) [][2]int {
 
 func getTable(sheetContent [][]string, axis [2]int) Table {
 	tableName := getTitleTable(sheetContent[axis[0]][axis[1]])
-	propertiesRow := sheetContent[axis[0]+1]
-	rowLengthTable := getMaxRowLength(propertiesRow, axis[1])
-
+	headersRow := sheetContent[axis[0]+1]
+	rowLength := getMaxRowLength(headersRow, axis[1])
 	var initDates [2]int = [2]int{axis[0] + 2, axis[1]}
-	numberRows := getNumberRows(sheetContent, initDates, rowLengthTable)
-	rectangularTable := getRectangularTable(sheetContent, rowLengthTable, numberRows, initDates)
+	numberOfRows := getNumberRows(sheetContent, initDates, rowLength)
+	rectangularTable := getRectangularTable(sheetContent, rowLength, numberOfRows, initDates)
 	rows := getRowsOfTable(rectangularTable)
 
 	table := Table{
