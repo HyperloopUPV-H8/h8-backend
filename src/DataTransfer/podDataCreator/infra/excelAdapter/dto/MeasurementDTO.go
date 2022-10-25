@@ -18,7 +18,7 @@ type MeasurementDTO struct {
 func (m *MeasurementDTO) toMeasurement() measurement.Measurement {
 	return measurement.Measurement{
 		Name:   m.Name,
-		Value:  value.NewDefault(m.ValueType),
+		Value:  value.NewDefault(m.ValueType, m.PodUnits, m.DisplayUnits),
 		Ranges: measurement.NewRanges(m.SafeRange, m.WarningRange),
 	}
 }
