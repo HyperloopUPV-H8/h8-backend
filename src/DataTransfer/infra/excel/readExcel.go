@@ -46,10 +46,6 @@ func getMaxRowLength(propertiesRow []string, initColumn int) int {
 	return maxRowLength
 }
 
-//Deleted func getNumberRows
-
-//Deleted func getCountEmptyCells
-
 func getTables(sheetContent [][]string) map[string]Table {
 	tables := make(map[string]Table)
 	initCells := getInitOfTables(sheetContent)
@@ -62,29 +58,39 @@ func getTables(sheetContent [][]string) map[string]Table {
 }
 
 func getInitOfTables(sheetContent [][]string) [][2]int {
-	initString := "[TABLE]"
+
 	var initCells [][2]int
 
 	for i := 0; i < len(sheetContent); i++ {
-		for j := 0; j < len(sheetContent[i]); j++ {
-			cellValue := sheetContent[i][j]
-			if strings.Contains(cellValue, initString) {
-				var initCell [2]int = [2]int{i, j}
-				initCells = append(initCells, initCell)
-			}
-		}
 
+		initCellsOfRow := searchInitsInRow(sheetContent, i)
+		initCells = append(initCells, initCellsOfRow...)
 	}
 
 	return initCells
+}
+
+func searchInitsInRow(sheetContent [][]string, i int) [][2]int {
+
+	initString := "[TABLE]"
+	var initCellsOfRow [][2]int
+
+	for j := 0; j < len(sheetContent[i]); j++ {
+		cellValue := sheetContent[i][j]
+		if strings.Contains(cellValue, initString) {
+			var initCell [2]int = [2]int{i, j}
+			initCellsOfRow = append(initCellsOfRow, initCell)
+		}
+	}
+	return initCellsOfRow
 }
 
 func getTable(sheetContent [][]string, axis [2]int) Table {
 	tableName := getTitleTable(sheetContent[axis[0]][axis[1]])
 	headersRow := sheetContent[axis[0]+1]
 	rowLength := getMaxRowLength(headersRow, axis[1])
-	var initDates [2]int = [2]int{axis[0] + 2, axis[1]}
-	rectangularTable := getRectangularTable(sheetContent, rowLength, initDates)
+	var initData [2]int = [2]int{axis[0] + 2, axis[1]}
+	rectangularTable := getRectangularTable(sheetContent, rowLength, initData)
 	rows := getRowsOfTable(rectangularTable)
 
 	table := Table{
@@ -100,15 +106,13 @@ func getTitleTable(cellContent string) string {
 	return title
 }
 
-//Changed getRectangularTable
-
-func getRectangularTable(sheetContent [][]string, rowLength int, initDatesOfTable [2]int) [][]string {
+func getRectangularTable(sheetContent [][]string, rowLength int, initDataOfTable [2]int) [][]string {
 	rectangularTable := make([][]string, 0)
 
-	finalColumn := initDatesOfTable[1] + rowLength - 1 //pos column + number of dates
+	finalColumn := initDataOfTable[1] + rowLength - 1 //pos column + number of data
 
-	for i := initDatesOfTable[0]; i < len(sheetContent); i++ {
-		rectangularRow := getRectangularRow(sheetContent[i], initDatesOfTable[1], finalColumn)
+	for i := initDataOfTable[0]; i < len(sheetContent); i++ {
+		rectangularRow := getRectangularRow(sheetContent[i], initDataOfTable[1], finalColumn)
 		if !isEmpty(rectangularRow) {
 			rectangularTable = append(rectangularTable, rectangularRow)
 		} else {
@@ -157,9 +161,6 @@ func addEmptyCells(row []string, emptySpacesAtEnd int) []string {
 	return row
 }
 
-//Deleted func createRectangularTable
-
-// Recibes la hoja cortada
 func getRowsOfTable(rectangularTable [][]string) []Row {
 	numRows := len(rectangularTable)
 	rows := make([]Row, numRows)
