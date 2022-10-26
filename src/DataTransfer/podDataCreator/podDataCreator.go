@@ -1,25 +1,24 @@
 package podDataCreator
 
 import (
-	excelRetreiver "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/excelRetreiver"
 	domain "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain"
-	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/infra/excelAdapter"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelAdapter/dto"
 )
 
-func Run() domain.PodData {
-	structure := excelRetreiver.GetStructure()
-	podData := domain.PodData{}
-	podData.Boards = getBoards(structure)
+func Invoke(boardDTOs map[string]dto.BoardDTO) domain.PodData {
+	podData := domain.PodData{
+		Boards: getBoards(boardDTOs),
+	}
 
 	return podData
 }
 
-func getBoards(structure excelRetreiver.Structure) map[string]*domain.Board {
+func getBoards(boardDTOs map[string]dto.BoardDTO) map[string]*domain.Board {
 	boards := make(map[string]*domain.Board)
-	for name, sheet := range structure.Sheets {
+	for name, boardDTO := range boardDTOs {
 		board := &domain.Board{
 			Name:    name,
-			Packets: excelAdapter.GetPackets(sheet.Tables),
+			Packets: boardDTO.GetPackets(),
 		}
 		boards[board.Name] = board
 	}
