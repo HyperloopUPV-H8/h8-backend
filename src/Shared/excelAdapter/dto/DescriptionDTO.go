@@ -1,6 +1,6 @@
 package dto
 
-import excel "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/excelRetreiver"
+import excel "github.com/HyperloopUPV-H8/Backend-H8/Shared/excelRetriever"
 
 type DescriptionDTO struct {
 	Id        string

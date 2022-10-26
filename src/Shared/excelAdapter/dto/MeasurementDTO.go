@@ -1,9 +1,9 @@
 package dto
 
 import (
-	excel "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/excelRetreiver"
 	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain/measurement"
 	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain/measurement/value"
+	excel "github.com/HyperloopUPV-H8/Backend-H8/Shared/excelRetriever"
 )
 
 type MeasurementDTO struct {

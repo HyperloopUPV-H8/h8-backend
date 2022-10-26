@@ -1,26 +1,28 @@
 package dto
 
 import (
-	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/excelRetreiver"
 	podDataCreator "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelRetriever"
 )
 
 type BoardDTO struct {
+	name         string
 	descriptions map[Name]DescriptionDTO
 	measurements map[Name]MeasurementDTO
 	structures   map[Name]StructureDTO
 }
 
-func NewBoardDTO(tables map[Name]excelRetreiver.Table) BoardDTO {
+func NewBoardDTO(sheet excelRetriever.Sheet) BoardDTO {
 	return BoardDTO{
-		descriptions: getDescriptionDTOs(tables["PacketDescription"]),
-		measurements: getMeasurementDTOs(tables["ValueDescription"]),
-		structures:   getStructureDTOs(tables["PacketStructure"]),
+		name:         sheet.Name,
+		descriptions: getDescriptionDTOs(sheet.Tables["Packet Description"]),
+		measurements: getMeasurementDTOs(sheet.Tables["Value Description"]),
+		structures:   getStructureDTOs(sheet.Tables["Packet Structure"]),
 	}
 }
 
 func (b BoardDTO) GetPackets() map[Id]*podDataCreator.Packet {
-	packetDTOs := b.getPacketDTOs()
+	packetDTOs := b.GetPacketDTOs()
 	packets := make(map[Id]*podDataCreator.Packet, len(packetDTOs))
 	for _, packetDTO := range packetDTOs {
 		packet := packetDTO.toPacket()
@@ -30,7 +32,7 @@ func (b BoardDTO) GetPackets() map[Id]*podDataCreator.Packet {
 	return packets
 }
 
-func (b BoardDTO) getPacketDTOs() []PacketDTO {
+func (b BoardDTO) GetPacketDTOs() []PacketDTO {
 	expandedPacketDTOs := make([]PacketDTO, 0)
 	for _, description := range b.descriptions {
 		measurementDTOs := b.getPacketMeasurements(description)
@@ -50,7 +52,7 @@ func (b BoardDTO) getPacketMeasurements(description DescriptionDTO) []Measuremen
 	return measurements
 }
 
-func getDescriptionDTOs(table excelRetreiver.Table) map[Name]DescriptionDTO {
+func getDescriptionDTOs(table excelRetriever.Table) map[Name]DescriptionDTO {
 	descriptions := make(map[Name]DescriptionDTO, len(table.Rows))
 	for _, row := range table.Rows {
 		adapter := newDescriptionDTO(row)
@@ -60,7 +62,7 @@ func getDescriptionDTOs(table excelRetreiver.Table) map[Name]DescriptionDTO {
 	return descriptions
 }
 
-func getMeasurementDTOs(table excelRetreiver.Table) map[Name]MeasurementDTO {
+func getMeasurementDTOs(table excelRetriever.Table) map[Name]MeasurementDTO {
 	measurements := make(map[Name]MeasurementDTO, len(table.Rows))
 	for _, row := range table.Rows {
 		adapter := newMeasurementDTO(row)
@@ -70,7 +72,7 @@ func getMeasurementDTOs(table excelRetreiver.Table) map[Name]MeasurementDTO {
 	return measurements
 }
 
-func getStructureDTOs(table excelRetreiver.Table) map[Name]StructureDTO {
+func getStructureDTOs(table excelRetriever.Table) map[Name]StructureDTO {
 	structures := make(map[Name]StructureDTO)
 	for _, column := range getColumns(table) {
 		structure := newStructureDTO(column)
@@ -80,7 +82,7 @@ func getStructureDTOs(table excelRetreiver.Table) map[Name]StructureDTO {
 	return structures
 }
 
-func getColumns(table excelRetreiver.Table) [][]string {
+func getColumns(table excelRetriever.Table) [][]string {
 	columns := make([][]string, len(table.Rows[0]))
 	for i := 0; i < len(table.Rows[0]); i++ {
 		columns[i] = getColumn(i, table)
@@ -89,7 +91,7 @@ func getColumns(table excelRetreiver.Table) [][]string {
 	return columns
 }
 
-func getColumn(i int, table excelRetreiver.Table) []string {
+func getColumn(i int, table excelRetriever.Table) []string {
 	column := make([]string, len(table.Rows))
 	for j := 0; j < len(table.Rows); j++ {
 		column[j] = table.Rows[j][i]
