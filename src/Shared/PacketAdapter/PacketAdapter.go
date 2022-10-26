@@ -5,12 +5,12 @@ type PacketAdapter struct {
 	transportController packetparser.TransportController
 }
 
-func (pa *PacketAdapter) sendOrder(order orders.OrderDTO) {
+func (pa *PacketAdapter) SendOrder(order orders.OrderDTO) {
 	encodedOrder := pa.packetParser.GetEncodedOrder(order)
 	pa.transportController.sendTCP(encodedOrder.ip, encodedOrder.bytes)
 }
 
-func (pa *PacketAdapter) getPacketUpdates() []packetparser.PacketUpdate {
+func (pa *PacketAdapter) GetPacketUpdates() []packetparser.PacketUpdate {
 	bytesArr := pa.transportController.getPackets()
 	packetUpdates := make([]packetparser.PacketUpdate, len(bytesArr))
 	for index, bytes := range bytesArr {
