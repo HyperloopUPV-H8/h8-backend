@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	podDataCreator "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain"
 	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain/measurement"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelAdapter/dto/idExpander"
 )
@@ -16,14 +16,14 @@ type PacketDTO struct {
 	Measurements []MeasurementDTO
 }
 
-func (p PacketDTO) toPacket() podDataCreator.Packet {
+func (p PacketDTO) toPacket() domain.Packet {
 	id, err := strconv.Atoi(p.Description.Id)
 
 	if err != nil {
 		log.Fatalf("parse: %s\n", err)
 	}
 
-	return podDataCreator.Packet{
+	return domain.Packet{
 		Id:           uint16(id),
 		Name:         p.Description.Name,
 		Measurements: p.getMeasurements(),

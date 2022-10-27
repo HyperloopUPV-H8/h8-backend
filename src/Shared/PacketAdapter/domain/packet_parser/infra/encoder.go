@@ -1,4 +1,4 @@
-package domain
+package infra
 
 // Currently this file is not used because currently PacketParser doesn't need to encode orders
 
@@ -6,6 +6,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain/packet_parser/domain"
 )
 
 func encodeRaw(value any, bytes io.Writer) {
@@ -15,7 +17,7 @@ func encodeRaw(value any, bytes io.Writer) {
 	}
 }
 
-func EncodeNumber(numType ValueType, value float64, bytes io.Writer) {
+func EncodeNumber(numType domain.ValueType, value float64, bytes io.Writer) {
 	switch numType {
 	case "Uint8":
 		encodeRaw(uint8(value), bytes)
@@ -46,7 +48,7 @@ func EncodeBool(value bool, bytes io.Writer) {
 	encodeRaw(value, bytes)
 }
 
-func EncodeEnum(enum Enum, value EnumVariant, bytes io.Writer) {
+func EncodeEnum(enum domain.Enum, value domain.EnumVariant, bytes io.Writer) {
 	for code, v := range enum {
 		if v == value {
 			encodeRaw(code, bytes)

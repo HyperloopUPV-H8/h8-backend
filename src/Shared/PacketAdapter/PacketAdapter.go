@@ -1,7 +1,8 @@
 package packetadapter
 
 import (
-	packetparser "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain"
+	packetparser "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain/packet_parser"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain/packet_parser/domain"
 	transportcontroller "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/infra"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelAdapter/dto"
 )
@@ -13,14 +14,16 @@ type PacketAdapter struct {
 
 func New(packetDTOs []dto.PacketDTO, boardIps []string) PacketAdapter {
 	packetAdapter := PacketAdapter{
-		packetParser:        packetparser.New(packetDTO),
+		packetParser:        packetparser.New(packetDTOs),
 		transportController: transportcontroller.NewTransportController(boardIps),
 	}
+
+	return packetAdapter
 }
 
-func (pa *PacketAdapter) GetPacketUpdates() []packetparser.PacketUpdate {
+func (pa *PacketAdapter) GetPacketUpdates() []domain.PacketUpdate {
 	bytesArr := pa.transportController.ReceiveMessages()
-	packetUpdates := make([]packetparser.PacketUpdate, len(bytesArr))
+	packetUpdates := make([]domain.PacketUpdate, len(bytesArr))
 	for index, bytes := range bytesArr {
 		packetUpdates[index] = pa.packetParser.Decode(bytes)
 	}

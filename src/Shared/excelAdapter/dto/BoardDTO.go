@@ -1,7 +1,7 @@
 package dto
 
 import (
-	podDataCreator "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelRetriever"
 )
 
@@ -21,9 +21,9 @@ func NewBoardDTO(sheet excelRetriever.Sheet) BoardDTO {
 	}
 }
 
-func (b BoardDTO) GetPackets() map[Id]*podDataCreator.Packet {
+func (b BoardDTO) GetPackets() map[Id]*domain.Packet {
 	packetDTOs := b.GetPacketDTOs()
-	packets := make(map[Id]*podDataCreator.Packet, len(packetDTOs))
+	packets := make(map[Id]*domain.Packet, len(packetDTOs))
 	for _, packetDTO := range packetDTOs {
 		packet := packetDTO.toPacket()
 		packets[packet.Id] = &packet

@@ -1,7 +1,7 @@
 package podDataCreator
 
 import (
-	domain "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelAdapter/dto"
 )
 

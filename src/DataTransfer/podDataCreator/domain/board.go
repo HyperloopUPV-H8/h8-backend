@@ -1,4 +1,4 @@
-package podDataCreator
+package domain
 
 type Board struct {
 	Name    string

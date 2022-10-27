@@ -1,10 +1,10 @@
-package podDataCreator
+package domain
 
 import (
 	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain/measurement"
-	packetparser "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain/packet_parser/domain"
 )
 
 type Packet struct {
@@ -16,11 +16,11 @@ type Packet struct {
 	Timestamp    time.Time
 }
 
-func (p *Packet) UpdatePacket(pu packetparser.PacketUpdate) {
+func (p *Packet) UpdatePacket(pu domain.PacketUpdate) {
 	p.Count++
 	p.CycleTime = pu.Timestamp.Sub(p.Timestamp).Milliseconds()
 	p.Timestamp = pu.Timestamp
 	for name, value := range pu.UpdatedValues {
-		p.Measurements[name].Value = value
+		p.Measurements[name].Value.Update(value)
 	}
 }

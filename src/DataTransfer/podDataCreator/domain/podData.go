@@ -1,7 +1,7 @@
-package podDataCreator
+package domain
 
 import (
-	packetparser "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain"
+	packetparser "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain/packet_parser/domain"
 )
 
 type PodData struct {
@@ -10,7 +10,7 @@ type PodData struct {
 
 func (podData *PodData) UpdatePacket(pu packetparser.PacketUpdate) {
 	packet := podData.getPacket(pu.ID)
-	packet.updatePacket(pu)
+	packet.UpdatePacket(pu)
 }
 
 func (podData *PodData) getPacket(id uint16) *Packet {
