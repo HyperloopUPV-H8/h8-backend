@@ -9,10 +9,12 @@ import (
 
 type Operation struct {
 	operator string
-	operand  float32
+	operand  float64
 }
 
-func doOperation(number float32, operation Operation) float32 {
+var operationExp = regexp.MustCompile(`([+\-\/*]{1})(\d+)`)
+
+func doOperation(number float64, operation Operation) float64 {
 	switch operation.operator {
 	case "+":
 		return number + operation.operand
@@ -28,13 +30,7 @@ func doOperation(number float32, operation Operation) float32 {
 }
 
 func getOperations(ops string) []Operation {
-	opExp, err := regexp.Compile(`([+\-\/*]{1})(\d+)`)
-
-	if err != nil {
-		utils.PrintRegexErr("opExp", err)
-	}
-
-	matches := opExp.FindAllStringSubmatch(ops, -1)
+	matches := operationExp.FindAllStringSubmatch(ops, -1)
 	operations := make([]Operation, 0)
 	for _, match := range matches {
 		operation := getOperation(match[1], match[2])

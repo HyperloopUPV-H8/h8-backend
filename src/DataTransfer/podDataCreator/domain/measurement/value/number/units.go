@@ -2,8 +2,6 @@ package number
 
 import (
 	"regexp"
-
-	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/utils"
 )
 
 type Unit struct {
@@ -11,13 +9,9 @@ type Unit struct {
 	operations []Operation
 }
 
+var unitExp = regexp.MustCompile(`^([a-zA-Z]+)#((?:[+\-\/*]{1}\d+)+)#$`)
+
 func newUnit(unitStr string) Unit {
-	unitExp, err := regexp.Compile(`^([a-zA-Z]+)#((?:[+\-\/*]{1}\d+)+)#$`)
-
-	if err != nil {
-		utils.PrintRegexErr("unitExp", err)
-	}
-
 	matches := unitExp.FindStringSubmatch(unitStr)
 	unit := Unit{
 		name:       matches[1],
@@ -26,7 +20,7 @@ func newUnit(unitStr string) Unit {
 	return unit
 }
 
-func convertToUnits(number float32, operations []Operation) float32 {
+func convertToUnits(number float64, operations []Operation) float64 {
 	result := number
 	for _, operation := range operations {
 		result = doOperation(result, operation)
@@ -34,7 +28,7 @@ func convertToUnits(number float32, operations []Operation) float32 {
 	return result
 }
 
-func undoUnits(number float32, operations []Operation) float32 {
+func undoUnits(number float64, operations []Operation) float64 {
 	newOperations := getOpositeAndReversedOperations(operations)
 	return convertToUnits(number, newOperations)
 }

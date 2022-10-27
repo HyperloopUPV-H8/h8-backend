@@ -12,6 +12,8 @@ type Ranges struct {
 	warning [2]int
 }
 
+var rangesExp = regexp.MustCompile(`^\[(-?\d+)\,(-?\d+)\]$`)
+
 func NewRanges(safeRangeStr string, warningRangeStr string) Ranges {
 	safeRange := getRangesFromString(strings.ReplaceAll(safeRangeStr, " ", ""))
 	warningRange := getRangesFromString(strings.ReplaceAll(warningRangeStr, " ", ""))
@@ -20,16 +22,9 @@ func NewRanges(safeRangeStr string, warningRangeStr string) Ranges {
 }
 
 func getRangesFromString(str string) [2]int {
-	rangeExp, err := regexp.Compile(`^\[(-?\d+)\,(-?\d+)\]$`)
-
-	if err != nil {
-		fmt.Printf("Error parsing ranges regExp: %v\n", err)
-	}
-
-	matches := rangeExp.FindStringSubmatch(str)
+	matches := rangesExp.FindStringSubmatch(str)
 
 	begin := getInt(matches[1])
-
 	end := getInt(matches[2])
 
 	return [2]int{int(begin), int(end)}
@@ -39,7 +34,7 @@ func getInt(intString string) int {
 	number, err := strconv.ParseInt(intString, 10, 64)
 
 	if err != nil {
-		fmt.Printf("Error parsing int: %v\n", err)
+		fmt.Printf("error parsing int: %v\n", err)
 	}
 	return int(number)
 }
