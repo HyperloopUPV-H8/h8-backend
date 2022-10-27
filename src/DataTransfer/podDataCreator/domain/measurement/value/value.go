@@ -4,6 +4,7 @@ import "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain
 
 type Value interface {
 	ToDisplayString() string
+	Update(newValue any)
 }
 
 func NewDefault(valueType string, podUnits string, displayUnits string) Value {
@@ -29,6 +30,7 @@ func isNumber(valueType string) bool {
 		return false
 	}
 }
+
 // TODO: Esta función esta hecha pero no se donde colocarla, por ahora dejo este placeholder
 func isEnum(va string) bool {
 	return true

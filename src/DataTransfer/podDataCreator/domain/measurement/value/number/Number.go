@@ -14,9 +14,17 @@ func NewNumber(podUnitString string, displayUnitString string) *Number {
 	return &Number{value: 0, podUnits: podUnits, displayUnits: displayUnits}
 }
 
-func (i *Number) ToDisplayString() string {
+func (i Number) ToDisplayString() string {
 	number := float64(i.value)
 	internationalSystemNumber := undoUnits(number, i.podUnits.operations)
 	result := convertToUnits(internationalSystemNumber, i.displayUnits.operations)
 	return fmt.Sprintf("%v", result)
+}
+
+func (n *Number) Update(newValue any) {
+	newNumber, ok := newValue.(Number)
+	if !ok {
+		panic("invalid value")
+	}
+	n = &newNumber
 }

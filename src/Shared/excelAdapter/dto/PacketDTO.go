@@ -2,12 +2,12 @@ package dto
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 
 	podDataCreator "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain"
 	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain/measurement"
-	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/utils"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelAdapter/dto/idExpander"
 )
 
@@ -20,7 +20,7 @@ func (p PacketDTO) toPacket() podDataCreator.Packet {
 	id, err := strconv.Atoi(p.Description.Id)
 
 	if err != nil {
-		utils.PrintParseNumberErr(err)
+		log.Fatalf("parse: %s\n", err)
 	}
 
 	return podDataCreator.Packet{

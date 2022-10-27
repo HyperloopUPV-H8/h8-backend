@@ -32,7 +32,7 @@ func (controller TransportController) ReceiveData() []byte {
 	return controller.sniffer.GetNextValidPayload()
 }
 
-func (controller TransportController) ReceiveMessage() [][]byte {
+func (controller TransportController) ReceiveMessages() [][]byte {
 	return controller.server.ReceiveNext()
 }
 

@@ -1,10 +1,9 @@
 package number
 
 import (
+	"log"
 	"regexp"
 	"strconv"
-
-	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/utils"
 )
 
 type Operation struct {
@@ -40,13 +39,13 @@ func getOperations(ops string) []Operation {
 }
 
 func getOperation(operator string, operand string) Operation {
-	num, err := strconv.ParseFloat(operand, 32)
+	num, err := strconv.ParseFloat(operand, 64)
 
 	if err != nil {
-		utils.PrintParseNumberErr(err)
+		log.Fatalf("parse: %s\n", err)
 	}
 
-	return Operation{operator: operator, operand: float32(num)}
+	return Operation{operator: operator, operand: num}
 }
 
 func getOpositeAndReversedOperations(operations []Operation) []Operation {

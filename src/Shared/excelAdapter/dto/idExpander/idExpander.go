@@ -1,10 +1,9 @@
 package idExpander
 
 import (
+	"log"
 	"regexp"
 	"strconv"
-
-	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/utils"
 )
 
 func GetAllIds(id string) []string {
@@ -21,23 +20,15 @@ func GetAllIds(id string) []string {
 	return finalIds
 }
 
+var numberExp = regexp.MustCompile(`^\d+$`)
+
 func isNumber(id string) bool {
-	numberExp, err := regexp.Compile(`^\d+$`)
-
-	if err != nil {
-		utils.PrintRegexErr("numberExp", err)
-	}
-
 	return numberExp.MatchString(id)
 }
 
+var expandExp = regexp.MustCompile(`^(\d*)\[(\d+),(\d+)\]$`)
+
 func getIdParts(id string) (prefix string, begin string, end string) {
-	expandExp, err := regexp.Compile(`^(\d*)\[(\d+),(\d+)\]$`)
-
-	if err != nil {
-		utils.PrintRegexErr("expandExp", err)
-	}
-
 	matches := expandExp.FindStringSubmatch(id)
 	return matches[1], matches[2], matches[3]
 }
@@ -54,7 +45,7 @@ func stringToInt(num string) int {
 	n, err := strconv.ParseInt(num, 10, 32)
 
 	if err != nil {
-		utils.PrintParseNumberErr(err)
+		log.Fatalf("parse: %s\n", err)
 	}
 
 	return int(n)

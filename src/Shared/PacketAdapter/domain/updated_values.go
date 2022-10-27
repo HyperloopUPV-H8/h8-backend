@@ -2,20 +2,18 @@ package domain
 
 import (
 	"time"
-
-	value "github.com/HyperloopUPV-H8/Backend-H8/..."
 )
 
-type UpdatedValues struct {
-	id        uint16
-	measures  map[string]value.Value
-	timestamp time.Time
+type PacketUpdate struct {
+	ID            uint16
+	UpdatedValues map[string]any
+	Timestamp     time.Time
 }
 
-func NewUpdatedValues(id ID, measures map[string]any) UpdatedValues {
-	return UpdatedValues{
-		id:        id,
-		measures:  measures,
-		timestamp: time.Now(),
+func NewUpdatedValues(id ID, update map[string]any) PacketUpdate {
+	return PacketUpdate{
+		ID:            id,
+		UpdatedValues: update,
+		Timestamp:     time.Now(),
 	}
 }
