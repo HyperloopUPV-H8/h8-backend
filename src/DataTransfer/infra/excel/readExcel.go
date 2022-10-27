@@ -70,7 +70,7 @@ func getInitOfTables(sheetContent [][]string) [][2]int {
 
 func searchInitsInRow(sheetContent [][]string, i int) [][2]int {
 
-	initString := "[TABLE]"
+	initString := "[TABLE] "
 	var initCellsOfRow [][2]int
 
 	for j := 0; j < len(sheetContent[i]); j++ {
@@ -99,7 +99,7 @@ func getTable(sheetContent [][]string, axis [2]int) Table {
 }
 
 func getTitleTable(cellContent string) string {
-	title := strings.TrimPrefix(cellContent, "[TABLE]")
+	title := strings.TrimPrefix(cellContent, "[TABLE] ")
 	return title
 }
 
