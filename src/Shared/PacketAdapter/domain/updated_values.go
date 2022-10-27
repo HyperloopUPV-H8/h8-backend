@@ -14,7 +14,7 @@ type UpdatedValues struct {
 
 func NewUpdatedValues(id ID, measures map[string]any) UpdatedValues {
 	return UpdatedValues{
-		id:        uint16(id),
+		id:        id,
 		measures:  measures,
 		timestamp: time.Now(),
 	}
