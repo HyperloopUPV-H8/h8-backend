@@ -7,8 +7,8 @@ import (
 
 	podDataCreator "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain"
 	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain/measurement"
-	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/infra/excelAdapter/dto/idExpander"
 	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/utils"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelAdapter/dto/idExpander"
 )
 
 type PacketDTO struct {

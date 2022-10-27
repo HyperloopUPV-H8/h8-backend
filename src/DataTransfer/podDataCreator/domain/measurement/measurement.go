@@ -5,6 +5,9 @@ import "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain
 type Measurement struct {
 	Name   string
 	Value  value.Value
-	Units  Units
 	Ranges Ranges
+}
+
+func (m *Measurement) getDisplayString() string {
+	return m.Value.ToDisplayString()
 }
