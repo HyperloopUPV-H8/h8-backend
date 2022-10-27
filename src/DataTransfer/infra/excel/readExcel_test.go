@@ -12,7 +12,7 @@ func TestReadExcel(t *testing.T) {
 	DocumentExcel, err := openExcelFile(name)
 
 	if err != nil {
-		t.Fatalf("Couldn't open the file")
+		t.Fatalf("couldn't open the file")
 	}
 
 	document := GetDocument(DocumentExcel)
@@ -22,7 +22,7 @@ func TestReadExcel(t *testing.T) {
 	areEquals := reflect.DeepEqual(document, correctObject)
 
 	if !areEquals {
-		t.Fatalf("Objects are not equal")
+		t.Fatalf("objects are not equal")
 	}
 }
 

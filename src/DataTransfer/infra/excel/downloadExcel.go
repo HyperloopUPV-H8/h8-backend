@@ -19,19 +19,19 @@ func downloadExcel(spreadsheetID string, filename string) {
 
 	driveService, err := drive.NewService(ctx, option.WithCredentialsFile("secret.json"))
 	if err != nil {
-		log.Fatal("Service error: ", err)
+		log.Fatal("service error: ", err)
 	}
 
 	response, err := driveService.Files.Export(spreadsheetID, mimeType).Download()
 
 	if err != nil {
-		log.Fatal("Http response error: ", err)
+		log.Fatal("http response error: ", err)
 	}
 
 	errDownloading := download(response, filename)
 
 	if errDownloading != nil {
-		log.Fatal("Error downloading: ", err)
+		log.Fatal("error downloading: ", err)
 	}
 
 }

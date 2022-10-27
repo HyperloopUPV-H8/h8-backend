@@ -19,13 +19,13 @@ func TestDownloadExcel(t *testing.T) {
 	}
 
 	if fileExists(filename) {
-		t.Fatalf("File has not been deleted")
+		t.Fatalf("file has not been deleted")
 	}
 
 	downloadExcel(spreadsheetID, filename)
 
 	if !fileExists(filename) {
-		t.Fatalf("File has not been downloaded in %s", filename)
+		t.Fatalf("file has not been downloaded in %s", filename)
 	}
 }
 
