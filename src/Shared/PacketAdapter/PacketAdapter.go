@@ -11,7 +11,7 @@ func (pa *PacketAdapter) SendOrder(order orders.OrderDTO) {
 }
 
 func (pa *PacketAdapter) GetPacketUpdates() []packetparser.PacketUpdate {
-	bytesArr := pa.transportController.getPackets()
+	bytesArr := pa.transportController.GetData()
 	packetUpdates := make([]packetparser.PacketUpdate, len(bytesArr))
 	for index, bytes := range bytesArr {
 		packetUpdates[index] = pa.packetParser.toPacketUpdate(bytes)
