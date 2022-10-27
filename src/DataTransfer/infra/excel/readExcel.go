@@ -1,7 +1,6 @@
 package excel
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/xuri/excelize/v2"
@@ -19,7 +18,6 @@ func getSheets(file *excelize.File) map[string]Sheet {
 	newMap := make(map[string]Sheet)
 	namesMap := file.GetSheetMap()
 	for _, name := range namesMap {
-		fmt.Println(name)
 		sheet := getSheet(name, file)
 		newMap[name] = sheet
 	}
@@ -89,13 +87,12 @@ func getTable(sheetContent [][]string, axis [2]int) Table {
 	tableName := getTitleTable(sheetContent[axis[0]][axis[1]])
 	headersRow := sheetContent[axis[0]+1]
 	rowLength := getMaxRowLength(headersRow, axis[1])
-	var initData [2]int = [2]int{axis[0] + 2, axis[1]}
+	initData := [2]int{axis[0] + 2, axis[1]}
 	rectangularTable := getRectangularTable(sheetContent, rowLength, initData)
-	rows := getRowsOfTable(rectangularTable)
 
 	table := Table{
 		Name: tableName,
-		Rows: rows,
+		Rows: rectangularTable,
 	}
 
 	return table
@@ -120,7 +117,6 @@ func getRectangularTable(sheetContent [][]string, rowLength int, initDataOfTable
 		}
 	}
 
-	fmt.Println(rectangularTable)
 	return rectangularTable
 }
 
@@ -130,13 +126,10 @@ func getRectangularRow(fullRow []string, initColumn int, finalColumn int) []stri
 	emptySpacesAtEnd := finalColumn - finalIndex
 	var row []string
 
-	fmt.Println("finalColumn: ", finalColumn, " finalIndex: ", finalIndex, " emptySpacesAtEnd: ", emptySpacesAtEnd)
-
 	if emptySpacesAtEnd <= 0 {
 		row = fullRow[initColumn : finalColumn+1]
 	} else {
 		row = addEmptyCells(fullRow[initColumn:], emptySpacesAtEnd)
-		fmt.Println(len(row))
 	}
 
 	return row
@@ -159,15 +152,4 @@ func addEmptyCells(row []string, emptySpacesAtEnd int) []string {
 		row = append(row, "")
 	}
 	return row
-}
-
-func getRowsOfTable(rectangularTable [][]string) []Row {
-	numRows := len(rectangularTable)
-	rows := make([]Row, numRows)
-	length := len(rectangularTable)
-
-	for i := 0; i < length; i++ {
-		rows[i] = rectangularTable[i]
-	}
-	return rows
 }

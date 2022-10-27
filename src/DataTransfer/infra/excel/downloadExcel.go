@@ -1,7 +1,6 @@
 package excel
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -13,25 +12,26 @@ import (
 	"google.golang.org/api/option"
 )
 
+const mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
 func downloadExcel(spreadsheetID string, filename string) {
 	ctx := context.Background()
 
 	driveService, err := drive.NewService(ctx, option.WithCredentialsFile("secret.json"))
 	if err != nil {
-		log.Fatal(err, " client")
+		log.Fatal("Service error: ", err)
 	}
 
-	mimeType := "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 	response, err := driveService.Files.Export(spreadsheetID, mimeType).Download()
 
 	if err != nil {
-		log.Fatal(err, "sheet")
+		log.Fatal("Http response error: ", err)
 	}
 
 	errDownloading := download(response, filename)
 
 	if errDownloading != nil {
-		log.Fatal(err)
+		log.Fatal("Error downloading: ", err)
 	}
 
 }
@@ -40,23 +40,13 @@ func download(resp *http.Response, filename string) error {
 
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
-		checkError(err)
 		return err
 	}
 
-	err = os.WriteFile(filename, b, 0644)
+	err = os.WriteFile(filename, b, 0644) //0644 meaning: User: read & write, Group: read, Other: read
 	if err != nil {
-		checkError(err)
 		return err
 	}
-
-	fmt.Println("Doc downloaded in ", filename)
 
 	return nil
-}
-
-func checkError(err error) {
-	if err != nil {
-		panic(err.Error())
-	}
 }
