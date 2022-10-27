@@ -1,6 +1,6 @@
 package aliases
 
-type IP string
+type IP = string
 
 // stringsToIPs and ipsToStrings are really similar but due to go generics limitations
 // they cannot be made into a single function because it doesnt support casting from one
@@ -23,9 +23,9 @@ func IPsToStrings(ips []IP) (strings []string) {
 	return strings
 }
 
-type Port uint16
+type Port = uint16
 
-type Payload []byte
+type Payload = []byte
 
 func PayloadsToBytes(payloads []Payload) (bytes [][]byte) {
 	bytes = make([][]byte, len(payloads))

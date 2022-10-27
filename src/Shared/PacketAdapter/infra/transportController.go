@@ -21,11 +21,10 @@ var (
 )
 
 func NewTransportController(validAddrs []string) TransportController {
-	validAddrIPs := aliases.StringsToIPs(validAddrs)
 
 	return TransportController{
-		sniffer: sniffer.New(snifferTarget, snifferLive, createFilters(validAddrIPs)),
-		server:  tcp.Open(serverPort, validAddrIPs),
+		sniffer: sniffer.New(snifferTarget, snifferLive, createFilters(validAddrs)),
+		server:  tcp.Open(serverPort, validAddrs),
 	}
 }
 
@@ -34,15 +33,15 @@ func (controller TransportController) ReceiveData() []byte {
 }
 
 func (controller TransportController) ReceiveMessage() [][]byte {
-	return aliases.PayloadsToBytes(controller.server.ReceiveNext())
+	return controller.server.ReceiveNext()
 }
 
 func (controller TransportController) Send(addr string, payload []byte) {
-	controller.server.Send(aliases.IP(addr), payload)
+	controller.server.Send(addr, payload)
 }
 
 func (controller TransportController) AliveConnections() []string {
-	return aliases.IPsToStrings(controller.server.ConnectedAddresses())
+	return controller.server.ConnectedAddresses()
 }
 
 func (controller TransportController) Close() {
