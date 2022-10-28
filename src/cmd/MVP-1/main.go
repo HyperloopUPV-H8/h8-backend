@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator"
 	packetadapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter"
@@ -32,10 +33,10 @@ var structure = excelRetriever.Document{
 					Name: "Value Description",
 					Rows: [][]string{
 						{"Voltage1", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
-						{"Speed1", "uint16", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Speed1", "bool", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
 						{"Current1", "uint32", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
 						{"Airgap1", "uint64", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
-						{"Position1", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Position1", "ENUM(a, b, c)", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
 						{"Battery1", "int16", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
 					},
 				},
@@ -71,5 +72,6 @@ func main() {
 		podData.UpdatePacket(update)
 		packet := podData.GetPacket(update.ID)
 		spew.Dump(packet)
+		<-time.After(time.Second * 2)
 	}
 }
