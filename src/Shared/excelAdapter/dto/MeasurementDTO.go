@@ -3,7 +3,7 @@ package dto
 import (
 	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain/measurement"
 	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain/measurement/value"
-	excel "github.com/HyperloopUPV-H8/Backend-H8/Shared/excelRetriever"
+	excelRetrieverDomain "github.com/HyperloopUPV-H8/Backend-H8/Shared/excelRetriever/domain"
 )
 
 type MeasurementDTO struct {
@@ -23,7 +23,7 @@ func (m *MeasurementDTO) toMeasurement() measurement.Measurement {
 	}
 }
 
-func newMeasurementDTO(row excel.Row) MeasurementDTO {
+func newMeasurementDTO(row excelRetrieverDomain.Row) MeasurementDTO {
 	return MeasurementDTO{
 		Name:         row[0],
 		ValueType:    row[1],

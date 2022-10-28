@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelRetriever/domain"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -32,37 +33,37 @@ func openExcelFile(name string) (*excelize.File, error) {
 	return f, err
 }
 
-func getCorrectDocument() Document {
+func getCorrectDocument() domain.Document {
 
 	correctRows1_1 := [][]string{{"1", "1", "1", "1"}, {"2", "2", "2", "2"}, {"3", "3", "3", "3"}}
 
-	correctTable1_1 := Table{
+	correctTable1_1 := domain.Table{
 		Name: "NOMBRE1",
 		Rows: correctRows1_1,
 	}
-	correctSheet1 := Sheet{
+	correctSheet1 := domain.Sheet{
 		Name: "Hoja 1",
-		Tables: map[string]Table{
+		Tables: map[string]domain.Table{
 			"NOMBRE1": correctTable1_1,
 		},
 	}
 	correctRows2_1 := [][]string{{"1", "1", "1"}, {"2", "2", ""}, {"3", "3", "3"}}
 
-	correctTable2_1 := Table{
+	correctTable2_1 := domain.Table{
 		Name: "NOMBRE1",
 		Rows: correctRows2_1,
 	}
 
 	correctRows2_2 := [][]string{{"4", "4", "4"}, {"5", "5", "5"}, {"6", "6", "6"}}
 
-	correctTable2_2 := Table{
+	correctTable2_2 := domain.Table{
 		Name: "NOMBRE2",
 		Rows: correctRows2_2,
 	}
 
-	correctSheet2 := Sheet{
+	correctSheet2 := domain.Sheet{
 		Name: "Hoja 2",
-		Tables: map[string]Table{
+		Tables: map[string]domain.Table{
 			"NOMBRE1": correctTable2_1,
 			"NOMBRE2": correctTable2_2,
 		},
@@ -70,28 +71,28 @@ func getCorrectDocument() Document {
 
 	correctRows3_1 := [][]string{{"", "1", "1", "1"}, {"2", "2", "2", "2"}, {"3", "3", "", "3"}}
 
-	correctTable3_1 := Table{
+	correctTable3_1 := domain.Table{
 		Name: "NOMBRE1",
 		Rows: correctRows3_1,
 	}
 
 	correctRows3_2 := [][]string{{"4", "4", "4", ""}, {"5", "5", "5", "5"}, {"6", "6", "6", ""}}
 
-	correctTable3_2 := Table{
+	correctTable3_2 := domain.Table{
 		Name: "NOMBRE2",
 		Rows: correctRows3_2,
 	}
 
-	correctSheet3 := Sheet{
+	correctSheet3 := domain.Sheet{
 		Name: "Hoja 3",
-		Tables: map[string]Table{
+		Tables: map[string]domain.Table{
 			"NOMBRE1": correctTable3_1,
 			"NOMBRE2": correctTable3_2,
 		},
 	}
 
-	document := Document{
-		Sheets: map[string]Sheet{
+	document := domain.Document{
+		Sheets: map[string]domain.Sheet{
 			"Hoja 1": correctSheet1,
 			"Hoja 2": correctSheet2,
 			"Hoja 3": correctSheet3,

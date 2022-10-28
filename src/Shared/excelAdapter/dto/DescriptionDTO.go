@@ -1,6 +1,6 @@
 package dto
 
-import excel "github.com/HyperloopUPV-H8/Backend-H8/Shared/excelRetriever"
+import excelRetrieverDomain "github.com/HyperloopUPV-H8/Backend-H8/Shared/excelRetriever/domain"
 
 type DescriptionDTO struct {
 	Id        string
@@ -10,7 +10,7 @@ type DescriptionDTO struct {
 	Protocol  string
 }
 
-func newDescriptionDTO(row excel.Row) DescriptionDTO {
+func newDescriptionDTO(row excelRetrieverDomain.Row) DescriptionDTO {
 	return DescriptionDTO{
 		Id:        row[0],
 		Name:      row[1],

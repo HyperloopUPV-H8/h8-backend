@@ -9,6 +9,9 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelAdapter"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelAdapter/dto"
 	excelRetriever "github.com/HyperloopUPV-H8/Backend-H8/Shared/excelRetriever/domain"
+
+	//"github.com/HyperloopUPV-H8/Backend-H8/dataTransfer"
+
 	"github.com/davecgh/go-spew/spew"
 	"github.com/joho/godotenv"
 )
@@ -67,6 +70,10 @@ func main() {
 	podData := podDataCreator.Invoke(boardDTOs)
 
 	fmt.Println("Starting loop")
+
+	// dt := dataTransfer.New(podData)
+	// dt.Invoke(packetAdapter.GetPacketUpdate)
+
 	for {
 		update := packetAdapter.GetPacketUpdate()
 		podData.UpdatePacket(update)

@@ -1,6 +1,7 @@
 package value
 
 import (
+	"fmt"
 	"regexp"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain/measurement/value/number"
@@ -12,6 +13,7 @@ type Value interface {
 }
 
 func NewDefault(valueType string, podUnits string, displayUnits string) Value {
+	fmt.Println(valueType)
 	switch valueType {
 	case "bool":
 		return new(Bool)
