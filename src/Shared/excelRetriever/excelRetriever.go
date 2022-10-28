@@ -1,19 +1,12 @@
 package excelRetriever
 
-type Structure struct {
-	Sheets map[string]Sheet
-}
+import (
+	"os"
+)
 
-type Sheet struct {
-	Name   string
-	Tables map[string]Table
-}
+var fileName = "ADE"
+var filePath = os.TempDir()
 
-type Table struct {
-	Name string
-	Rows []Row
-}
-
-type Row = []Cell
-
-type Cell = string
+// func GetStructure() domain.Document {
+// 	infra.DownloadAndSaveExcel()
+// }

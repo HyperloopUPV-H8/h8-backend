@@ -7,11 +7,12 @@ import (
 	packetadapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelAdapter"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelAdapter/dto"
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelRetriever"
+	excelRetriever "github.com/HyperloopUPV-H8/Backend-H8/Shared/excelRetriever/domain"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/joho/godotenv"
 )
 
-var structure = excelRetriever.Structure{
+var structure = excelRetriever.Document{
 	Sheets: map[string]excelRetriever.Sheet{
 		"BMS": {
 			Name: "BMS",
@@ -51,6 +52,8 @@ var structure = excelRetriever.Structure{
 }
 
 func main() {
+	godotenv.Load()
+
 	ips := []string{"127.0.0.1"}
 
 	boardDTOs := excelAdapter.GetBoardDTOs(structure)

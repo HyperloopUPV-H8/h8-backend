@@ -1,21 +1,22 @@
-package excel
+package infra
 
 import (
 	"strings"
 
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelRetriever/domain"
 	"github.com/xuri/excelize/v2"
 )
 
-func GetDocument(file *excelize.File) Document {
+func GetDocument(file *excelize.File) domain.Document {
 	sheets := getSheets(file)
-	document := Document{
+	document := domain.Document{
 		Sheets: sheets,
 	}
 	return document
 }
 
-func getSheets(file *excelize.File) map[string]Sheet {
-	newMap := make(map[string]Sheet)
+func getSheets(file *excelize.File) map[string]domain.Sheet {
+	newMap := make(map[string]domain.Sheet)
 	namesMap := file.GetSheetMap()
 	for _, name := range namesMap {
 		sheet := getSheet(name, file)
@@ -24,9 +25,9 @@ func getSheets(file *excelize.File) map[string]Sheet {
 	return newMap
 }
 
-func getSheet(name string, file *excelize.File) Sheet {
+func getSheet(name string, file *excelize.File) domain.Sheet {
 	sheetContent, _ := file.GetRows(name)
-	return Sheet{
+	return domain.Sheet{
 		Name:   name,
 		Tables: getTables(sheetContent),
 	}
@@ -44,8 +45,8 @@ func getMaxRowLength(propertiesRow []string, initColumn int) int {
 	return maxRowLength
 }
 
-func getTables(sheetContent [][]string) map[string]Table {
-	tables := make(map[string]Table)
+func getTables(sheetContent [][]string) map[string]domain.Table {
+	tables := make(map[string]domain.Table)
 	initCells := getInitOfTables(sheetContent)
 	for i := 0; i < len(initCells); i++ {
 		table := getTable(sheetContent, initCells[i])
@@ -83,14 +84,14 @@ func searchInitsInRow(sheetContent [][]string, i int) [][2]int {
 	return initCellsOfRow
 }
 
-func getTable(sheetContent [][]string, axis [2]int) Table {
+func getTable(sheetContent [][]string, axis [2]int) domain.Table {
 	tableName := getTitleTable(sheetContent[axis[0]][axis[1]])
 	headersRow := sheetContent[axis[0]+1]
 	rowLength := getMaxRowLength(headersRow, axis[1])
 	initData := [2]int{axis[0] + 2, axis[1]}
 	rectangularTable := getRectangularTable(sheetContent, rowLength, initData)
 
-	table := Table{
+	table := domain.Table{
 		Name: tableName,
 		Rows: rectangularTable,
 	}
