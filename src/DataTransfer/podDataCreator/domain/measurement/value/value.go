@@ -1,6 +1,10 @@
 package value
 
-import "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain/measurement/value/number"
+import (
+	"regexp"
+
+	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator/domain/measurement/value/number"
+)
 
 type Value interface {
 	ToDisplayString() string
@@ -31,7 +35,8 @@ func isNumber(valueType string) bool {
 	}
 }
 
-// TODO: Esta función esta hecha pero no se donde colocarla, por ahora dejo este placeholder
-func isEnum(va string) bool {
-	return true
+var enumExpr = regexp.MustCompile(`^ENUM\((\w+(?:,\w+)*)\)$`)
+
+func isEnum(valueType string) bool {
+	return enumExpr.MatchString(valueType)
 }

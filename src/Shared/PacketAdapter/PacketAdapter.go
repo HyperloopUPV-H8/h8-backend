@@ -21,14 +21,9 @@ func New(packetDTOs []dto.PacketDTO, boardIps []string) PacketAdapter {
 	return packetAdapter
 }
 
-func (pa *PacketAdapter) GetPacketUpdates() []domain.PacketUpdate {
-	bytesArr := pa.transportController.ReceiveMessages()
-	packetUpdates := make([]domain.PacketUpdate, len(bytesArr))
-	for index, bytes := range bytesArr {
-		packetUpdates[index] = pa.packetParser.Decode(bytes)
-	}
-
-	return packetUpdates
+func (pa *PacketAdapter) GetPacketUpdate() domain.PacketUpdate {
+	bytes := pa.transportController.ReceiveData()
+	return pa.packetParser.Decode(bytes)
 }
 
 // func (pa *PacketAdapter) SendOrder(order orders.OrderDTO) {

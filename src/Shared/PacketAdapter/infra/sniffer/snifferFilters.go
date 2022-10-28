@@ -35,7 +35,6 @@ type DestinationIPFilter struct {
 
 func (filter DestinationIPFilter) Filter(packet gopacket.Packet) bool {
 	dstIP := getPacketDstIP(packet)
-
 	for _, ip := range filter.DstIPs {
 		if ip == dstIP {
 			return true

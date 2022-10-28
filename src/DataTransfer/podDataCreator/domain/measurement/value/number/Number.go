@@ -22,9 +22,10 @@ func (i Number) ToDisplayString() string {
 }
 
 func (n *Number) Update(newValue any) {
-	newNumber, ok := newValue.(Number)
+	newNumber, ok := newValue.(float64)
+
 	if !ok {
 		panic("invalid value")
 	}
-	n = &newNumber
+	n.value = newNumber
 }

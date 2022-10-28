@@ -9,11 +9,11 @@ type PodData struct {
 }
 
 func (podData *PodData) UpdatePacket(pu packetparser.PacketUpdate) {
-	packet := podData.getPacket(pu.ID)
+	packet := podData.GetPacket(pu.ID)
 	packet.UpdatePacket(pu)
 }
 
-func (podData *PodData) getPacket(id uint16) *Packet {
+func (podData *PodData) GetPacket(id uint16) *Packet {
 	packet := new(Packet)
 	for _, board := range podData.Boards {
 		foundPacket, hasPacket := board.Packets[id]

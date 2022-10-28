@@ -58,7 +58,7 @@ func (pipes *Pipes) Receive() []aliases.Payload {
 
 	payloads := make([]aliases.Payload, 0, len(pipes.conns))
 	for _, conn := range pipes.conns {
-		conn.SetDeadline(time.Now().Add(time.Nanosecond))
+		conn.SetDeadline(time.Now().Add(time.Second * 2))
 		buf := make(aliases.Payload, packetMaxLength)
 		n, _ := conn.Read(buf)
 		if n > 0 {

@@ -31,3 +31,7 @@ func getEnumMatches(enumString string) [][]string {
 func removeWhitespace(input string) string {
 	return strings.ReplaceAll(input, " ", "")
 }
+
+func IsEnum(valueType string) bool {
+	return enumExpr.MatchString(valueType)
+}

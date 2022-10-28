@@ -3,10 +3,12 @@ package main
 import (
 	"fmt"
 
+	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator"
 	packetadapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelAdapter"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelAdapter/dto"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelRetriever"
+	"github.com/davecgh/go-spew/spew"
 )
 
 var structure = excelRetriever.Structure{
@@ -32,7 +34,7 @@ var structure = excelRetriever.Structure{
 						{"Speed1", "uint16", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
 						{"Current1", "uint32", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
 						{"Airgap1", "uint64", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
-						{"Position1", "int8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Position1", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
 						{"Battery1", "int16", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
 					},
 				},
@@ -58,9 +60,13 @@ func main() {
 	}
 
 	packetAdapter := packetadapter.New(packetDTOs, ips)
+	podData := podDataCreator.Invoke(boardDTOs)
+
 	fmt.Println("Starting loop")
 	for {
-		updates := packetAdapter.GetPacketUpdates()
-		fmt.Println(updates)
+		update := packetAdapter.GetPacketUpdate()
+		podData.UpdatePacket(update)
+		packet := podData.GetPacket(update.ID)
+		spew.Dump(packet)
 	}
 }
