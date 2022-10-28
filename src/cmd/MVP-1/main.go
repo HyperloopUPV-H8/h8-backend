@@ -10,7 +10,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelAdapter/dto"
 	excelRetriever "github.com/HyperloopUPV-H8/Backend-H8/Shared/excelRetriever/domain"
 
-	//"github.com/HyperloopUPV-H8/Backend-H8/dataTransfer"
+	// NO ELIMINAR //"github.com/HyperloopUPV-H8/Backend-H8/dataTransfer"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/joho/godotenv"
@@ -71,6 +71,7 @@ func main() {
 
 	fmt.Println("Starting loop")
 
+	//NO ELIMINAR
 	// dt := dataTransfer.New(podData)
 	// dt.Invoke(packetAdapter.GetPacketUpdate)
 
