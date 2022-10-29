@@ -3,17 +3,19 @@ package tcp
 import (
 	"fmt"
 	"net"
-
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/infra/aliases"
 )
+
+type IP = string
+type Port = uint16
+type Payload = []byte
 
 type Server struct {
 	listener   *net.TCPListener
 	pipes      Pipes
-	validAddrs []aliases.IP
+	validAddrs []IP
 }
 
-func Open(localPort aliases.Port, remoteAddrs []aliases.IP) Server {
+func Open(localPort Port, remoteAddrs []IP) Server {
 	server := Server{
 		listener:   bindListener(resolvePortAddr(localPort)),
 		pipes:      NewPipes(len(remoteAddrs)),
@@ -26,7 +28,7 @@ func Open(localPort aliases.Port, remoteAddrs []aliases.IP) Server {
 }
 
 // Only specifying the port makes go to listen for traffic on all ips
-func resolvePortAddr(port aliases.Port) *net.TCPAddr {
+func resolvePortAddr(port Port) *net.TCPAddr {
 	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		panic(err)
@@ -53,19 +55,19 @@ func (server *Server) listenConnections() {
 	}
 }
 
-func getTCPConnIP(conn *net.TCPConn) aliases.IP {
+func getTCPConnIP(conn *net.TCPConn) IP {
 	connTCPAddr, err := net.ResolveTCPAddr("tcp", conn.RemoteAddr().String())
 	if err != nil {
 		panic(err)
 	}
-	return aliases.IP(connTCPAddr.IP.String())
+	return IP(connTCPAddr.IP.String())
 }
 
-func (server *Server) Send(ip aliases.IP, payload aliases.Payload) {
+func (server *Server) Send(ip IP, payload Payload) {
 	server.pipes.Send(ip, payload)
 }
 
-func (server *Server) ReceiveNext() []aliases.Payload {
+func (server *Server) ReceiveNext() []Payload {
 	for {
 		payloads := server.pipes.Receive()
 		if len(payloads) != 0 {
@@ -74,11 +76,11 @@ func (server *Server) ReceiveNext() []aliases.Payload {
 	}
 }
 
-func (server *Server) ConnectedAddresses() []aliases.IP {
+func (server *Server) ConnectedAddresses() []IP {
 	return server.pipes.ConnectedIPs()
 }
 
-func (server *Server) isValidAddr(addr aliases.IP) bool {
+func (server *Server) isValidAddr(addr IP) bool {
 	for _, ip := range server.validAddrs {
 		if ip == addr {
 			return true

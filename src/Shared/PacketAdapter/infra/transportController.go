@@ -1,12 +1,15 @@
-package PacketAdapter
+package infra
 
 import (
 	"net"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/infra/aliases"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/infra/sniffer"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/infra/tcp"
 )
+
+type Port = uint16
+type IP = string
+type Payload = []byte
 
 type TransportController struct {
 	sniffer sniffer.Sniffer
@@ -17,7 +20,7 @@ var (
 	snifferTarget string = "\\Device\\NPF_Loopback"
 	snifferLive   bool   = true
 
-	serverPort aliases.Port = 6000
+	serverPort Port = 6000
 )
 
 func NewTransportController(validAddrs []string) TransportController {
@@ -48,22 +51,22 @@ func (controller TransportController) Close() {
 	controller.server.Close()
 }
 
-func createFilters(validAddrIPs []aliases.IP) []sniffer.Filterer {
+func createFilters(validAddrIPs []IP) []sniffer.Filterer {
 	ipRange := append(validAddrIPs, getLocalIPs()...)
 	return []sniffer.Filterer{sniffer.UDPFilter{}, sniffer.SourceIPFilter{SrcIPs: validAddrIPs}, sniffer.DestinationIPFilter{DstIPs: ipRange}}
 }
 
-func getLocalIPs() []aliases.IP {
+func getLocalIPs() []IP {
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return nil
 	}
 
-	ips := make([]aliases.IP, 0, len(ifaces))
+	ips := make([]IP, 0, len(ifaces))
 	for _, iface := range ifaces {
 		addrs, _ := iface.Addrs()
 		for _, addr := range addrs {
-			ips = append(ips, aliases.IP(addr.String()))
+			ips = append(ips, IP(addr.String()))
 		}
 	}
 

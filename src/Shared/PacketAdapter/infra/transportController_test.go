@@ -1,4 +1,4 @@
-package PacketAdapter
+package infra
 
 import (
 	"fmt"
