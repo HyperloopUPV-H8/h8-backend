@@ -1,8 +1,10 @@
 package board
 
 import (
+	"fmt"
+
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application/interfaces"
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/document"
 )
 
 type Board struct {
@@ -28,12 +30,12 @@ func (board Board) Structure() map[string]interfaces.Structure {
 	return board.structures
 }
 
-func NewBoard(sheet domain.Sheet) interfaces.Board {
+func NewBoard(sheet document.Sheet) interfaces.Board {
 	return Board{
 		name:         sheet.Name,
-		descriptions: getDescriptions(sheet.Tables["Packet Description"]),
-		measurements: getMeasurements(sheet.Tables["Value Description"]),
-		structures:   getStructures(sheet.Tables["Packet Structure"]),
+		descriptions: getDescriptions(sheet.Tables["PacketDescription"]),
+		measurements: getMeasurements(sheet.Tables["ValueDescription"]),
+		structures:   getStructures(sheet.Tables["PacketStructure"]),
 	}
 }
 
@@ -57,7 +59,7 @@ func (b Board) getPacketMeasurements(description interfaces.Description) []inter
 	return measurements
 }
 
-func getDescriptions(table domain.Table) map[Name]interfaces.Description {
+func getDescriptions(table document.Table) map[Name]interfaces.Description {
 	descriptions := make(map[Name]interfaces.Description, len(table.Rows))
 	for _, row := range table.Rows {
 		adapter := newDescription(row)
@@ -67,7 +69,7 @@ func getDescriptions(table domain.Table) map[Name]interfaces.Description {
 	return descriptions
 }
 
-func getMeasurements(table domain.Table) map[Name]interfaces.Measurement {
+func getMeasurements(table document.Table) map[Name]interfaces.Measurement {
 	measurements := make(map[Name]interfaces.Measurement, len(table.Rows))
 	for _, row := range table.Rows {
 		adapter := newMeasurement(row)
@@ -77,7 +79,7 @@ func getMeasurements(table domain.Table) map[Name]interfaces.Measurement {
 	return measurements
 }
 
-func getStructures(table domain.Table) map[Name]interfaces.Structure {
+func getStructures(table document.Table) map[Name]interfaces.Structure {
 	structures := make(map[Name]interfaces.Structure)
 	for _, column := range getColumns(table) {
 		structure := newStructure(column)
@@ -87,7 +89,8 @@ func getStructures(table domain.Table) map[Name]interfaces.Structure {
 	return structures
 }
 
-func getColumns(table domain.Table) [][]string {
+func getColumns(table document.Table) [][]string {
+	fmt.Println(table)
 	columns := make([][]string, len(table.Rows[0]))
 	for i := 0; i < len(table.Rows[0]); i++ {
 		columns[i] = getColumn(i, table)
@@ -96,7 +99,7 @@ func getColumns(table domain.Table) [][]string {
 	return columns
 }
 
-func getColumn(i int, table domain.Table) []string {
+func getColumn(i int, table document.Table) []string {
 	column := make([]string, len(table.Rows))
 	for j := 0; j < len(table.Rows); j++ {
 		column[j] = table.Rows[j][i]

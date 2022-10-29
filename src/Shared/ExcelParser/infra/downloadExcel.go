@@ -1,10 +1,10 @@
 package infra
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 
 	"golang.org/x/net/context"
 
@@ -14,7 +14,7 @@ import (
 
 const mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
-func DownloadAndSaveExcel(spreadsheetID string, fileName string, filePath string) {
+func FetchExcel(spreadsheetID string, fileName string, filePath string) {
 	fileBuf := downloadExcel(spreadsheetID, fileName)
 	saveFileToPath(fileBuf, fileName, filePath)
 }
@@ -22,7 +22,7 @@ func DownloadAndSaveExcel(spreadsheetID string, fileName string, filePath string
 func downloadExcel(spreadsheetID string, fileName string) []byte {
 	ctx := context.Background()
 
-	driveService, err := drive.NewService(ctx, option.WithCredentialsFile("secret.json"))
+	driveService, err := drive.NewService(ctx, option.WithCredentialsFile(os.Getenv("SECRET_FILE_PATH")))
 	if err != nil {
 		log.Fatal("service error: ", err)
 	}
@@ -43,7 +43,7 @@ func downloadExcel(spreadsheetID string, fileName string) []byte {
 }
 
 func saveFileToPath(fileBuf []byte, fileName string, filePath string) error {
-	err := os.WriteFile(fmt.Sprintf("%v\\%v", fileName, filePath), fileBuf, 0644) //0644 meaning: User: read & write, Group: read, Other: read
+	err := os.WriteFile(filepath.Join(filePath, fileName), fileBuf, 0644) //0644 meaning: User: read & write, Group: read, Other: read
 
 	if err != nil {
 		log.Fatal("Error saving file to path: ", err)

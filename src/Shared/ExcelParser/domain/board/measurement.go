@@ -2,7 +2,7 @@ package board
 
 import (
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application/interfaces"
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/document"
 )
 
 type Measurement struct {
@@ -14,7 +14,7 @@ type Measurement struct {
 	warningRange string
 }
 
-func newMeasurement(row domain.Row) Measurement {
+func newMeasurement(row document.Row) Measurement {
 	return Measurement{
 		name:         row[0],
 		valueType:    row[1],

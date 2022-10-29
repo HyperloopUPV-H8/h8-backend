@@ -2,7 +2,7 @@ package board
 
 import (
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application/interfaces"
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/document"
 )
 
 type Description struct {
@@ -33,7 +33,7 @@ func (desc Description) Protocol() string {
 	return desc.protocol
 }
 
-func newDescription(row domain.Row) interfaces.Description {
+func newDescription(row document.Row) interfaces.Description {
 	return Description{
 		id:        row[0],
 		name:      row[1],

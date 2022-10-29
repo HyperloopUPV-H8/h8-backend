@@ -8,9 +8,8 @@ import (
 	podData "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/application"
 	excelParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application/interfaces"
-	excelRetriever "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain"
+	excelRetriever "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/document"
 	packetAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/application"
-	iPacketAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/application/interfaces"
 
 	"github.com/joho/godotenv"
 )
@@ -55,11 +54,12 @@ var structure = excelRetriever.Document{
 }
 
 func main() {
-	godotenv.Load()
+	godotenv.Load("mvp.env")
 
 	ips := []string{"127.0.0.1"}
+	document := excelParser.GetExcel("excel.xlsx", ".")
 
-	boards := excelParser.GetBoards(structure)
+	boards := excelParser.GetBoards(document)
 	packets := make([]interfaces.Packet, 0)
 	for _, board := range boards {
 		packets = append(packets, board.GetPackets()...)
@@ -69,15 +69,6 @@ func main() {
 
 	fmt.Println("Starting loop")
 
-	//NO ELIMINAR
-	// dt := dataTransfer.New(podData)
-	// dt.Invoke(packetAdapter.GetPacketUpdate)
-
 	data := podData.New(boards)
-
-	for {
-		data.Invoke(func() iPacketAdapter.PacketUpdate {
-			return packetAdapter.ReadData()
-		})
-	}
+	data.Invoke(packetAdapter.ReadData)
 }
