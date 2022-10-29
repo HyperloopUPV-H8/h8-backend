@@ -2,17 +2,16 @@ package main
 
 import (
 	"fmt"
-	"time"
-
-	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/podDataCreator"
-	packetadapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter"
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelAdapter"
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelAdapter/dto"
-	excelRetriever "github.com/HyperloopUPV-H8/Backend-H8/Shared/excelRetriever/domain"
 
 	// NO ELIMINAR //"github.com/HyperloopUPV-H8/Backend-H8/dataTransfer"
 
-	"github.com/davecgh/go-spew/spew"
+	podData "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/application"
+	excelParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application/interfaces"
+	excelRetriever "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain"
+	packetAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/application"
+	iPacketAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/application/interfaces"
+
 	"github.com/joho/godotenv"
 )
 
@@ -60,14 +59,13 @@ func main() {
 
 	ips := []string{"127.0.0.1"}
 
-	boardDTOs := excelAdapter.GetBoardDTOs(structure)
-	packetDTOs := make([]dto.PacketDTO, 0)
-	for _, boardDTO := range boardDTOs {
-		packetDTOs = append(packetDTOs, boardDTO.GetPacketDTOs()...)
+	boards := excelParser.GetBoards(structure)
+	packets := make([]interfaces.Packet, 0)
+	for _, board := range boards {
+		packets = append(packets, board.GetPackets()...)
 	}
 
-	packetAdapter := packetadapter.New(packetDTOs, ips)
-	podData := podDataCreator.Invoke(boardDTOs)
+	packetAdapter := packetAdapter.New(ips, packets)
 
 	fmt.Println("Starting loop")
 
@@ -75,11 +73,11 @@ func main() {
 	// dt := dataTransfer.New(podData)
 	// dt.Invoke(packetAdapter.GetPacketUpdate)
 
+	data := podData.New(boards)
+
 	for {
-		update := packetAdapter.GetPacketUpdate()
-		podData.UpdatePacket(update)
-		packet := podData.GetPacket(update.ID)
-		spew.Dump(packet)
-		<-time.After(time.Second * 2)
+		data.Invoke(func() iPacketAdapter.PacketUpdate {
+			return packetAdapter.ReadData()
+		})
 	}
 }
