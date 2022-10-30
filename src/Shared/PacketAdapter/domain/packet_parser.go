@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	parser "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application/interfaces"
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/infra/serde"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain/serde"
 )
 
 type ID = uint16
