@@ -7,7 +7,7 @@ import (
 
 	podData "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/application"
 	excelParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application"
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application/interfaces"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/board"
 	excelRetriever "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/document"
 	packetAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/application"
 
@@ -60,7 +60,7 @@ func main() {
 	document := excelParser.GetExcel("excel.xlsx", ".")
 
 	boards := excelParser.GetBoards(document)
-	packets := make([]interfaces.Packet, 0)
+	packets := make([]board.Packet, 0)
 	for _, board := range boards {
 		packets = append(packets, board.GetPackets()...)
 	}

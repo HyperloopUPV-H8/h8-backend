@@ -3,20 +3,19 @@ package board
 import (
 	"fmt"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application/interfaces"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/board/idExpander"
 )
 
 type Packet struct {
-	description  interfaces.Description
-	measurements []interfaces.Measurement
+	Description  Description
+	Measurements []Measurement
 }
 
-func expandPacket(description interfaces.Description, measurements []interfaces.Measurement) []interfaces.Packet {
-	ids := idExpander.GetAllIds(description.ID())
-	packets := make([]interfaces.Packet, len(ids))
+func expandPacket(description Description, measurements []Measurement) []Packet {
+	ids := idExpander.GetAllIds(description.ID)
+	packets := make([]Packet, len(ids))
 	for index, id := range ids {
-		newPacket := Packet{description: descriptionWithID(description, id), measurements: measurements}
+		newPacket := Packet{Description: descriptionWithID(description, id), Measurements: measurements}
 		sufix := fmt.Sprintf("_%v", index)
 		newPacket = packetWithSufix(newPacket, sufix)
 		packets[index] = newPacket
@@ -27,15 +26,7 @@ func expandPacket(description interfaces.Description, measurements []interfaces.
 
 func packetWithSufix(packet Packet, sufix string) Packet {
 	return Packet{
-		description:  descriptionWithName(packet.description, packet.description.Name()+sufix),
-		measurements: measurementsWithSufix(packet.measurements, sufix),
+		Description:  descriptionWithName(packet.Description, packet.Description.Name+sufix),
+		Measurements: measurementsWithSufix(packet.Measurements, sufix),
 	}
-}
-
-func (packet Packet) Description() interfaces.Description {
-	return packet.description
-}
-
-func (packet Packet) Measurements() []interfaces.Measurement {
-	return packet.measurements
 }

@@ -3,87 +3,70 @@ package board
 import (
 	"fmt"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application/interfaces"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/document"
 )
 
 type Board struct {
-	name         string
-	descriptions map[Name]interfaces.Description
-	measurements map[Name]interfaces.Measurement
-	structures   map[Name]interfaces.Structure
+	Name         string
+	Descriptions map[Name]Description
+	Measurements map[Name]Measurement
+	Structures   map[Name]Structure
 }
 
-func (board Board) Name() string {
-	return board.name
-}
-
-func (board Board) Descriptions() map[string]interfaces.Description {
-	return board.descriptions
-}
-
-func (board Board) Measurements() map[string]interfaces.Measurement {
-	return board.measurements
-}
-
-func (board Board) Structure() map[string]interfaces.Structure {
-	return board.structures
-}
-
-func New(sheet document.Sheet) interfaces.Board {
+func New(sheet document.Sheet) Board {
 	return Board{
-		name:         sheet.Name,
-		descriptions: getDescriptions(sheet.Tables["PacketDescription"]),
-		measurements: getMeasurements(sheet.Tables["ValueDescription"]),
-		structures:   getStructures(sheet.Tables["PacketStructure"]),
+		Name:         sheet.Name,
+		Descriptions: getDescriptions(sheet.Tables["PacketDescription"]),
+		Measurements: getMeasurements(sheet.Tables["ValueDescription"]),
+		Structures:   getStructures(sheet.Tables["PacketStructure"]),
 	}
 }
 
-func (b Board) GetPackets() []interfaces.Packet {
-	expandedPackets := make([]interfaces.Packet, 0)
-	for _, description := range b.descriptions {
-		measurements := b.getPacketMeasurements(description)
+func (board Board) GetPackets() []Packet {
+	expandedPackets := make([]Packet, 0)
+	for _, description := range board.Descriptions {
+		measurements := board.getPacketMeasurements(description)
 		packetDTOs := expandPacket(description, measurements)
 		expandedPackets = append(expandedPackets, packetDTOs...)
 	}
 	return expandedPackets
 }
 
-func (b Board) getPacketMeasurements(description interfaces.Description) []interfaces.Measurement {
-	wantedMeasurements := b.structures[description.Name()].Measurements()
-	measurements := make([]interfaces.Measurement, len(wantedMeasurements))
+func (board Board) getPacketMeasurements(description Description) []Measurement {
+	wantedMeasurements := board.Structures[description.Name].Measurements
+	measurements := make([]Measurement, len(wantedMeasurements))
 	for index, name := range wantedMeasurements {
-		measurements[index] = b.measurements[name]
+		measurements[index] = board.Measurements[name]
 	}
 
 	return measurements
 }
 
-func getDescriptions(table document.Table) map[Name]interfaces.Description {
-	descriptions := make(map[Name]interfaces.Description, len(table.Rows))
+func getDescriptions(table document.Table) map[Name]Description {
+	descriptions := make(map[Name]Description, len(table.Rows))
 	for _, row := range table.Rows {
-		adapter := newDescription(row)
-		descriptions[adapter.Name()] = adapter
+		desc := newDescription(row)
+		descriptions[desc.Name] = desc
 	}
 
 	return descriptions
 }
 
-func getMeasurements(table document.Table) map[Name]interfaces.Measurement {
-	measurements := make(map[Name]interfaces.Measurement, len(table.Rows))
+func getMeasurements(table document.Table) map[Name]Measurement {
+	measurements := make(map[Name]Measurement, len(table.Rows))
 	for _, row := range table.Rows {
 		adapter := newMeasurement(row)
-		measurements[adapter.Name()] = adapter
+		measurements[adapter.Name] = adapter
 	}
 
 	return measurements
 }
 
-func getStructures(table document.Table) map[Name]interfaces.Structure {
-	structures := make(map[Name]interfaces.Structure)
+func getStructures(table document.Table) map[Name]Structure {
+	structures := make(map[Name]Structure)
 	for _, column := range getColumns(table) {
 		structure := newStructure(column)
-		structures[structure.PacketName()] = structure
+		structures[structure.PacketName] = structure
 	}
 
 	return structures

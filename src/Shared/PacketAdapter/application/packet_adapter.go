@@ -1,7 +1,7 @@
 package application
 
 import (
-	excel "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application/interfaces"
+	excelParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/board"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/infra"
 )
@@ -11,7 +11,7 @@ type PacketAdapter struct {
 	parser     domain.PacketParser
 }
 
-func New(ips []string, packets []excel.Packet) PacketAdapter {
+func New(ips []string, packets []excelParser.Packet) PacketAdapter {
 	return PacketAdapter{
 		controller: infra.NewTransportController(ips),
 		parser:     domain.NewParser(packets),

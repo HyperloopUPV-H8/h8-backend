@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/domain/measurement"
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application/interfaces"
+	excelParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/board"
 	packetParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain"
 )
 
@@ -19,23 +19,23 @@ type Packet struct {
 	Timestamp    time.Time
 }
 
-func (p *Packet) UpdatePacket(pu packetParser.PacketUpdate) {
-	p.Count++
-	p.CycleTime = pu.Timestamp.Sub(p.Timestamp).Milliseconds()
-	p.Timestamp = pu.Timestamp
-	for name, value := range pu.UpdatedValues {
-		p.Measurements[name].Value.Update(value)
+func (packet *Packet) UpdatePacket(data packetParser.PacketUpdate) {
+	packet.Count++
+	packet.CycleTime = data.Timestamp.Sub(packet.Timestamp).Milliseconds()
+	packet.Timestamp = data.Timestamp
+	for name, value := range data.UpdatedValues {
+		packet.Measurements[name].Value.Update(value)
 	}
 }
 
-func NewPackets(rawPackets []interfaces.Packet) map[uint16]Packet {
+func NewPackets(rawPackets []excelParser.Packet) map[uint16]Packet {
 	packets := make(map[uint16]Packet, len(rawPackets))
 	for _, packet := range rawPackets {
 		id := getID(packet)
 		packets[id] = Packet{
 			Id:           id,
-			Name:         packet.Description().Name(),
-			Measurements: measurement.NewMeasurements(packet.Measurements()),
+			Name:         packet.Description.Name,
+			Measurements: measurement.NewMeasurements(packet.Measurements),
 			Count:        0,
 			CycleTime:    0,
 			Timestamp:    time.Now(),
@@ -44,10 +44,10 @@ func NewPackets(rawPackets []interfaces.Packet) map[uint16]Packet {
 	return packets
 }
 
-func getID(packet interfaces.Packet) uint16 {
-	id, err := strconv.ParseUint(packet.Description().ID(), 10, 16)
+func getID(packet excelParser.Packet) uint16 {
+	id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
 	if err != nil {
-		log.Fatalf("get id: expected valid id, got %s\n", packet.Description().ID())
+		log.Fatalf("get id: expected valid id, got %s\n", packet.Description.ID)
 	}
 	return uint16(id)
 }

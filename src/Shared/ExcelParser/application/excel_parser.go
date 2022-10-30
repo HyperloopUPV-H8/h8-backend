@@ -5,15 +5,14 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application/interfaces"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/board"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/document"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/infra"
 	"github.com/xuri/excelize/v2"
 )
 
-func GetBoards(structure document.Document) map[string]interfaces.Board {
-	boards := make(map[string]interfaces.Board, len(structure.Sheets))
+func GetBoards(structure document.Document) map[string]board.Board {
+	boards := make(map[string]board.Board, len(structure.Sheets))
 	for name, sheet := range structure.Sheets {
 		boards[name] = board.New(sheet)
 	}

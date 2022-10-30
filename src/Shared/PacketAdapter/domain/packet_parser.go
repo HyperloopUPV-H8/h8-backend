@@ -6,7 +6,7 @@ import (
 	"log"
 	"strconv"
 
-	parser "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application/interfaces"
+	excelParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/board"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain/serde"
 )
 
@@ -19,19 +19,19 @@ type PacketParser struct {
 	enums       map[Name]Enum
 }
 
-func NewParser(packets []parser.Packet) PacketParser {
+func NewParser(packets []excelParser.Packet) PacketParser {
 	return PacketParser{
 		packetTypes: getPacketTypes(packets),
 		enums:       getEnums(packets),
 	}
 }
 
-func getEnums(packets []parser.Packet) map[Name]Enum {
+func getEnums(packets []excelParser.Packet) map[Name]Enum {
 	enums := make(map[Name]Enum, 0)
-	for _, packetDTO := range packets {
-		for _, measurement := range packetDTO.Measurements() {
-			if IsEnum(measurement.ValueType()) {
-				enums[measurement.Name()] = NewEnum(measurement.ValueType())
+	for _, packet := range packets {
+		for _, measurement := range packet.Measurements {
+			if IsEnum(measurement.ValueType) {
+				enums[measurement.Name] = NewEnum(measurement.ValueType)
 			}
 		}
 	}
@@ -39,12 +39,12 @@ func getEnums(packets []parser.Packet) map[Name]Enum {
 	return enums
 }
 
-func getPacketTypes(packets []parser.Packet) map[uint16]PacketMeasurements {
+func getPacketTypes(packets []excelParser.Packet) map[uint16]PacketMeasurements {
 	packetMeasurements := make(map[ID]PacketMeasurements, len(packets))
 
-	for _, packetDTO := range packets {
-		measurementDataArr := getMeasurementData(packetDTO)
-		id, err := strconv.ParseUint(packetDTO.Description().ID(), 10, 16)
+	for _, packet := range packets {
+		measurementDataArr := getMeasurementData(packet)
+		id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
 
 		if err != nil {
 			log.Fatal(err)
@@ -56,14 +56,14 @@ func getPacketTypes(packets []parser.Packet) map[uint16]PacketMeasurements {
 	return packetMeasurements
 }
 
-func getMeasurementData(packet parser.Packet) []MeasurementData {
-	measurementDataArr := make([]MeasurementData, len(packet.Measurements()))
-	for index, measurementDTO := range packet.Measurements() {
-		valueType := measurementDTO.ValueType()
+func getMeasurementData(packet excelParser.Packet) []MeasurementData {
+	measurementDataArr := make([]MeasurementData, len(packet.Measurements))
+	for index, measurement := range packet.Measurements {
+		valueType := measurement.ValueType
 		if IsEnum(valueType) {
 			valueType = "enum"
 		}
-		measurementData := NewMeasurement(measurementDTO.Name(), valueType)
+		measurementData := NewMeasurement(measurement.Name, valueType)
 		measurementDataArr[index] = measurementData
 	}
 	return measurementDataArr
