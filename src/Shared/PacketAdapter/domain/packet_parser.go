@@ -7,12 +7,12 @@ import (
 	"strconv"
 
 	parser "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application/interfaces"
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/application/interfaces"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain/interfaces"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/infra/serde"
 )
 
 type ID = uint16
-type PacketMeasurements = []interfaces.Measurement
+type PacketMeasurements = []MeasurementData
 type Name = string
 
 type PacketParser struct {
@@ -57,8 +57,8 @@ func getPacketTypes(packets []parser.Packet) map[uint16]PacketMeasurements {
 	return packetMeasurements
 }
 
-func getMeasurementData(packet parser.Packet) []interfaces.Measurement {
-	measurementDataArr := make([]interfaces.Measurement, len(packet.Measurements()))
+func getMeasurementData(packet parser.Packet) []MeasurementData {
+	measurementDataArr := make([]MeasurementData, len(packet.Measurements()))
 	for index, measurementDTO := range packet.Measurements() {
 		valueType := measurementDTO.ValueType()
 		if IsEnum(valueType) {
@@ -81,18 +81,18 @@ func (parser PacketParser) Decode(data []byte) interfaces.PacketUpdate {
 func (parser PacketParser) decodePacket(measurements PacketMeasurements, bytes io.Reader) map[Name]any {
 	values := make(map[Name]any, len(measurements))
 	for _, measure := range measurements {
-		values[measure.Name()] = parser.decodeMeasurement(measure, bytes)
+		values[measure.name] = parser.decodeMeasurement(measure, bytes)
 	}
 	return values
 }
 
-func (parser PacketParser) decodeMeasurement(measurement interfaces.Measurement, reader io.Reader) any {
-	switch measurement.ValueType() {
+func (parser PacketParser) decodeMeasurement(measurement MeasurementData, reader io.Reader) any {
+	switch measurement.valueType {
 	case "enum":
-		return serde.DecodeEnum(parser.enums[measurement.Name()], reader)
+		return serde.DecodeEnum(parser.enums[measurement.name], reader)
 	case "bool":
 		return serde.DecodeBool(reader)
 	default:
-		return serde.DecodeNumber(measurement.ValueType(), reader)
+		return serde.DecodeNumber(measurement.valueType, reader)
 	}
 }

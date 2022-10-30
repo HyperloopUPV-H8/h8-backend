@@ -7,7 +7,7 @@ import (
 
 	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/domain/measurement"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application/interfaces"
-	packetAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/application/interfaces"
+	packetAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain/interfaces"
 )
 
 type Packet struct {

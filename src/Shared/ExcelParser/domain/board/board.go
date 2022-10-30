@@ -30,7 +30,7 @@ func (board Board) Structure() map[string]interfaces.Structure {
 	return board.structures
 }
 
-func NewBoard(sheet document.Sheet) interfaces.Board {
+func New(sheet document.Sheet) interfaces.Board {
 	return Board{
 		name:         sheet.Name,
 		descriptions: getDescriptions(sheet.Tables["PacketDescription"]),

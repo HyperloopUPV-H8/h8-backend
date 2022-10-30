@@ -15,7 +15,7 @@ import (
 func GetBoards(structure document.Document) map[string]interfaces.Board {
 	boards := make(map[string]interfaces.Board, len(structure.Sheets))
 	for name, sheet := range structure.Sheets {
-		boards[name] = board.NewBoard(sheet)
+		boards[name] = board.New(sheet)
 	}
 	return boards
 }

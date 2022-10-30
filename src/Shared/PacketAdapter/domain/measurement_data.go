@@ -11,11 +11,3 @@ func NewMeasurement(name string, valueType string) MeasurementData {
 		valueType: valueType,
 	}
 }
-
-func (measurement MeasurementData) Name() string {
-	return measurement.name
-}
-
-func (measurement MeasurementData) ValueType() string {
-	return measurement.valueType
-}

@@ -2,13 +2,13 @@ package application
 
 import (
 	excel "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application/interfaces"
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/application/interfaces"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain/interfaces"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/infra"
 )
 
 type PacketAdapter struct {
-	controller interfaces.TransportController
+	controller infra.TransportController
 	parser     domain.PacketParser
 }
 
