@@ -3,18 +3,19 @@ package application
 import (
 	excel "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application/interfaces"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/application/interfaces"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/infra"
 )
 
 type PacketAdapter struct {
 	controller interfaces.TransportController
-	parser     PacketParser
+	parser     domain.PacketParser
 }
 
 func New(ips []string, packets []excel.Packet) PacketAdapter {
 	return PacketAdapter{
 		controller: infra.NewTransportController(ips),
-		parser:     NewParser(packets),
+		parser:     domain.NewParser(packets),
 	}
 }
 

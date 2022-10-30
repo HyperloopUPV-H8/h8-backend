@@ -1,4 +1,4 @@
-package application
+package domain
 
 import (
 	"bytes"
@@ -8,15 +8,12 @@ import (
 
 	parser "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application/interfaces"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/application/interfaces"
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/infra/serde"
 )
 
 type ID = uint16
 type PacketMeasurements = []interfaces.Measurement
 type Name = string
-type EnumVariant = string
-type Enum = map[uint8]EnumVariant
 
 type PacketParser struct {
 	packetTypes map[ID]PacketMeasurements
@@ -34,8 +31,8 @@ func getEnums(packets []parser.Packet) map[Name]Enum {
 	enums := make(map[Name]Enum, 0)
 	for _, packetDTO := range packets {
 		for _, measurement := range packetDTO.Measurements() {
-			if domain.IsEnum(measurement.ValueType()) {
-				enums[measurement.Name()] = domain.NewEnum(measurement.ValueType())
+			if IsEnum(measurement.ValueType()) {
+				enums[measurement.Name()] = NewEnum(measurement.ValueType())
 			}
 		}
 	}
@@ -64,10 +61,10 @@ func getMeasurementData(packet parser.Packet) []interfaces.Measurement {
 	measurementDataArr := make([]interfaces.Measurement, len(packet.Measurements()))
 	for index, measurementDTO := range packet.Measurements() {
 		valueType := measurementDTO.ValueType()
-		if domain.IsEnum(valueType) {
+		if IsEnum(valueType) {
 			valueType = "enum"
 		}
-		measurementData := domain.NewMeasurement(measurementDTO.Name(), valueType)
+		measurementData := NewMeasurement(measurementDTO.Name(), valueType)
 		measurementDataArr[index] = measurementData
 	}
 	return measurementDataArr
@@ -78,7 +75,7 @@ func (parser PacketParser) Decode(data []byte) interfaces.PacketUpdate {
 	id := serde.DecodeID(dataReader)
 	values := parser.decodePacket(parser.packetTypes[id], dataReader)
 
-	return domain.NewPacketUpdate(id, values)
+	return NewPacketUpdate(id, values)
 }
 
 func (parser PacketParser) decodePacket(measurements PacketMeasurements, bytes io.Reader) map[Name]any {

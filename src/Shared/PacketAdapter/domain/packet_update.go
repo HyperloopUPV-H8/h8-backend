@@ -4,8 +4,6 @@ import (
 	"time"
 )
 
-type ID = uint16
-
 type PacketUpdate struct {
 	id            ID
 	updatedValues map[string]any
