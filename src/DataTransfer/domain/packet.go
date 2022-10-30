@@ -7,7 +7,7 @@ import (
 
 	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/domain/measurement"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application/interfaces"
-	packetAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain/interfaces"
+	packetParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain"
 )
 
 type Packet struct {
@@ -19,11 +19,11 @@ type Packet struct {
 	Timestamp    time.Time
 }
 
-func (p *Packet) UpdatePacket(pu packetAdapter.PacketUpdate) {
+func (p *Packet) UpdatePacket(pu packetParser.PacketUpdate) {
 	p.Count++
-	p.CycleTime = pu.Timestamp().Sub(p.Timestamp).Milliseconds()
-	p.Timestamp = pu.Timestamp()
-	for name, value := range pu.Values() {
+	p.CycleTime = pu.Timestamp.Sub(p.Timestamp).Milliseconds()
+	p.Timestamp = pu.Timestamp
+	for name, value := range pu.UpdatedValues {
 		p.Measurements[name].Value.Update(value)
 	}
 }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/domain"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application/interfaces"
-	packetAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain/interfaces"
+	packetParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain"
 
 	"github.com/davecgh/go-spew/spew"
 )
@@ -20,11 +20,11 @@ func New(rawBoards map[string]interfaces.Board) DataTransfer {
 	}
 }
 
-func (dataTransfer DataTransfer) Invoke(getPacketUpdate func() packetAdapter.PacketUpdate) {
+func (dataTransfer DataTransfer) Invoke(getPacketUpdate func() packetParser.PacketUpdate) {
 	for {
 		update := getPacketUpdate()
 		dataTransfer.data.UpdatePacket(update)
-		packet := dataTransfer.data.GetPacket(update.ID())
+		packet := dataTransfer.data.GetPacket(update.ID)
 
 		spew.Dump(packet)
 		<-time.After(time.Second)

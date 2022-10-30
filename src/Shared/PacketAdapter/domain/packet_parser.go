@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	parser "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application/interfaces"
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain/interfaces"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/infra/serde"
 )
 
@@ -70,7 +69,7 @@ func getMeasurementData(packet parser.Packet) []MeasurementData {
 	return measurementDataArr
 }
 
-func (parser PacketParser) Decode(data []byte) interfaces.PacketUpdate {
+func (parser PacketParser) Decode(data []byte) PacketUpdate {
 	dataReader := bytes.NewBuffer(data)
 	id := serde.DecodeID(dataReader)
 	values := parser.decodePacket(parser.packetTypes[id], dataReader)

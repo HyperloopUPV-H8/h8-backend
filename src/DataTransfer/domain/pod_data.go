@@ -2,7 +2,7 @@ package domain
 
 import (
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application/interfaces"
-	packetParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain/interfaces"
+	packetParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain"
 )
 
 type PodData struct {
@@ -10,7 +10,7 @@ type PodData struct {
 }
 
 func (podData *PodData) UpdatePacket(pu packetParser.PacketUpdate) {
-	packet := podData.GetPacket(pu.ID())
+	packet := podData.GetPacket(pu.ID)
 	packet.UpdatePacket(pu)
 }
 
