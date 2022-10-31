@@ -1,10 +1,6 @@
 package main
 
 import (
-	"fmt"
-
-	// NO ELIMINAR //"github.com/HyperloopUPV-H8/Backend-H8/dataTransfer"
-
 	podData "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/application"
 	excelParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/board"
@@ -67,8 +63,8 @@ func main() {
 
 	packetAdapter := packetAdapter.New(ips, packets)
 
-	fmt.Println("Starting loop")
+	logFile := podData.CreateFile()
 
 	data := podData.New(boards)
-	data.Invoke(packetAdapter.ReadData)
+	data.Invoke(packetAdapter.ReadData, logFile)
 }
