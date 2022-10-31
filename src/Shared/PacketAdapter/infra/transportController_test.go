@@ -1,4 +1,4 @@
-package PacketAdapter
+package infra
 
 import (
 	"fmt"
@@ -100,7 +100,7 @@ func TestReceiveMessage(t *testing.T) {
 		loop:
 			for {
 				go func() {
-					payloadsChan <- controller.ReceiveMessage()
+					payloadsChan <- controller.ReceiveMessages()
 				}()
 
 				select {
@@ -128,7 +128,7 @@ func TestReceiveMessage(t *testing.T) {
 
 		payloadsChan := make(chan [][]byte)
 		go func() {
-			payloadsChan <- controller.ReceiveMessage()
+			payloadsChan <- controller.ReceiveMessages()
 		}()
 
 		select {
@@ -146,7 +146,7 @@ func TestReceiveMessage(t *testing.T) {
 
 		payloadsChan := make(chan [][]byte)
 		go func() {
-			payloadsChan <- controller.ReceiveMessage()
+			payloadsChan <- controller.ReceiveMessages()
 		}()
 
 		connected := false

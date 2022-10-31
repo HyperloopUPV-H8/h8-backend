@@ -5,10 +5,11 @@ import (
 	"strings"
 )
 
-type Enum map[uint8]EnumVariant
+type EnumVariant = string
+type Enum = map[uint8]EnumVariant
 
-var enumExpr = regexp.MustCompile(`^ENUM\((\w+(?:,\w+)*)\)$`)
-var itemsExpr = regexp.MustCompile(`(\w+),?`)
+var enumExp = regexp.MustCompile(`(?i)^ENUM\((\w+(?:,\w+)*)\)$`)
+var itemsExp = regexp.MustCompile(`(\w+),?`)
 
 func NewEnum(enumString string) Enum {
 	matches := getEnumMatches(enumString)
@@ -24,10 +25,14 @@ func parseEnum(matches [][]string) Enum {
 }
 
 func getEnumMatches(enumString string) [][]string {
-	itemList := enumExpr.FindStringSubmatch(removeWhitespace(enumString))[1]
-	return itemsExpr.FindAllStringSubmatch(itemList, -1)
+	itemList := enumExp.FindStringSubmatch(removeWhitespace(enumString))[1]
+	return itemsExp.FindAllStringSubmatch(itemList, -1)
 }
 
 func removeWhitespace(input string) string {
 	return strings.ReplaceAll(input, " ", "")
+}
+
+func IsEnum(valueType string) bool {
+	return enumExp.MatchString(removeWhitespace(valueType))
 }

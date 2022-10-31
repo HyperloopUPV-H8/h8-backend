@@ -4,8 +4,6 @@ import (
 	"net"
 	"sync"
 	"time"
-
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/infra/aliases"
 )
 
 var (
@@ -13,25 +11,25 @@ var (
 )
 
 type Pipes struct {
-	conns map[aliases.IP]*net.TCPConn
+	conns map[IP]*net.TCPConn
 	guard *sync.Mutex
 }
 
 func NewPipes(expectedPipes int) Pipes {
 	return Pipes{
-		conns: make(map[aliases.IP]*net.TCPConn, expectedPipes),
+		conns: make(map[IP]*net.TCPConn, expectedPipes),
 		guard: &sync.Mutex{},
 	}
 }
 
-func (pipes *Pipes) AddConnection(ip aliases.IP, conn *net.TCPConn) {
+func (pipes *Pipes) AddConnection(ip IP, conn *net.TCPConn) {
 	pipes.guard.Lock()
 	defer pipes.guard.Unlock()
 
 	pipes.conns[ip] = conn
 }
 
-func (pipes *Pipes) RemoveConnection(ip aliases.IP) {
+func (pipes *Pipes) RemoveConnection(ip IP) {
 	pipes.guard.Lock()
 	defer pipes.guard.Unlock()
 
@@ -52,14 +50,14 @@ func (pipes *Pipes) Close() {
 	}
 }
 
-func (pipes *Pipes) Receive() []aliases.Payload {
+func (pipes *Pipes) Receive() []Payload {
 	pipes.guard.Lock()
 	defer pipes.guard.Unlock()
 
-	payloads := make([]aliases.Payload, 0, len(pipes.conns))
+	payloads := make([]Payload, 0, len(pipes.conns))
 	for _, conn := range pipes.conns {
-		conn.SetDeadline(time.Now().Add(time.Nanosecond))
-		buf := make(aliases.Payload, packetMaxLength)
+		conn.SetDeadline(time.Now().Add(time.Second * 2))
+		buf := make(Payload, packetMaxLength)
 		n, _ := conn.Read(buf)
 		if n > 0 {
 			payloads = append(payloads, buf)
@@ -69,7 +67,7 @@ func (pipes *Pipes) Receive() []aliases.Payload {
 	return payloads
 }
 
-func (pipes *Pipes) Send(ip aliases.IP, payload aliases.Payload) {
+func (pipes *Pipes) Send(ip IP, payload Payload) {
 	pipes.guard.Lock()
 	defer pipes.guard.Unlock()
 
@@ -86,11 +84,11 @@ func (pipes *Pipes) Send(ip aliases.IP, payload aliases.Payload) {
 	}
 }
 
-func (pipes *Pipes) ConnectedIPs() []aliases.IP {
+func (pipes *Pipes) ConnectedIPs() []IP {
 	pipes.guard.Lock()
 	defer pipes.guard.Unlock()
 
-	ips := make([]aliases.IP, 0, len(pipes.conns))
+	ips := make([]IP, 0, len(pipes.conns))
 	for ip := range pipes.conns {
 		ips = append(ips, ip)
 	}

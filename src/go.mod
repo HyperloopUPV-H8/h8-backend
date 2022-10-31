@@ -30,10 +30,10 @@ require (
 	golang.org/x/oauth2 v0.1.0 // indirect
 	golang.org/x/text v0.4.0 // indirect
 	google.golang.org/api v0.100.0
-
-require github.com/google/gopacket v1.1.19
+)
 
 require (
-	golang.org/x/net v0.0.0-20210316092652-d523dce5a7f4 // indirect
-	golang.org/x/sys v0.0.0-20210315160823-c6e025ad8005 // indirect
+	github.com/davecgh/go-spew v1.1.1
+	github.com/google/gopacket v1.1.19
+	github.com/joho/godotenv v1.4.0
 )

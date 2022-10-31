@@ -3,9 +3,10 @@ package sniffer
 import (
 	"strings"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/infra/aliases"
 	"github.com/google/gopacket"
 )
+
+type IP = string
 
 // The *name*er syntax is standard in go for interfaces that only provide the method *name*,
 // even if it's not valid english
@@ -14,7 +15,7 @@ type Filterer interface {
 }
 
 type SourceIPFilter struct {
-	SrcIPs []aliases.IP
+	SrcIPs []IP
 }
 
 func (filter SourceIPFilter) Filter(packet gopacket.Packet) bool {
@@ -30,12 +31,11 @@ func (filter SourceIPFilter) Filter(packet gopacket.Packet) bool {
 }
 
 type DestinationIPFilter struct {
-	DstIPs []aliases.IP
+	DstIPs []IP
 }
 
 func (filter DestinationIPFilter) Filter(packet gopacket.Packet) bool {
 	dstIP := getPacketDstIP(packet)
-
 	for _, ip := range filter.DstIPs {
 		if ip == dstIP {
 			return true
@@ -56,7 +56,7 @@ func (filter UDPFilter) Filter(packet gopacket.Packet) bool {
 	return strings.HasPrefix(gopacket.LayerString(transportLayer), "UDP")
 }
 
-func getPacketSrcIP(packet gopacket.Packet) (src aliases.IP) {
+func getPacketSrcIP(packet gopacket.Packet) (src IP) {
 	networkLayer := packet.NetworkLayer()
 	if networkLayer == nil {
 		return
@@ -64,10 +64,10 @@ func getPacketSrcIP(packet gopacket.Packet) (src aliases.IP) {
 
 	netFlow := networkLayer.NetworkFlow()
 
-	return aliases.IP(netFlow.Src().String())
+	return IP(netFlow.Src().String())
 }
 
-func getPacketDstIP(packet gopacket.Packet) (src aliases.IP) {
+func getPacketDstIP(packet gopacket.Packet) (src IP) {
 	networkLayer := packet.NetworkLayer()
 	if networkLayer == nil {
 		return
@@ -75,5 +75,5 @@ func getPacketDstIP(packet gopacket.Packet) (src aliases.IP) {
 
 	netFlow := networkLayer.NetworkFlow()
 
-	return aliases.IP(netFlow.Src().String())
+	return IP(netFlow.Src().String())
 }

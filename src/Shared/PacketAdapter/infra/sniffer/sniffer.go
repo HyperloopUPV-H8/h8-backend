@@ -3,10 +3,11 @@ package sniffer
 import (
 	"time"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/infra/aliases"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
 )
+
+type Payload = []byte
 
 const (
 	liveHandleSnaplen int32         = 2147483647 // max int32 value
@@ -55,7 +56,7 @@ func (sniffer *Sniffer) applyFilters(packet *gopacket.Packet) bool {
 	return true
 }
 
-func (sniffer *Sniffer) GetNextValidPayload() aliases.Payload {
+func (sniffer *Sniffer) GetNextValidPayload() Payload {
 	for {
 		nextPayload := sniffer.getNextPayload()
 		if nextPayload != nil {
@@ -64,7 +65,7 @@ func (sniffer *Sniffer) GetNextValidPayload() aliases.Payload {
 	}
 }
 
-func (sniffer *Sniffer) getNextPayload() (payload aliases.Payload) {
+func (sniffer *Sniffer) getNextPayload() (payload Payload) {
 	packet, err := sniffer.source.NextPacket()
 	if err != nil {
 		return
