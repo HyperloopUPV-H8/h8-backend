@@ -18,7 +18,7 @@ func New(ips []string, packets []excelParser.Packet) PacketAdapter {
 	}
 }
 
-func (adapter PacketAdapter) ReadData() domain.PacketUpdate {
+func (adapter PacketAdapter) ReceiveData() domain.PacketUpdate {
 	payload := adapter.controller.ReceiveData()
 	return adapter.parser.Decode(payload)
 }
