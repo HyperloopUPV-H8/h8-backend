@@ -74,7 +74,7 @@ func (parser PacketParser) Decode(data []byte) PacketUpdate {
 	id := serde.DecodeID(dataReader)
 	values := parser.decodePacket(parser.packetTypes[id], dataReader)
 
-	return NewPacketUpdate(id, values)
+	return NewPacketUpdate(id, values, dataReader.Bytes())
 }
 
 func (parser PacketParser) decodePacket(measurements PacketMeasurements, bytes io.Reader) map[Name]any {

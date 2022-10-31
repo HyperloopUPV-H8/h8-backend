@@ -24,11 +24,12 @@ type Packet struct {
 	CycleTime    int64
 }
 
-func (packetTimestampPair *PacketTimestampPair) UpdatePacket(data packetParser.PacketUpdate) {
+func (packetTimestampPair *PacketTimestampPair) UpdatePacket(pu packetParser.PacketUpdate) {
 	packetTimestampPair.Packet.Count++
-	packetTimestampPair.Packet.CycleTime = data.Timestamp.Sub(packetTimestampPair.Timestamp).Milliseconds()
-	packetTimestampPair.Timestamp = data.Timestamp
-	for name, value := range data.UpdatedValues {
+	packetTimestampPair.Packet.HexValue = pu.HexValue
+	packetTimestampPair.Packet.CycleTime = pu.Timestamp.Sub(packetTimestampPair.Timestamp).Milliseconds()
+	packetTimestampPair.Timestamp = pu.Timestamp
+	for name, value := range pu.UpdatedValues {
 		packetTimestampPair.Packet.Measurements[name].Value.Update(value)
 	}
 }
