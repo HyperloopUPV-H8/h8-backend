@@ -1,8 +1,6 @@
 package board
 
 import (
-	"fmt"
-
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/document"
 )
 
@@ -73,7 +71,6 @@ func getStructures(table document.Table) map[Name]Structure {
 }
 
 func getColumns(table document.Table) [][]string {
-	fmt.Println(table)
 	columns := make([][]string, len(table.Rows[0]))
 	for i := 0; i < len(table.Rows[0]); i++ {
 		columns[i] = getColumn(i, table)

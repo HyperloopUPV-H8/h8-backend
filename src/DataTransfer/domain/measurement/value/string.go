@@ -2,12 +2,10 @@ package value
 
 import "fmt"
 
-type String struct {
-	value string
-}
+type String string
 
 func (s *String) ToDisplayString() string {
-	return fmt.Sprintf("%v", s.value)
+	return fmt.Sprintf("%v", *s)
 }
 
 func (s *String) Update(newValue any) {
@@ -15,5 +13,5 @@ func (s *String) Update(newValue any) {
 	if !ok {
 		panic("invalid value")
 	}
-	s.value = str
+	*s = String(str)
 }

@@ -15,6 +15,5 @@ func (b *Bool) Update(newValue any) {
 	if !ok {
 		panic("invalid value")
 	}
-	boolean := Bool(newBool)
-	b = &boolean
+	*b = Bool(newBool)
 }

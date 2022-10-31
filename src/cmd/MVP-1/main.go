@@ -33,19 +33,19 @@ var structure = excelRetriever.Document{
 				"Value Description": {
 					Name: "Value Description",
 					Rows: [][]string{
-						{"Voltage1", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
-						{"Speed1", "bool", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
-						{"Current1", "uint32", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
-						{"Airgap1", "uint64", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
-						{"Position1", "ENUM(a, b, c)", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
-						{"Battery1", "int16", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Voltage0", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Speed0", "bool", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Current0", "uint32", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Airgap0", "uint64", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Position0", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Battery0", "int16", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
 					},
 				},
 				"Packet Structure": {
 					Name: "Packet Structure",
 					Rows: [][]string{
 						{"Voltages", "Speeds", "Currents", "Airgaps", "Positions", "Batteries"},
-						{"Voltage1", "Speed1", "Current1", "Airgap1", "Position1", "Battery1"},
+						{"Voltage0", "Speed0", "Current0", "Airgap0", "Position0", "Battery0"},
 					},
 				},
 			},
@@ -54,7 +54,7 @@ var structure = excelRetriever.Document{
 }
 
 func main() {
-	godotenv.Load("mvp.env")
+	godotenv.Load("./.env")
 
 	ips := []string{"127.0.0.1"}
 	document := excelParser.GetExcel("excel.xlsx", ".")

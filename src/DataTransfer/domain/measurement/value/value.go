@@ -1,7 +1,6 @@
 package value
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 
@@ -14,7 +13,6 @@ type Value interface {
 }
 
 func NewDefault(valueType string, podUnits string, displayUnits string) Value {
-	fmt.Println(valueType)
 	switch valueType {
 	case "bool":
 		return new(Bool)
@@ -29,21 +27,18 @@ func NewDefault(valueType string, podUnits string, displayUnits string) Value {
 	}
 }
 
+var numExp = regexp.MustCompile(`(?i)U?INT(?:8|16|32|64)|float(?:32|64)`)
+
 func isNumber(valueType string) bool {
-	switch valueType {
-	case "uint8", "uint16", "uint32", "uint64", "int8", "int16", "int32", "int64", "float32", "float64":
-		return true
-	default:
-		return false
-	}
+	return numExp.MatchString(valueType)
 }
 
-var enumExpr = regexp.MustCompile(`^ENUM\((\w+(?:,\w+)*)\)$`)
+var enumExp = regexp.MustCompile(`(?i)^ENUM\((\w+(?:,\w+)*)\)$`)
+
+func isEnum(valueType string) bool {
+	return enumExp.MatchString(removeWhitespace(valueType))
+}
 
 func removeWhitespace(input string) string {
 	return strings.ReplaceAll(input, " ", "")
-}
-
-func isEnum(valueType string) bool {
-	return enumExpr.MatchString(removeWhitespace(valueType))
 }
