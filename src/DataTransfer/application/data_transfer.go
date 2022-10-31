@@ -20,19 +20,23 @@ func New(rawBoards map[string]excelParser.Board) DataTransfer {
 }
 
 func (dataTransfer DataTransfer) Invoke(getPacketUpdate func() packetParser.PacketUpdate, logFile *os.File) {
-
+	defer logFile.Close()
 	for {
 		update := getPacketUpdate()
 		dataTransfer.data.UpdatePacket(update)
 		packet := dataTransfer.data.GetPacket(update.ID)
+		writePacket(packet, logFile)
 
-		titlePacket := fmt.Sprintf(`Id: %v    Name: %v    Count: %v    CycleTime: %v`,
-			packet.Id, packet.Name, packet.Count, packet.CycleTime)
-		fmt.Fprintln(logFile, titlePacket)
+	}
+}
 
-		for _, measurement := range packet.Measurements {
-			measuramentString := fmt.Sprintf(`	%v: %v`, measurement.Name, measurement.Value.ToDisplayString())
-			fmt.Fprintln(logFile, measuramentString)
-		}
+func writePacket(packet *domain.Packet, logFile *os.File) {
+	titlePacket := fmt.Sprintf(`Id: %v    Name: %v    Count: %v    CycleTime: %v`,
+		packet.Id, packet.Name, packet.Count, packet.CycleTime)
+	fmt.Fprintln(logFile, titlePacket)
+
+	for _, measurement := range packet.Measurements {
+		measuramentString := fmt.Sprintf(`	%v: %v`, measurement.Name, measurement.Value.ToDisplayString())
+		fmt.Fprintln(logFile, measuramentString)
 	}
 }
