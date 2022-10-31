@@ -15,13 +15,13 @@ type Packet struct {
 	Name         string
 	Measurements map[string]measurement.Measurement
 	Count        uint
-	CycleTime    int64
+	CycleTime    uint
 	Timestamp    time.Time
 }
 
 func (packet *Packet) UpdatePacket(data packetParser.PacketUpdate) {
 	packet.Count++
-	packet.CycleTime = data.Timestamp.Sub(packet.Timestamp).Milliseconds()
+	packet.CycleTime = uint(data.Timestamp.Sub(packet.Timestamp).Milliseconds())
 	packet.Timestamp = data.Timestamp
 	for name, value := range data.UpdatedValues {
 		packet.Measurements[name].Value.Update(value)

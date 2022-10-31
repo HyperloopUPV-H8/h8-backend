@@ -12,7 +12,7 @@ type Measurement struct {
 }
 
 func (m *Measurement) getDisplayString() string {
-	return m.Value.ToDisplayString()
+	return m.Value.ToDisplayUnitsString()
 }
 
 func NewMeasurements(rawMeasurements []excelParser.Measurement) map[string]Measurement {
