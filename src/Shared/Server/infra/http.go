@@ -7,10 +7,15 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const serverAddr = "127.0.0.1:4000"
+const (
+	serverAddr        = "127.0.0.1:4000"
+	defaultIndexPath  = "index.html"
+	defaultStaticPath = ""
+)
 
 type HTTPServer[R, S any] struct {
 	router     *mux.Router
+	page       spaHandler
 	PacketRecv chan R
 	PacketSend chan S
 }
@@ -18,6 +23,7 @@ type HTTPServer[R, S any] struct {
 func New[R, S any](tx chan S, rx chan R) HTTPServer[R, S] {
 	return HTTPServer[R, S]{
 		router:     mux.NewRouter(),
+		page:       NewPage(defaultStaticPath, defaultIndexPath),
 		PacketRecv: rx,
 		PacketSend: tx,
 	}
