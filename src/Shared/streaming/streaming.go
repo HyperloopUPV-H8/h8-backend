@@ -8,23 +8,25 @@ import (
 )
 
 func DataSocketHandler(ws websocket.Conn, packetChannel <-chan domain.Packet) {
-	for {
-		packetWebAdapterBuf := make([]PacketWebAdapter, 100)
-		timeout := time.After(time.Second)
-	loop:
+	go func() {
 		for {
-			select {
-			case packet := <-packetChannel:
-				adapter := newPacketWebAdapter(packet)
-				packetWebAdapterBuf = append(packetWebAdapterBuf, adapter)
-				if len(packetWebAdapterBuf) == 100 {
+			packetWebAdapterBuf := make([]PacketWebAdapter, 100)
+			timeout := time.After(time.Millisecond * 20)
+		loop:
+			for {
+				select {
+				case packet := <-packetChannel:
+					adapter := newPacketWebAdapter(packet)
+					packetWebAdapterBuf = append(packetWebAdapterBuf, adapter)
+					if len(packetWebAdapterBuf) == 100 {
+						ws.WriteJSON(packetWebAdapterBuf)
+						break loop
+					}
+				case <-timeout:
 					ws.WriteJSON(packetWebAdapterBuf)
 					break loop
 				}
-			case <-timeout:
-				ws.WriteJSON(packetWebAdapterBuf)
-				break loop
 			}
 		}
-	}
+	}()
 }
