@@ -10,38 +10,46 @@ import (
 	packetParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain"
 )
 
+type PacketTimestampPair struct {
+	Packet    Packet
+	Timestamp time.Time
+}
+
 type Packet struct {
 	Id           uint16
 	Name         string
+	HexValue     []byte
 	Measurements map[string]measurement.Measurement
 	Count        uint
 	CycleTime    int64
-	Timestamp    time.Time
 }
 
-func (packet *Packet) UpdatePacket(data packetParser.PacketUpdate) {
-	packet.Count++
-	packet.CycleTime = data.Timestamp.Sub(packet.Timestamp).Milliseconds()
-	packet.Timestamp = data.Timestamp
-	for name, value := range data.UpdatedValues {
-		packet.Measurements[name].Value.Update(value)
+func (packetTimestampPair *PacketTimestampPair) UpdatePacket(pu packetParser.PacketUpdate) {
+	packetTimestampPair.Packet.Count++
+	packetTimestampPair.Packet.HexValue = pu.HexValue
+	packetTimestampPair.Packet.CycleTime = pu.Timestamp.Sub(packetTimestampPair.Timestamp).Milliseconds()
+	packetTimestampPair.Timestamp = pu.Timestamp
+	for name, value := range pu.UpdatedValues {
+		packetTimestampPair.Packet.Measurements[name].Value.Update(value)
 	}
 }
 
-func NewPackets(rawPackets []excelParser.Packet) map[uint16]Packet {
-	packets := make(map[uint16]Packet, len(rawPackets))
+func NewPacketTimestampPairs(rawPackets []excelParser.Packet) map[uint16]PacketTimestampPair {
+	packetTimestampPairs := make(map[uint16]PacketTimestampPair, len(rawPackets))
 	for _, packet := range rawPackets {
 		id := getID(packet)
-		packets[id] = Packet{
-			Id:           id,
-			Name:         packet.Description.Name,
-			Measurements: measurement.NewMeasurements(packet.Measurements),
-			Count:        0,
-			CycleTime:    0,
-			Timestamp:    time.Now(),
+		packetTimestampPairs[id] = PacketTimestampPair{
+			Packet: Packet{
+				Id:           id,
+				Name:         packet.Description.Name,
+				Measurements: measurement.NewMeasurements(packet.Measurements),
+				Count:        0,
+				CycleTime:    0,
+			},
+			Timestamp: time.Now(),
 		}
 	}
-	return packets
+	return packetTimestampPairs
 }
 
 func getID(packet excelParser.Packet) uint16 {
