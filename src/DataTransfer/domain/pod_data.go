@@ -14,11 +14,11 @@ func (podData *PodData) UpdatePacket(pu packetParser.PacketUpdate) {
 	packet.UpdatePacket(pu)
 }
 
-func (podData *PodData) GetPacket(id uint16) *Packet {
+func (podData *PodData) GetPacket(id uint16) *PacketTimestampPair {
 	for _, board := range podData.Boards {
-		packet, exists := board.Packets[id]
+		packetTimeStampPair, exists := board.PacketTimestampPairs[id]
 		if exists {
-			return &packet
+			return &packetTimeStampPair
 		}
 	}
 	return nil
@@ -34,8 +34,8 @@ func getBoards(rawBoards map[string]excelParser.Board) map[string]Board {
 	boards := make(map[string]Board)
 	for name, board := range rawBoards {
 		board := Board{
-			Name:    name,
-			Packets: NewPackets(board.GetPackets()),
+			Name:                 name,
+			PacketTimestampPairs: NewPacketTimestampPairs(board.GetPackets()),
 		}
 		boards[board.Name] = board
 	}
