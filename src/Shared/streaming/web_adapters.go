@@ -49,5 +49,5 @@ type MeasurementWebAdapter struct {
 
 type OrderWebAdapter struct {
 	Id     string
-	fields map[string]string
+	Fields map[string]string
 }
