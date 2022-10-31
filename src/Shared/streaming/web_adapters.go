@@ -46,3 +46,8 @@ type MeasurementWebAdapter struct {
 	PodUnits     string
 	DisplayUnits string
 }
+
+type OrderWebAdapter struct {
+	Id     string
+	fields map[string]string
+}

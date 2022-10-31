@@ -30,3 +30,13 @@ func DataSocketHandler(ws websocket.Conn, packetChannel <-chan domain.Packet) {
 		}
 	}()
 }
+
+func OrderSocketHandler(ws websocket.Conn, orderWAChannel chan<- OrderWebAdapter) {
+	go func() {
+		for {
+			orderWA := OrderWebAdapter{}
+			ws.ReadJSON(orderWA)
+			orderWAChannel <- orderWA
+		}
+	}()
+}
