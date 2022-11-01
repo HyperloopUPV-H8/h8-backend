@@ -6,12 +6,13 @@ import (
 	"log"
 	"strconv"
 
+	order "github.com/HyperloopUPV-H8/Backend-H8/..."
 	excelParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/board"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain/serde"
 )
 
 type ID = uint16
-type PacketMeasurements = []MeasurementData
+type PacketMeasurements = map[string]MeasurementData
 type Name = string
 
 type PacketParser struct {
@@ -56,15 +57,15 @@ func getPacketTypes(packets []excelParser.Packet) map[uint16]PacketMeasurements 
 	return packetMeasurements
 }
 
-func getMeasurementData(packet excelParser.Packet) []MeasurementData {
-	measurementDataArr := make([]MeasurementData, len(packet.Measurements))
-	for index, measurement := range packet.Measurements {
+func getMeasurementData(packet excelParser.Packet) map[string]MeasurementData {
+	measurementDataArr := make(map[string]MeasurementData, len(packet.Measurements))
+	for _, measurement := range packet.Measurements {
 		valueType := measurement.ValueType
 		if IsEnum(valueType) {
 			valueType = "enum"
 		}
 		measurementData := NewMeasurement(measurement.Name, valueType)
-		measurementDataArr[index] = measurementData
+		measurementDataArr[measurement.Name] = measurementData
 	}
 	return measurementDataArr
 }
@@ -93,5 +94,38 @@ func (parser PacketParser) decodeMeasurement(measurement MeasurementData, reader
 		return serde.DecodeBool(reader)
 	default:
 		return serde.DecodeNumber(measurement.valueType, reader)
+	}
+}
+
+func (parser PacketParser) Encode(packet order.OrderWebAdapter) []byte {
+	dataWriter := bytes.NewBuffer(make([]byte, 0))
+	packetID, err := strconv.ParseUint(packet.ID, 10, 16)
+	if err != nil {
+		log.Fatalf("encode: %s\n", err)
+	}
+	serde.EncodeID(uint16(packetID), dataWriter)
+	for name, value := range packet.Values {
+		parser.encodeValue(uint16(packetID), name, value, dataWriter)
+	}
+
+	return dataWriter.Bytes()
+}
+
+func (parser PacketParser) encodeValue(id uint16, name string, value string, bytes io.Writer) {
+	switch parser.packetTypes[id][name].valueType {
+	case "enum":
+		serde.EncodeEnum(parser.enums[name], value, bytes)
+	case "bool":
+		val, err := strconv.ParseBool(value)
+		if err != nil {
+			log.Fatalf("encode value: %s\n", err)
+		}
+		serde.EncodeBool(val, bytes)
+	default:
+		val, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			log.Fatalf("encode value: %s\n", err)
+		}
+		serde.EncodeNumber(parser.packetTypes[id][name].valueType, val, bytes)
 	}
 }
