@@ -1,6 +1,6 @@
 package ordertransfer
 
 type OrderWebAdapter struct {
-	Id     string
-	fields map[string]string
+	Id     uint16
+	Fields map[string]string
 }
