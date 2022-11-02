@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// TODO: Break into multiple functions
 func DataSocketHandler(ws websocket.Conn, packetChannel <-chan domain.Packet) {
 	go func() {
 		for {
