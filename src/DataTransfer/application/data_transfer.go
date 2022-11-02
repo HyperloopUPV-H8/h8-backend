@@ -10,12 +10,14 @@ import (
 )
 
 type DataTransfer struct {
-	data domain.PodData
+	data          domain.PodData
+	PacketChannel chan domain.Packet
 }
 
 func New(rawBoards map[string]excelParser.Board) DataTransfer {
 	return DataTransfer{
-		data: domain.NewPodData(rawBoards),
+		data:          domain.NewPodData(rawBoards),
+		PacketChannel: make(chan domain.Packet, 10),
 	}
 }
 
@@ -24,7 +26,8 @@ func (dataTransfer DataTransfer) Invoke(getPacketUpdate func() packetParser.Pack
 	for {
 		update := getPacketUpdate()
 		dataTransfer.data.UpdatePacket(update)
-		packet := dataTransfer.data.GetPacket(update.ID)
+		packetTimestampPair := dataTransfer.data.GetPacket(update.ID)
+		dataTransfer.PacketChannel <- packetTimestampPair.Packet
 		writePacket(packet, logFile)
 
 	}
