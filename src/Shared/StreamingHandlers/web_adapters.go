@@ -48,6 +48,6 @@ type MeasurementWebAdapter struct {
 }
 
 type OrderWebAdapter struct {
-	Id     string
+	Id     uint16
 	Fields map[string]string
 }
