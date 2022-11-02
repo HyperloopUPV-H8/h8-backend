@@ -1,9 +1,6 @@
 package application
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/domain"
 	excelParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/board"
 	packetParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain"
@@ -21,25 +18,11 @@ func New(rawBoards map[string]excelParser.Board) DataTransfer {
 	}
 }
 
-func (dataTransfer DataTransfer) Invoke(getPacketUpdate func() packetParser.PacketUpdate, logFile *os.File) {
-	defer logFile.Close()
+func (dataTransfer DataTransfer) Invoke(getPacketUpdate func() packetParser.PacketUpdate) {
 	for {
 		update := getPacketUpdate()
 		dataTransfer.data.UpdatePacket(update)
 		packetTimestampPair := dataTransfer.data.GetPacket(update.ID)
 		dataTransfer.PacketChannel <- packetTimestampPair.Packet
-		writePacket(packet, logFile)
-
-	}
-}
-
-func writePacket(packet *domain.Packet, logFile *os.File) {
-	titlePacket := fmt.Sprintf(`Id: %v    Name: %v    Count: %v    CycleTime: %v`,
-		packet.Id, packet.Name, packet.Count, packet.CycleTime)
-	fmt.Fprintln(logFile, titlePacket)
-
-	for _, measurement := range packet.Measurements {
-		measuramentString := fmt.Sprintf(`	%v: %v`, measurement.Name, measurement.Value.ToDisplayString())
-		fmt.Fprintln(logFile, measuramentString)
 	}
 }
