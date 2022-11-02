@@ -1,6 +1,7 @@
 package main
 
 import (
+
 	"fmt"
 
 	// NO ELIMINAR //"github.com/HyperloopUPV-H8/Backend-H8/dataTransfer"
@@ -68,10 +69,11 @@ func main() {
 
 	packetAdapter := packetAdapter.New(ips, packets)
 
-	fmt.Println("Starting loop")
+	logFile := podData.CreateFile()
 
+	data := podData.New(boards)
 	dataTransfer := dataTransfer.New(boards)
-	dataTransfer.Invoke(packetAdapter.ReceiveData)
+	dataTransfer.Invoke(packetAdapter.ReceiveData, logFile)
 
 	for packet := range dataTransfer.PacketChannel {
 		spew.Dump(packet)
