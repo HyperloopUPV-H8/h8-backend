@@ -2,8 +2,6 @@ package main
 
 import (
 
-	"fmt"
-
 	// NO ELIMINAR //"github.com/HyperloopUPV-H8/Backend-H8/dataTransfer"
 
 	dataTransfer "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/application"
@@ -11,7 +9,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/board"
 	excelRetriever "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/document"
 	packetAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/application"
-	"github.com/davecgh/go-spew/spew"
+	logger "github.com/HyperloopUPV-H8/Backend-H8/cmd/MVP-1/Logger"
 
 	"github.com/joho/godotenv"
 )
@@ -69,13 +67,13 @@ func main() {
 
 	packetAdapter := packetAdapter.New(ips, packets)
 
-	logFile := podData.CreateFile()
+	logFile := logger.CreateFile()
+	defer logFile.Close()
 
-	data := podData.New(boards)
 	dataTransfer := dataTransfer.New(boards)
-	dataTransfer.Invoke(packetAdapter.ReceiveData, logFile)
+	dataTransfer.Invoke(packetAdapter.ReceiveData)
 
 	for packet := range dataTransfer.PacketChannel {
-		spew.Dump(packet)
+		logger.WritePacket(packet, logFile)
 	}
 }
