@@ -14,23 +14,23 @@ func NewNumber(podUnitString string, displayUnitString string) *Number {
 	return &Number{value: 0, podUnits: podUnits, displayUnits: displayUnits}
 }
 
-func (n *Number) GetPodUnits() string {
+func (n Number) GetPodUnits() string {
 	return n.podUnits.name
 }
 
-func (n *Number) GetDisplayUnits() string {
+func (n Number) GetDisplayUnits() string {
 	return n.displayUnits.name
 }
 
-func (i Number) ToPodUnitsString() string {
-	number := float64(i.value)
+func (n Number) ToPodUnitsString() string {
+	number := float64(n.value)
 	return fmt.Sprintf("%v", number)
 }
 
-func (i Number) ToDisplayUnitsString() string {
-	number := float64(i.value)
-	internationalSystemNumber := undoUnits(number, i.podUnits.operations)
-	result := convertToUnits(internationalSystemNumber, i.displayUnits.operations)
+func (n Number) ToDisplayUnitsString() string {
+	number := float64(n.value)
+	internationalSystemNumber := undoUnits(number, n.podUnits.operations)
+	result := convertToUnits(internationalSystemNumber, n.displayUnits.operations)
 	return fmt.Sprintf("%v", result)
 }
 
