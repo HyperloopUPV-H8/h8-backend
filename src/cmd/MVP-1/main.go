@@ -11,7 +11,6 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelRetriever"
 	excelRetrieverDomain "github.com/HyperloopUPV-H8/Backend-H8/Shared/excelRetriever/domain"
 	"github.com/HyperloopUPV-H8/Backend-H8/cmd/MVP-1/logger"
-	"github.com/davecgh/go-spew/spew"
 
 	"github.com/joho/godotenv"
 )
@@ -70,12 +69,12 @@ func main() {
 	packetAdapter := transportController.New(ips, packets)
 
 	logFile := logger.CreateFile()
+	defer logFile.Close()
 
-	data := excelAdapterDomain.New(boards)
 	dataTransfer := dataTransfer.New(boards)
-	dataTransfer.Invoke(packetAdapter.ReceiveData, logFile)
+	dataTransfer.Invoke(packetAdapter.ReceiveData)
 
 	for packet := range dataTransfer.PacketChannel {
-		spew.Dump(packet)
+		logger.WritePacket(packet, logFile)
 	}
 }
