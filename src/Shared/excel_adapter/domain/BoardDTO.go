@@ -1,7 +1,7 @@
 package domain
 
 import (
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelRetriever/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_retriever/domain"
 )
 
 type BoardDTO struct {
@@ -11,7 +11,7 @@ type BoardDTO struct {
 	Structures   map[Name]Structure
 }
 
-func New(sheet domain.Sheet) BoardDTO {
+func NewBoard(sheet domain.Sheet) BoardDTO {
 	return BoardDTO{
 		Name:         sheet.Name,
 		Descriptions: getDescriptions(sheet.Tables["PacketDescription"]),

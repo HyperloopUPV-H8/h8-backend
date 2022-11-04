@@ -3,7 +3,7 @@ package domain
 import (
 	"fmt"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelAdapter/domain/idExpander"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_adapter/domain/idExpander"
 )
 
 type PacketDTO struct {

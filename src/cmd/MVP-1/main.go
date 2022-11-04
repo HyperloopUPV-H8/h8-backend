@@ -2,25 +2,25 @@ package main
 
 import (
 
-	"fmt"
-
 	// NO ELIMINAR //"github.com/HyperloopUPV-H8/Backend-H8/dataTransfer"
 
-	dataTransfer "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/application"
-	excelParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/application"
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/board"
-	excelRetriever "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/document"
-	packetAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/application"
+	dataTransfer "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/transportController"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelAdapter"
+	excelAdapterDomain "github.com/HyperloopUPV-H8/Backend-H8/Shared/excelAdapter/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelRetriever"
+	excelRetrieverDomain "github.com/HyperloopUPV-H8/Backend-H8/Shared/excelRetriever/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/cmd/MVP-1/logger"
 	"github.com/davecgh/go-spew/spew"
 
 	"github.com/joho/godotenv"
 )
 
-var structure = excelRetriever.Document{
-	Sheets: map[string]excelRetriever.Sheet{
+var structure = excelRetrieverDomain.Document{
+	Sheets: map[string]excelRetrieverDomain.Sheet{
 		"BMS": {
 			Name: "BMS",
-			Tables: map[string]excelRetriever.Table{
+			Tables: map[string]excelRetrieverDomain.Table{
 				"Packet Description": {
 					Name: "Packet Description",
 					Rows: [][]string{
@@ -59,19 +59,19 @@ func main() {
 	godotenv.Load("./.env")
 
 	ips := []string{"127.0.0.1"}
-	document := excelParser.GetExcel("excel.xlsx", ".")
+	document := excelRetriever.GetExcel("excel.xlsx", ".")
 
-	boards := excelParser.GetBoards(document)
-	packets := make([]board.Packet, 0)
+	boards := excelAdapter.GetBoards(document)
+	packets := make([]excelAdapterDomain.PacketDTO, 0)
 	for _, board := range boards {
 		packets = append(packets, board.GetPackets()...)
 	}
 
-	packetAdapter := packetAdapter.New(ips, packets)
+	packetAdapter := transportController.New(ips, packets)
 
-	logFile := podData.CreateFile()
+	logFile := logger.CreateFile()
 
-	data := podData.New(boards)
+	data := excelAdapterDomain.New(boards)
 	dataTransfer := dataTransfer.New(boards)
 	dataTransfer.Invoke(packetAdapter.ReceiveData, logFile)
 

@@ -1,10 +1,10 @@
 package packetParser
 
 import (
-	excelAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelAdapter/domain"
-	packetParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/PacketParser"
-	packetParserDomain "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/PacketParser/domain"
-	transportController "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/TransportController"
+	excelAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_adapter/domain"
+	packetParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser"
+	packetParserDomain "github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser/domain"
+	transportController "github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/transport_controller"
 )
 
 type PacketAdapter struct {

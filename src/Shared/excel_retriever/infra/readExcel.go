@@ -4,7 +4,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelRetriever/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_retriever/domain"
 	"github.com/xuri/excelize/v2"
 )
 

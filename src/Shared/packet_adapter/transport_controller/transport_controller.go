@@ -3,8 +3,8 @@ package transportController
 import (
 	"net"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/TransportController/sniffer"
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/TransportController/tcp"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/transport_controller/sniffer"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/transport_controller/tcp"
 )
 
 type Port = uint16

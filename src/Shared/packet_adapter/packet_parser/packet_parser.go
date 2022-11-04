@@ -6,9 +6,9 @@ import (
 	"log"
 	"strconv"
 
-	excelAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelAdapter/domain"
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/PacketParser/domain"
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain/serde"
+	excelAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_adapter/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser/infra/serde"
 )
 
 type ID = uint16
