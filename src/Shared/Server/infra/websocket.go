@@ -12,7 +12,7 @@ type Packet string
 func (server HTTPServer[R, S]) HandleWebSocketSend(route string, handler func(*websocket.Conn, chan S)) {
 	server.router.Handle(route, SocketHandle[S]{
 		function: handler,
-		channel:  server.PacketSend,
+		channel:  server.OrderSend,
 	})
 }
 
