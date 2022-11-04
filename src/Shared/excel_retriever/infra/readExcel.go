@@ -8,6 +8,7 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
+const sheetPrefix = "[BOARD] "
 const tablePrefix = "[TABLE] "
 
 func GetDocument(file *excelize.File) domain.Document {
@@ -20,14 +21,27 @@ func GetDocument(file *excelize.File) domain.Document {
 
 func ParseSheets(file *excelize.File) map[string]domain.Sheet {
 	sheets := make(map[string]domain.Sheet)
-	for _, name := range file.GetSheetMap() {
+	boards := sheetsFilter(file.GetSheetMap())
+	for _, name := range boards {
 		cols, err := file.GetCols(name)
 		if err != nil {
 			log.Fatalf("get rows: %s\n", err)
 		}
+		//correctName := strings.TrimPrefix(name, sheetPrefix) HACER dentro de parseSheet
 		sheets[name] = parseSheet(name, cols)
 	}
 	return sheets
+
+}
+
+func sheetsFilter(sheets map[int]string) map[int]string {
+	boards := make(map[int]string)
+	for index, name := range sheets {
+		if strings.HasPrefix(name, sheetPrefix) {
+			boards[index] = name
+		}
+	}
+	return boards
 }
 
 func parseSheet(name string, cols [][]string) domain.Sheet {
