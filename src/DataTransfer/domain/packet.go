@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/domain/measurement"
-	excelParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/board"
-	packetParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain"
+	excelAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_adapter/domain"
+	packetParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser/domain"
 )
 
 type PacketTimestampPair struct {
@@ -34,7 +34,7 @@ func (packetTimestampPair *PacketTimestampPair) UpdatePacket(pu packetParser.Pac
 	}
 }
 
-func NewPacketTimestampPairs(rawPackets []excelParser.Packet) map[uint16]PacketTimestampPair {
+func NewPacketTimestampPairs(rawPackets []excelAdapter.PacketDTO) map[uint16]PacketTimestampPair {
 	packetTimestampPairs := make(map[uint16]PacketTimestampPair, len(rawPackets))
 	for _, packet := range rawPackets {
 		id := getID(packet)
@@ -52,7 +52,7 @@ func NewPacketTimestampPairs(rawPackets []excelParser.Packet) map[uint16]PacketT
 	return packetTimestampPairs
 }
 
-func getID(packet excelParser.Packet) uint16 {
+func getID(packet excelAdapter.PacketDTO) uint16 {
 	id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
 	if err != nil {
 		log.Fatalf("get id: expected valid id, got %s\n", packet.Description.ID)
