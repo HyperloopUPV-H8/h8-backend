@@ -8,7 +8,10 @@ import (
 )
 
 type Value interface {
-	ToDisplayString() string
+	ToPodUnitsString() string
+	ToDisplayUnitsString() string
+	GetPodUnits() string
+	GetDisplayUnits() string
 	Update(newValue any)
 }
 
