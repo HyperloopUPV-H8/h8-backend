@@ -2,12 +2,26 @@ package value
 
 import "fmt"
 
-type String struct {
-	value string
+type String string
+
+func (s *String) ToPodUnitsString() string {
+	return s.toString()
 }
 
-func (s *String) ToDisplayString() string {
-	return fmt.Sprintf("%v", s.value)
+func (s *String) ToDisplayUnitsString() string {
+	return s.toString()
+}
+
+func (s *String) GetPodUnits() string {
+	return ""
+}
+
+func (s *String) GetDisplayUnits() string {
+	return ""
+}
+
+func (s *String) toString() string {
+	return fmt.Sprintf("%v", *s)
 }
 
 func (s *String) Update(newValue any) {
@@ -15,5 +29,5 @@ func (s *String) Update(newValue any) {
 	if !ok {
 		panic("invalid value")
 	}
-	s.value = str
+	*s = String(str)
 }

@@ -1,8 +1,8 @@
 package domain
 
 import (
-	excelParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/ExcelParser/domain/board"
-	packetParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/domain"
+	excelAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_adapter/domain"
+	packetParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser/domain"
 )
 
 type PodData struct {
@@ -14,28 +14,28 @@ func (podData *PodData) UpdatePacket(pu packetParser.PacketUpdate) {
 	packet.UpdatePacket(pu)
 }
 
-func (podData *PodData) GetPacket(id uint16) *Packet {
+func (podData *PodData) GetPacket(id uint16) *PacketTimestampPair {
 	for _, board := range podData.Boards {
-		packet, exists := board.Packets[id]
+		packetTimeStampPair, exists := board.PacketTimestampPairs[id]
 		if exists {
-			return &packet
+			return &packetTimeStampPair
 		}
 	}
 	return nil
 }
 
-func NewPodData(rawBoards map[string]excelParser.Board) PodData {
+func NewPodData(rawBoards map[string]excelAdapter.BoardDTO) PodData {
 	return PodData{
 		Boards: getBoards(rawBoards),
 	}
 }
 
-func getBoards(rawBoards map[string]excelParser.Board) map[string]Board {
+func getBoards(rawBoards map[string]excelAdapter.BoardDTO) map[string]Board {
 	boards := make(map[string]Board)
 	for name, board := range rawBoards {
 		board := Board{
-			Name:    name,
-			Packets: NewPackets(board.GetPackets()),
+			Name:                 name,
+			PacketTimestampPairs: NewPacketTimestampPairs(board.GetPackets()),
 		}
 		boards[board.Name] = board
 	}
