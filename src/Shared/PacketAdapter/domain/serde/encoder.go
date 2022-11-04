@@ -17,25 +17,25 @@ func encodeRaw(value any, bytes io.Writer) {
 
 func EncodeNumber(numType ValueType, value Numeric, bytes io.Writer) {
 	switch numType {
-	case "Uint8":
+	case "uint8":
 		encodeRaw(uint8(value), bytes)
-	case "Uint16":
+	case "uint16":
 		encodeRaw(uint16(value), bytes)
-	case "Uint32":
+	case "uint32":
 		encodeRaw(uint32(value), bytes)
-	case "Uint64":
+	case "uint64":
 		encodeRaw(uint64(value), bytes)
-	case "Int8":
+	case "int8":
 		encodeRaw(int8(value), bytes)
-	case "Int16":
+	case "int16":
 		encodeRaw(int16(value), bytes)
-	case "Int32":
+	case "int32":
 		encodeRaw(int32(value), bytes)
-	case "Int64":
+	case "int64":
 		encodeRaw(int64(value), bytes)
-	case "Float32":
+	case "float32":
 		encodeRaw(float32(value), bytes)
-	case "Float64":
+	case "float64":
 		encodeRaw(value, bytes)
 	default:
 		panic(fmt.Sprintf("Expected numeric type, got %s", numType))
@@ -53,4 +53,8 @@ func EncodeEnum(enum Enum, value EnumVariant, bytes io.Writer) {
 			return
 		}
 	}
+}
+
+func EncodeID(id uint16, bytes io.Writer) {
+	encodeRaw(id, bytes)
 }
