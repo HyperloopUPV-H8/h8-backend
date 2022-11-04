@@ -4,28 +4,32 @@ import (
 	"log"
 	"os"
 	"testing"
+
+	"github.com/joho/godotenv"
 )
 
 func TestDownloadExcel(t *testing.T) {
+	godotenv.Load("../../../.env")
 
 	// The spreadsheet to request.
 	//spreadsheetID := "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms" //El ejemplo
 	spreadsheetID := "1nbiLvA0weR_DiLkL9TI90cdLNXlvOAZgikhKIdxbhRk" //Mi spreadsheet con tablas
 
-	filename := "excelDownloaded.xlsx"
+	fileName := "excelDownloaded.xlsx"
 
-	if fileExists(filename) {
-		deleteExcel(filename)
+	if fileExists(fileName) {
+		deleteExcel(fileName)
 	}
 
-	if fileExists(filename) {
+	if fileExists(fileName) {
 		t.Fatalf("file has not been deleted")
 	}
 
-	downloadExcel(spreadsheetID, filename)
+	//downloadExcel(spreadsheetID, filename)
+	FetchExcel(spreadsheetID, fileName, ".")
 
-	if !fileExists(filename) {
-		t.Fatalf("file has not been downloaded in %s", filename)
+	if !fileExists(fileName) {
+		t.Fatalf("file has not been downloaded in %s", fileName)
 	}
 }
 

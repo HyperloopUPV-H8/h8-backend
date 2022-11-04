@@ -1,8 +1,7 @@
 package main
 
 import (
-
-	// NO ELIMINAR //"github.com/HyperloopUPV-H8/Backend-H8/dataTransfer"
+	"log"
 
 	dataTransfer "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/transportController"
@@ -55,8 +54,10 @@ var structure = excelRetrieverDomain.Document{
 }
 
 func main() {
-	godotenv.Load("./.env")
-
+	err := godotenv.Load("../../.env")
+	if err != nil {
+		log.Fatalf("Error finding .env: %v", err)
+	}
 	ips := []string{"127.0.0.1"}
 	document := excelRetriever.GetExcel("excel.xlsx", ".")
 

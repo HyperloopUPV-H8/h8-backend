@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"fmt"
 	"log"
 	"strings"
 
@@ -8,7 +9,7 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-const sheetPrefix = "[BOARD] "
+const sheetPrefix = "BOARD "
 const tablePrefix = "[TABLE] "
 
 func GetDocument(file *excelize.File) domain.Document {
@@ -22,13 +23,15 @@ func GetDocument(file *excelize.File) domain.Document {
 func ParseSheets(file *excelize.File) map[string]domain.Sheet {
 	sheets := make(map[string]domain.Sheet)
 	boards := sheetsFilter(file.GetSheetMap())
+	fmt.Println(boards)
 	for _, name := range boards {
 		cols, err := file.GetCols(name)
+		fmt.Println(cols)
 		if err != nil {
 			log.Fatalf("get rows: %s\n", err)
 		}
-		//correctName := strings.TrimPrefix(name, sheetPrefix) HACER dentro de parseSheet
-		sheets[name] = parseSheet(name, cols)
+		fmt.Println(name)
+		sheets[strings.TrimPrefix(name, sheetPrefix)] = parseSheet(name, cols)
 	}
 	return sheets
 
@@ -36,21 +39,23 @@ func ParseSheets(file *excelize.File) map[string]domain.Sheet {
 
 func sheetsFilter(sheets map[int]string) map[int]string {
 	boards := make(map[int]string)
-	for index, name := range sheets {
+	for key, name := range sheets {
 		if strings.HasPrefix(name, sheetPrefix) {
-			boards[index] = name
+			boards[key] = name
 		}
 	}
 	return boards
 }
 
 func parseSheet(name string, cols [][]string) domain.Sheet {
+	fmt.Println("Hola")
 	tables := make(map[string]domain.Table)
 	for name, bound := range findTables(cols) {
 		tables[name] = parseTable(name, cols, bound)
 	}
+
 	return domain.Sheet{
-		Name:   name,
+		Name:   strings.TrimPrefix(name, sheetPrefix),
 		Tables: tables,
 	}
 }
@@ -87,6 +92,7 @@ func findTableEnd(cols [][]string, firstCol int, firstRow int) (bound [2]int) {
 }
 
 func parseTable(name string, cols [][]string, bound [4]int) domain.Table {
+	fmt.Println(bound[3] - bound[1] - 2)
 	rows := make([]domain.Row, bound[3]-bound[1]-2)
 	for j := 0; j < len(rows); j++ {
 		rows[j] = parseRow(cols, j+bound[1]+2, bound[0], bound[2])

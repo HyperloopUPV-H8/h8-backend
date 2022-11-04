@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -17,6 +18,7 @@ func TestReadExcel(t *testing.T) {
 	}
 
 	document := GetDocument(DocumentExcel)
+	fmt.Println("Document: ", document)
 
 	correctObject := getCorrectDocument()
 
@@ -99,5 +101,6 @@ func getCorrectDocument() domain.Document {
 		},
 	}
 
+	fmt.Println("Document: ", document)
 	return document
 }
