@@ -16,7 +16,16 @@ type Log struct {
 	writeTicker *time.Ticker
 	values      map[string][]ValueTimestamp
 	valueChan   <-chan dataTransfer.PacketTimestampPair
-	stop        <-chan bool
+	enable      <-chan bool
+}
+
+func (log Log) Run() {
+	go func() {
+		isEnable := <-log.enable
+		if isEnable {
+			log.Record()
+		}
+	}()
 }
 
 func NewLog(dir string, measurementNum int, delay time.Duration, values <-chan dataTransfer.PacketTimestampPair) *Log {
@@ -92,10 +101,12 @@ loop:
 			log.Write()
 		case packet := <-log.valueChan:
 			log.AddValues(packet)
-		case <-log.stop:
-			log.Write()
-			log.Close()
-			break loop
+		case isEnabled := <-log.enable:
+			if !isEnabled {
+				log.Write()
+				log.Close()
+				break loop
+			}
 		}
 	}
 }

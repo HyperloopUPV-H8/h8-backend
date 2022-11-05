@@ -22,7 +22,7 @@ func newPacketWebAdapter(packet domain.Packet) PacketWebAdapter {
 		Name:         packet.Name,
 		Measurements: measurementWebAdapters,
 		Count:        packet.Count,
-		CycleTime:    packet.CycleTime,
+		CycleTime:    uint(packet.CycleTime),
 	}
 }
 

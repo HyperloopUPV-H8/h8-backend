@@ -13,22 +13,24 @@ const (
 	defaultStaticPath = ""
 )
 
-type HTTPServer[R, S any] struct {
-	router     *mux.Router
-	page       spaHandler
-	PacketRecv chan R
-	OrderSend  chan S
+type HTTPServer[D, O, M any] struct {
+	router      *mux.Router
+	page        spaHandler
+	PacketRecv  chan D
+	OrderSend   chan O
+	MessageRecv chan M
 }
 
-func New[R, S any](rx chan R, tx chan S) HTTPServer[R, S] {
-	return HTTPServer[R, S]{
-		router:     mux.NewRouter(),
-		page:       NewPage(defaultStaticPath, defaultIndexPath),
-		PacketRecv: rx,
-		OrderSend:  tx,
+func New[D, O, M any](dataIn chan D, orderOut chan O, messageIn chan M) HTTPServer[D, O, M] {
+	return HTTPServer[D, O, M]{
+		router:      mux.NewRouter(),
+		page:        NewPage(defaultStaticPath, defaultIndexPath),
+		PacketRecv:  dataIn,
+		OrderSend:   orderOut,
+		MessageRecv: messageIn,
 	}
 }
 
-func (server HTTPServer[R, S]) ListenAndServe() {
+func (server HTTPServer[D, O, M]) ListenAndServe() {
 	log.Fatalln(http.ListenAndServe(serverAddr, server.router))
 }
