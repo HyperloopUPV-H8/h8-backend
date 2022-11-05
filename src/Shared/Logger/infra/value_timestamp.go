@@ -1,24 +1,24 @@
 package infra
 
-import (
-	"fmt"
-	"time"
+// impor (
+// 	"ft"
+// 	"tie"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/domain/measurement/value"
-)
+// 	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/domain/measurement/vale"
+// )
 
-type ValueTimestamp struct {
-	value     string
-	timestamp time.Time
-}
+// type ValueTimestamp struc {
+// 	value     strng
+// 	timestamp time.Tme
+// }
 
-func NewValue(timestamp time.Time, measurement value.Value) ValueTimestamp {
-	return ValueTimestamp{
-		value:     measurement.ToDisplayString(),
-		timestamp: timestamp,
-	}
-}
+// func NewValue(timestamp time.Time, measurement value.Value) ValueTimestam {
+// 	return ValueTimestap{
+// 		value:     measurement.ToDisplayUnitsString),
+// 		timestamp: timestap,
+//	}
+// }
 
-func (value ValueTimestamp) ToString() string {
-	return fmt.Sprintf("%d, %s", value.timestamp.UnixNano(), value.value)
-}
+// func (value ValueTimestamp) ToString() strin {
+// 	return fmt.Sprintf("%d, %s", value.timestamp.UnixNano(), value.vale)
+// }
