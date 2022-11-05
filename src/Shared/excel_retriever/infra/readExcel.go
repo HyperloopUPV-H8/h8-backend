@@ -23,14 +23,11 @@ func GetDocument(file *excelize.File) domain.Document {
 func ParseSheets(file *excelize.File) map[string]domain.Sheet {
 	sheets := make(map[string]domain.Sheet)
 	boards := sheetsFilter(file.GetSheetMap())
-	fmt.Println(boards)
 	for _, name := range boards {
 		cols, err := file.GetCols(name)
-		fmt.Println(cols)
 		if err != nil {
 			log.Fatalf("get rows: %s\n", err)
 		}
-		fmt.Println(name)
 		sheets[strings.TrimPrefix(name, sheetPrefix)] = parseSheet(name, cols)
 	}
 	return sheets
@@ -48,7 +45,6 @@ func sheetsFilter(sheets map[int]string) map[int]string {
 }
 
 func parseSheet(name string, cols [][]string) domain.Sheet {
-	fmt.Println("Hola")
 	tables := make(map[string]domain.Table)
 	for name, bound := range findTables(cols) {
 		tables[name] = parseTable(name, cols, bound)
@@ -78,12 +74,18 @@ func findTableEnd(cols [][]string, firstCol int, firstRow int) (bound [2]int) {
 		if col[firstRow+1] == "" {
 			bound[0] = i
 			break
+		} else if i == len(cols[firstCol:])-1 {
+			bound[0] = i + 1
+			break
 		}
 	}
 
 	for j, cell := range cols[firstCol][firstRow:] {
 		if cell == "" {
 			bound[1] = j
+			break
+		} else if j == len(cols[firstCol])-firstRow-1 {
+			bound[1] = j + 1
 			break
 		}
 	}
