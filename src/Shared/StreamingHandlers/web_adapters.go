@@ -3,6 +3,7 @@ package streaming
 import (
 	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/domain"
 	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/domain/measurement"
+	packetParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser/domain"
 )
 
 type PacketWebAdapter struct {
@@ -50,4 +51,26 @@ type MeasurementWebAdapter struct {
 type OrderWebAdapter struct {
 	Id     uint16
 	Fields map[string]string
+}
+
+type MessageWebAdapter struct {
+	Id        uint16
+	Fields    map[string]string
+	Timestamp int64
+}
+
+func newMessageWebAdapter(packet packetParser.PacketUpdate) MessageWebAdapter {
+	var value string
+	var name string
+	for n, val := range packet.UpdatedValues {
+		value = val.(string)
+		name = n
+		break
+	}
+
+	return MessageWebAdapter{
+		Id:        packet.ID,
+		Fields:    map[string]string{name: value},
+		Timestamp: packet.Timestamp.UnixNano(),
+	}
 }
