@@ -28,7 +28,7 @@ func ParseSheets(file *excelize.File) map[string]domain.Sheet {
 	for _, name := range boards {
 		cols, err := file.GetCols(name)
 		if err != nil {
-			log.Fatalf("get rows: %s\n", err)
+			log.Fatalf("error gettings columns: %s\n", err)
 		}
 		sheets[strings.TrimPrefix(name, sheetPrefix)] = parseSheet(name, cols)
 	}

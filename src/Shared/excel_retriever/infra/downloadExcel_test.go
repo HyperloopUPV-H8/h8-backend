@@ -26,7 +26,8 @@ func TestDownloadExcel(t *testing.T) {
 	}
 
 	//downloadExcel(spreadsheetID, filename)
-	FetchExcel(spreadsheetID, fileName, ".", "../../../")
+	credentialsPath := "../../../" + os.Getenv("SECRET_FILE_PATH")
+	FetchExcel(spreadsheetID, fileName, ".", credentialsPath)
 
 	if !fileExists(fileName) {
 		t.Fatalf("file has not been downloaded in %s", fileName)

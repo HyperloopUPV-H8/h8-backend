@@ -21,8 +21,8 @@ func FetchExcel(spreadsheetID string, fileName string, filePath string, credenti
 
 func downloadExcel(spreadsheetID string, fileName string, credentialsPath string) []byte {
 	ctx := context.Background()
-	filePath := credentialsPath + os.Getenv("SECRET_FILE_PATH")
-	driveService, err := drive.NewService(ctx, option.WithCredentialsFile(filePath))
+	//filePath := credentialsPath + os.Getenv("SECRET_FILE_PATH")
+	driveService, err := drive.NewService(ctx, option.WithCredentialsFile(credentialsPath))
 	if err != nil {
 		log.Fatal("service error: ", err)
 	}
