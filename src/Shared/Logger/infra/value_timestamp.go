@@ -14,7 +14,7 @@ type ValueTimestamp struct {
 
 func NewValue(timestamp time.Time, measurement value.Value) ValueTimestamp {
 	return ValueTimestamp{
-		value:     measurement.ToDisplayString(),
+		value:     measurement.ToDisplayUnitsString(),
 		timestamp: timestamp,
 	}
 }
