@@ -26,7 +26,7 @@ func TestDownloadExcel(t *testing.T) {
 	}
 
 	//downloadExcel(spreadsheetID, filename)
-	FetchExcel(spreadsheetID, fileName, ".")
+	FetchExcel(spreadsheetID, fileName, ".", "../../../")
 
 	if !fileExists(fileName) {
 		t.Fatalf("file has not been downloaded in %s", fileName)
