@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"log"
 )
 
 func encodeRaw(value any, bytes io.Writer) {
@@ -52,6 +53,13 @@ func EncodeEnum(enum Enum, value EnumVariant, bytes io.Writer) {
 			encodeRaw(code, bytes)
 			return
 		}
+	}
+}
+
+func EncodeString(value string, bytes io.Writer) {
+	_, err := bytes.Write([]byte(value))
+	if err != nil {
+		log.Fatalln("encode string:", err)
 	}
 }
 

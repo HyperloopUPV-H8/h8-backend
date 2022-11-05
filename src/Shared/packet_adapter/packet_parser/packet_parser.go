@@ -6,6 +6,7 @@ import (
 	"log"
 	"strconv"
 
+	ordertransfer "github.com/HyperloopUPV-H8/Backend-H8/OrderTransfer"
 	excelAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_adapter/domain"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser/domain"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser/infra/serde"
@@ -92,7 +93,49 @@ func (parser PacketParser) decodeMeasurement(measurement domain.MeasurementData,
 		return serde.DecodeEnum(parser.enums[measurement.Name], reader)
 	case "bool":
 		return serde.DecodeBool(reader)
+	case "string":
+		return serde.DecodeString(reader)
 	default:
 		return serde.DecodeNumber(measurement.ValueType, reader)
 	}
+}
+
+func (parser PacketParser) Encode(packet ordertransfer.OrderWebAdapter) []byte {
+	dataWriter := bytes.NewBuffer(make([]byte, 0))
+	serde.EncodeID(packet.Id, dataWriter)
+	for name, value := range packet.Fields {
+		parser.encodeValue(packet.Id, name, value, dataWriter)
+	}
+
+	return dataWriter.Bytes()
+}
+
+func (parser PacketParser) encodeValue(id uint16, name string, value string, bytes io.Writer) {
+	switch parser.findMeasurement(id, name).ValueType {
+	case "enum":
+		serde.EncodeEnum(parser.enums[name], value, bytes)
+	case "bool":
+		val, err := strconv.ParseBool(value)
+		if err != nil {
+			log.Fatalf("encode value: %s\n", err)
+		}
+		serde.EncodeBool(val, bytes)
+	case "string":
+		serde.EncodeString(value, bytes)
+	default:
+		val, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			log.Fatalf("encode value: %s\n", err)
+		}
+		serde.EncodeNumber(parser.findMeasurement(id, name).ValueType, val, bytes)
+	}
+}
+
+func (parser PacketParser) findMeasurement(id uint16, name string) domain.MeasurementData {
+	for _, measurement := range parser.packetTypes[id] {
+		if measurement.Name == name {
+			return measurement
+		}
+	}
+	panic("measurement not found")
 }
