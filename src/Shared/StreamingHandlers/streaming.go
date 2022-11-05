@@ -44,21 +44,23 @@ func OrderSocketHandler(ws websocket.Conn, orderWAChannel chan<- OrderWebAdapter
 
 func MessageSocketHandler(ws websocket.Conn, messageChannel <-chan packetParser.PacketUpdate) {
 	go func() {
-		messageWebAdapterBuf := make([]MessageWebAdapter, 100)
-		timeout := time.After(time.Millisecond * 20)
-	loop:
 		for {
-			select {
-			case packet := <-messageChannel:
-				adapter := newMessageWebAdapter(packet)
-				messageWebAdapterBuf = append(messageWebAdapterBuf, adapter)
-				if len(messageWebAdapterBuf) == 100 {
+			messageWebAdapterBuf := make([]MessageWebAdapter, 100)
+			timeout := time.After(time.Millisecond * 20)
+		loop:
+			for {
+				select {
+				case packet := <-messageChannel:
+					adapter := newMessageWebAdapter(packet)
+					messageWebAdapterBuf = append(messageWebAdapterBuf, adapter)
+					if len(messageWebAdapterBuf) == 100 {
+						ws.WriteJSON(messageWebAdapterBuf)
+						break loop
+					}
+				case <-timeout:
 					ws.WriteJSON(messageWebAdapterBuf)
 					break loop
 				}
-			case <-timeout:
-				ws.WriteJSON(messageWebAdapterBuf)
-				break loop
 			}
 		}
 	}()
