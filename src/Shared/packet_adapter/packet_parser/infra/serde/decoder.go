@@ -1,6 +1,7 @@
 package serde
 
 import (
+	"bufio"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -59,6 +60,14 @@ func DecodeEnum(enum Enum, bytes io.Reader) EnumVariant {
 		log.Fatalln("decode enum: expected value, got nil")
 	}
 	return value
+}
+
+func DecodeString(bytes io.Reader) string {
+	line, err := bufio.NewReader(bytes).ReadString('\n')
+	if err != nil {
+		log.Fatalln("decode string:", err)
+	}
+	return line
 }
 
 func DecodeID(bytes io.Reader) ID {
