@@ -26,14 +26,19 @@ func ParseSheets(file *excelize.File) map[string]domain.Sheet {
 	fmt.Print("boards filtered: ")
 	fmt.Println(boards)
 	for _, name := range boards {
-		cols, err := file.GetCols(name)
-		if err != nil {
-			log.Fatalf("error gettings columns: %s\n", err)
-		}
+		cols := getCols(file, name)
 		sheets[strings.TrimPrefix(name, sheetPrefix)] = parseSheet(name, cols)
 	}
 	return sheets
 
+}
+
+func getCols(file *excelize.File, nameSheet string) [][]string {
+	cols, err := file.GetCols(nameSheet)
+	if err != nil {
+		log.Fatalf("error gettings columns: %s\n", err)
+	}
+	return cols
 }
 
 func sheetsFilter(sheets map[int]string) map[int]string {
@@ -72,35 +77,79 @@ func findTables(cols [][]string) map[string][4]int {
 }
 
 func findTableEnd(cols [][]string, firstCol int, firstRow int) (bound [2]int) {
+	widht := findTableWidth(cols, firstCol, firstRow)
+	bound[0] = widht
+
+	height := findTableHeight(cols, firstCol, firstRow, widht)
+	bound[1] = height
+
+	return
+}
+
+// func findTableEnd(cols [][]string, firstCol int, firstRow int) (bound [2]int) {
+// 	for i, col := range cols[firstCol:] {
+// 		if col[firstRow+1] == "" {
+// 			bound[0] = i
+// 			break
+// 		} else if i == len(cols[firstCol:])-1 {
+// 			bound[0] = i + 1
+// 			break
+// 		}
+// 	}
+
+// 	maxHeight := 0
+// 	for _, col := range cols[firstCol : bound[0]+firstCol] {
+// 		for j, cell := range col[firstRow:] {
+// 			if cell == "" {
+// 				bound[1] = j
+// 				break
+// 			} else if j == len(cols[firstCol])-firstRow-1 {
+// 				bound[1] = j + 1
+// 				break
+// 			}
+// 		}
+
+// 		if bound[1] > maxHeight {
+// 			maxHeight = bound[1]
+// 		}
+// 	}
+// 	bound[1] = maxHeight
+
+// 	return
+// }
+
+func findTableWidth(cols [][]string, firstCol int, firstRow int) int {
 	for i, col := range cols[firstCol:] {
 		if col[firstRow+1] == "" {
-			bound[0] = i
-			break
+			return i
 		} else if i == len(cols[firstCol:])-1 {
-			bound[0] = i + 1
-			break
+			return i + 1
 		}
 	}
+	return -1
+}
 
+func findTableHeight(cols [][]string, firstCol int, firstRow int, width int) int {
 	maxHeight := 0
-	for _, col := range cols[firstCol : bound[0]+firstCol] {
+	height := 0
+	for _, col := range cols[firstCol : width+firstCol] {
 		for j, cell := range col[firstRow:] {
 			if cell == "" {
-				bound[1] = j
+				height = j
 				break
 			} else if j == len(cols[firstCol])-firstRow-1 {
-				bound[1] = j + 1
+				height = j + 1
 				break
 			}
 		}
 
-		if bound[1] > maxHeight {
-			maxHeight = bound[1]
+		if height > maxHeight {
+			maxHeight = height
 		}
 	}
-	bound[1] = maxHeight
+	height = maxHeight
 
-	return
+	return height
 }
 
 func parseTable(name string, cols [][]string, bound [4]int) domain.Table {
