@@ -82,15 +82,23 @@ func findTableEnd(cols [][]string, firstCol int, firstRow int) (bound [2]int) {
 		}
 	}
 
-	for j, cell := range cols[firstCol][firstRow:] {
-		if cell == "" {
-			bound[1] = j
-			break
-		} else if j == len(cols[firstCol])-firstRow-1 {
-			bound[1] = j + 1
-			break
+	maxHeight := 0
+	for _, col := range cols[firstCol : bound[0]+firstCol] {
+		for j, cell := range col[firstRow:] {
+			if cell == "" {
+				bound[1] = j
+				break
+			} else if j == len(cols[firstCol])-firstRow-1 {
+				bound[1] = j + 1
+				break
+			}
+		}
+
+		if bound[1] > maxHeight {
+			maxHeight = bound[1]
 		}
 	}
+	bound[1] = maxHeight
 
 	return
 }
