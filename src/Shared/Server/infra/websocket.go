@@ -9,17 +9,24 @@ import (
 
 type Packet string
 
-func (server HTTPServer[R, S]) HandleWebSocketSend(route string, handler func(*websocket.Conn, chan S)) {
-	server.router.Handle(route, SocketHandle[S]{
+func (server HTTPServer[D, O, M]) HandleWebSocketOrder(route string, handler func(*websocket.Conn, chan O)) {
+	server.router.Handle(route, SocketHandle[O]{
 		function: handler,
 		channel:  server.OrderSend,
 	})
 }
 
-func (server HTTPServer[R, S]) HandleWebSocketRecv(route string, handler func(*websocket.Conn, chan R)) {
-	server.router.Handle(route, SocketHandle[R]{
+func (server HTTPServer[D, O, M]) HandleWebSocketData(route string, handler func(*websocket.Conn, chan D)) {
+	server.router.Handle(route, SocketHandle[D]{
 		function: handler,
 		channel:  server.PacketRecv,
+	})
+}
+
+func (server HTTPServer[D, O, M]) HandleWebSocketMessage(route string, handler func(*websocket.Conn, chan M)) {
+	server.router.Handle(route, SocketHandle[M]{
+		function: handler,
+		channel:  server.MessageRecv,
 	})
 }
 
