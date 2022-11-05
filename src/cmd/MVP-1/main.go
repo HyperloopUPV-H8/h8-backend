@@ -59,7 +59,7 @@ func main() {
 		log.Fatalf("Error finding .env: %v", err)
 	}
 	ips := []string{"127.0.0.1"}
-	document := excelRetriever.GetExcel("excel.xlsx", ".")
+	document := excelRetriever.GetExcel("excel.xlsx", ".", "../../")
 
 	boards := excelAdapter.GetBoards(document)
 	packets := make([]excelAdapterDomain.PacketDTO, 0)
