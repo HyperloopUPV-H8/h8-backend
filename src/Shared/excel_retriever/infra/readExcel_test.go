@@ -1,7 +1,6 @@
 package infra
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -18,7 +17,6 @@ func TestReadExcel(t *testing.T) {
 	}
 
 	document := GetDocument(DocumentExcel)
-	fmt.Println("Document: ", document)
 
 	correctObject := getCorrectDocument()
 
@@ -78,7 +76,7 @@ func getCorrectDocument() domain.Document {
 		Rows: correctRows3_1,
 	}
 
-	correctRows3_2 := [][]string{{"4", "4", "4", ""}, {"5", "5", "5", "5"}, {"6", "6", "6", ""}}
+	correctRows3_2 := [][]string{{"", "4", "4", ""}, {"5", "5", "5", "5"}, {"", "6", "6", ""}}
 
 	correctTable3_2 := domain.Table{
 		Name: "NOMBRE2",
@@ -101,6 +99,5 @@ func getCorrectDocument() domain.Document {
 		},
 	}
 
-	fmt.Println("Document: ", document)
 	return document
 }
