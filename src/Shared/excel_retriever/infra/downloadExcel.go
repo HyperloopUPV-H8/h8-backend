@@ -14,15 +14,15 @@ import (
 
 const mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
-func FetchExcel(spreadsheetID string, fileName string, filePath string) {
-	fileBuf := downloadExcel(spreadsheetID, fileName)
+func FetchExcel(spreadsheetID string, fileName string, filePath string, credentialsPath string) {
+	fileBuf := downloadExcel(spreadsheetID, fileName, credentialsPath)
 	saveFileToPath(fileBuf, fileName, filePath)
 }
 
-func downloadExcel(spreadsheetID string, fileName string) []byte {
+func downloadExcel(spreadsheetID string, fileName string, credentialsPath string) []byte {
 	ctx := context.Background()
 
-	driveService, err := drive.NewService(ctx, option.WithCredentialsFile(os.Getenv("SECRET_FILE_PATH")))
+	driveService, err := drive.NewService(ctx, option.WithCredentialsFile(credentialsPath))
 	if err != nil {
 		log.Fatal("service error: ", err)
 	}
