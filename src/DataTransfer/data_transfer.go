@@ -19,10 +19,12 @@ func New(rawBoards map[string]excelAdapter.BoardDTO) DataTransfer {
 }
 
 func (dataTransfer DataTransfer) Invoke(getPacketUpdate func() packetParser.PacketUpdate) {
-	for {
-		update := getPacketUpdate()
-		dataTransfer.data.UpdatePacket(update)
-		packetTimestampPair := dataTransfer.data.GetPacket(update.ID)
-		dataTransfer.PacketChannel <- packetTimestampPair.Packet
-	}
+	go func() {
+		for {
+			update := getPacketUpdate()
+			dataTransfer.data.UpdatePacket(update)
+			packetTimestampPair := dataTransfer.data.GetPacket(update.ID)
+			dataTransfer.PacketChannel <- packetTimestampPair.Packet
+		}
+	}()
 }

@@ -80,6 +80,5 @@ func (sniffer *Sniffer) getNextPayload() (payload Payload) {
 	if transportLayer == nil {
 		return
 	}
-
 	return transportLayer.LayerPayload()
 }
