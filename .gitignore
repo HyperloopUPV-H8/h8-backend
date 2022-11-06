@@ -9,3 +9,6 @@ src/cmd/MVP-2/*.json
 
 src/*.json
 .vscode
+
+src/cmd/MVP-2/static/build
+src/cmd/MVP-2/static/node_modules

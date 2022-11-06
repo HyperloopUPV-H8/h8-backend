@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"time"
 
 	dataTransfer "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer"
@@ -17,8 +18,8 @@ import (
 func main() {
 	godotenv.Load("./.env")
 
-	ips := []string{}
-	document := excelRetriever.GetExcel("excel.xlsx", ".")
+	ips := []string{"127.0.0.1", "127.0.0.2"}
+	document := excelRetriever.GetExcel(os.Getenv("SPREADSHEET_ID"), "excel.xlsx", ".", os.Getenv("SECRET_FILE_PATH"))
 
 	boards := excelAdapter.GetBoards(document)
 	packets := make([]excelAdapterDomain.PacketDTO, 0)
@@ -37,7 +38,11 @@ func main() {
 	server.HandleLog("/backend/log", logger.EnableChan)
 	logger.Run()
 
-	dataTransfer.Invoke(packetAdapter.ReceiveData)
+	go dataTransfer.Invoke(packetAdapter.ReceiveData)
 
 	server.HandleWebSocketData("/backend/data", streaming.DataSocketHandler)
+
+	server.HandleSPA()
+
+	server.ListenAndServe()
 }
