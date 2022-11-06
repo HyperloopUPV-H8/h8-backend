@@ -1,3 +1,4 @@
+
 package main
 
 import (
@@ -82,3 +83,4 @@ func main() {
 		logger.WritePacket(packet, logFile)
 	}
 }
+
