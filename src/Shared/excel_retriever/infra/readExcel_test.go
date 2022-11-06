@@ -1,3 +1,4 @@
+
 package infra
 
 import (
@@ -101,3 +102,4 @@ func getCorrectDocument() domain.Document {
 
 	return document
 }
+
