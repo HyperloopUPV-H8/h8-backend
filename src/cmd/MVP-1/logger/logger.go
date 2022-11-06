@@ -24,7 +24,7 @@ func WritePacket(packet domain.Packet, logFile *os.File) {
 	fmt.Fprintln(logFile, titlePacket)
 
 	for _, measurement := range packet.Measurements {
-		measuramentString := fmt.Sprintf(`	%v: %v`, measurement.Name, measurement.Value.ToDisplayString())
+		measuramentString := fmt.Sprintf(`	%v: %v`, measurement.Name, measurement.Value.ToDisplayUnitsString())
 		fmt.Fprintln(logFile, measuramentString)
 	}
 }

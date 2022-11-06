@@ -4,7 +4,7 @@ import excelAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_adapter/
 
 type Board struct {
 	Name                 string
-	PacketTimestampPairs map[uint16]PacketTimestampPair
+	PacketTimestampPairs map[uint16]*PacketTimestampPair
 }
 
 func NewBoard(rawBoard excelAdapter.BoardDTO) Board {
