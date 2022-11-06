@@ -29,7 +29,7 @@ func main() {
 
 	packetAdapter := transportController.New(ips, packets)
 
-	logger := logger.New(".", time.Second*5)
+	logger := logger.NewLog(".", 100, time.Second*5)
 
 	dataTransfer := dataTransfer.New(boards)
 
@@ -38,7 +38,7 @@ func main() {
 	server.HandleLog("/backend/log", logger.EnableChan)
 	logger.Run()
 
-	go dataTransfer.Invoke(packetAdapter.ReceiveData)
+	go dataTransfer.Invoke(logger.EntryChan, packetAdapter.ReceiveData)
 
 	server.HandleWebSocketData("/backend/data", streaming.DataSocketHandler)
 
