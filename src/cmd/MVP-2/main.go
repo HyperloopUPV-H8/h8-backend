@@ -39,8 +39,6 @@ func main() {
 
 	logger.Run()
 
-	go dataTransfer.Invoke(packetAdapter.ReceiveData)
-
 	server.HandleLog("/backend/log", logger.EnableChan)
 
 	server.HandleWebSocketData("/backend/data", streaming.DataSocketHandler)

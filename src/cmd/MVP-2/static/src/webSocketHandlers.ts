@@ -13,7 +13,6 @@ dataSocket.onmessage = (ev) => {
   for (let [key, value] of Object.entries(packetsObject)) {
     packetMap.set(Number.parseInt(key), value as Packet);
   }
-  console.log(packetMap);
-  console.log("HERE");
+  console.log("bruh", packetMap, packetsObject);
   updateReceiveTable(packetMap);
 };

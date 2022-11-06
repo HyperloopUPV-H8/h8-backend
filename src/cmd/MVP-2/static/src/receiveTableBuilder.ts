@@ -31,13 +31,11 @@ function addPacketToTable(tableBody: HTMLTableSectionElement, packet: Packet) {
 function createPacketRow(packet: Packet): HTMLTableRowElement {
   let row = document.createElement("tr");
   let id_td = document.createElement("td");
-  id_td.innerHTML = packet.id.toString();
+  id_td.innerHTML = packet.id.toString(10);
   let name_td = document.createElement("td");
   name_td.innerHTML = packet.name.toString();
   let hexValue_td = document.createElement("td");
-  let utf8Encode = new TextEncoder();
-  let byteArr = utf8Encode.encode("abc");
-  hexValue_td.innerHTML = byteArr.toString();
+  hexValue_td.innerHTML = packet.hexValue.toString();
   let count_td = document.createElement("td");
   count_td.innerHTML = packet.count.toString();
   let cycleTime_td = document.createElement("td");
