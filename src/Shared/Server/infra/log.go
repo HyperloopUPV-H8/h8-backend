@@ -7,7 +7,7 @@ import (
 )
 
 func (server HTTPServer[D, O, M]) HandleLog(route string, loggerEnable chan<- bool) {
-	server.router.Handle(route, LogHandle{logEnable: loggerEnable}).Methods("UPDATE")
+	server.router.Handle(route, LogHandle{logEnable: loggerEnable}).Methods("PUT")
 }
 
 type LogHandle struct {
