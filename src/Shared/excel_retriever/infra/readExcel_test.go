@@ -9,7 +9,7 @@ import (
 )
 
 func TestReadExcel(t *testing.T) {
-	name := "excelDownloaded.xlsx" //TO DEFINE
+	name := "excelDownloaded.xlsx"
 	DocumentExcel, err := openExcelFile(name)
 
 	if err != nil {
@@ -76,7 +76,7 @@ func getCorrectDocument() domain.Document {
 		Rows: correctRows3_1,
 	}
 
-	correctRows3_2 := [][]string{{"4", "4", "4", ""}, {"5", "5", "5", "5"}, {"6", "6", "6", ""}}
+	correctRows3_2 := [][]string{{"", "4", "4", ""}, {"5", "5", "5", "5"}, {"", "6", "6", ""}}
 
 	correctTable3_2 := domain.Table{
 		Name: "NOMBRE2",
