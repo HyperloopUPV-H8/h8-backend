@@ -10,7 +10,6 @@ import (
 )
 
 func GetExcel(spreadSheetID string, fileName string, filePath string, credentialsPath string) domain.Document {
-	//os.Getenv("SPREADSHEET_ID")
 	infra.FetchExcel(spreadSheetID, fileName, filePath, credentialsPath)
 	excel, err := excelize.OpenFile(filepath.Join(filePath, fileName))
 	if err != nil {

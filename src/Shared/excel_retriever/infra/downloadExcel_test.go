@@ -11,9 +11,7 @@ import (
 func TestDownloadExcel(t *testing.T) {
 	godotenv.Load("../../../.env")
 
-	// The spreadsheet to request.
-	//spreadsheetID := "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms" //El ejemplo
-	spreadsheetID := "1nbiLvA0weR_DiLkL9TI90cdLNXlvOAZgikhKIdxbhRk" //Mi spreadsheet con tablas
+	spreadsheetID := "1nbiLvA0weR_DiLkL9TI90cdLNXlvOAZgikhKIdxbhRk"
 
 	fileName := "excelDownloaded.xlsx"
 
@@ -25,7 +23,6 @@ func TestDownloadExcel(t *testing.T) {
 		t.Fatalf("file has not been deleted")
 	}
 
-	//downloadExcel(spreadsheetID, filename)
 	credentialsPath := "../../../" + os.Getenv("SECRET_FILE_PATH")
 	FetchExcel(spreadsheetID, fileName, ".", credentialsPath)
 

@@ -61,7 +61,6 @@ func parseSheet(name string, cols [][]string) domain.Sheet {
 	}
 }
 
-// return start column (where the title is), start row (where the title is), value next to last column, value next to last row
 func findTables(cols [][]string) map[string][4]int {
 	tables := make(map[string][4]int)
 	for i, col := range cols {
@@ -75,7 +74,6 @@ func findTables(cols [][]string) map[string][4]int {
 	return tables
 }
 
-// bound[0] is width, bound[1] is height, as we've used getColumns
 func findTableEnd(cols [][]string, firstCol int, firstRow int) (bound [2]int) {
 	widht := findTableWidth(cols, firstCol, firstRow)
 	bound[0] = widht
@@ -97,8 +95,6 @@ func findTableWidth(cols [][]string, firstCol int, firstRow int) int {
 }
 
 func findTableHeight(cols [][]string, firstCol int, firstRow int, width int) int {
-	//PROBLEM: If everyone has a blank cell at some point in the column and then still has values, all cells
-	//when they see the first blank cell stop giving the height, in this case it would be wrong.
 	maxHeight := 0
 	height := 0
 	for _, col := range cols[firstCol : width+firstCol] {

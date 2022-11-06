@@ -9,7 +9,7 @@ import (
 )
 
 func TestReadExcel(t *testing.T) {
-	name := "excelDownloaded.xlsx" //TO DEFINE
+	name := "excelDownloaded.xlsx"
 	DocumentExcel, err := openExcelFile(name)
 
 	if err != nil {
