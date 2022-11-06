@@ -10,6 +10,7 @@ type PacketWebAdapter struct {
 	Id           uint16
 	Name         string
 	Measurements []MeasurementWebAdapter
+	HexValue     []byte
 	Count        uint
 	CycleTime    uint
 }
@@ -21,6 +22,7 @@ func newPacketWebAdapter(packet domain.Packet) PacketWebAdapter {
 		Id:           packet.Id,
 		Name:         packet.Name,
 		Measurements: measurementWebAdapters,
+		HexValue:     packet.HexValue,
 		Count:        packet.Count,
 		CycleTime:    uint(packet.CycleTime),
 	}

@@ -10,7 +10,7 @@ import (
 const (
 	serverAddr        = "127.0.0.1:4000"
 	defaultIndexPath  = "index.html"
-	defaultStaticPath = ""
+	defaultStaticPath = "static\\build"
 )
 
 type HTTPServer[D, O, M any] struct {

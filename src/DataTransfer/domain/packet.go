@@ -45,6 +45,7 @@ func NewPacketTimestampPairs(rawPackets []excelAdapter.PacketDTO) map[uint16]Pac
 				Measurements: measurement.NewMeasurements(packet.Measurements),
 				Count:        0,
 				CycleTime:    0,
+				HexValue:     []byte{0x00},
 			},
 			Timestamp: time.Now(),
 		}

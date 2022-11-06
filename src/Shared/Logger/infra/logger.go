@@ -2,146 +2,119 @@ package infra
 
 import (
 	"fmt"
-	"io"
-	"log"
+	golog "log"
 	"os"
 	"path"
 	"time"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/logger/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/domain"
+	dataTransfer "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/domain/measurement"
 )
 
-type Logger struct {
+type Log struct {
 	baseDir     string
 	files       map[string]*os.File
 	writeTicker *time.Ticker
-	buffers     map[string]*[]string
-	EntryChan   chan domain.Entry
+	values      map[string][]ValueTimestamp
 	EnableChan  chan bool
-	Done        chan bool
+	EntryChan   chan domain.PacketTimestampPair
 }
 
-func (log Logger) Run() {
+func (log Log) Run() {
 	go func() {
-		isEnable := <-log.EnableChan
-		if isEnable {
-			log.Record()
+		for {
+			isEnable := <-log.EnableChan
+			if isEnable {
+				go log.Record()
+			}
+
 		}
 	}()
 }
 
-func New(path string, delay time.Duration) *Logger {
-	return newLogger(path, delay)
-}
-
-func newLogger(dir string, delay time.Duration) *Logger {
-	baseDir := path.Join(dir, time.Now().Format("2006_01_02-15_04_05"))
-	createLogDir(baseDir)
-	return &Logger{
-		baseDir:     baseDir,
-		files:       make(map[string]*os.File),
+func NewLog(dir string, measurementNum int, delay time.Duration) *Log {
+	return &Log{
+		baseDir:     path.Join(dir, time.Now().Format("2006/01/02-15:04:05")),
+		files:       make(map[string]*os.File, measurementNum),
 		writeTicker: time.NewTicker(delay),
-		buffers:     make(map[string]*[]string),
-		EntryChan:   make(chan domain.Entry),
-		EnableChan:  make(chan bool),
+		values:      make(map[string][]ValueTimestamp, measurementNum),
+		EnableChan:  make(chan bool, 1),
+		EntryChan:   make(chan domain.PacketTimestampPair, 100),
 	}
 }
 
-func createLogDir(path string) {
-	os.MkdirAll(path, 0777)
-}
-
-func (logger *Logger) AddEntry(entry domain.Entry) {
-	logger.EntryChan <- entry
-}
-
-func (logger *Logger) addEntryToBuffer(entry domain.Entry) {
-	buffer := logger.getBuffer(entry)
-	bytesBuf, err := io.ReadAll(entry.Value)
-	if err != nil {
-		log.Fatalf("error reading entry reader: %v", err)
+func (log *Log) AddValues(packet dataTransfer.PacketTimestampPair) {
+	for _, measurement := range packet.Packet.Measurements {
+		log.addValue(packet.Timestamp, measurement)
 	}
-
-	*buffer = append(*buffer, string(bytesBuf))
-	logger.buffers[entry.Id] = buffer
 }
 
-func (logger *Logger) getBuffer(entry domain.Entry) *[]string {
-	buffer, exists := logger.buffers[entry.Id]
+func (log *Log) addValue(timestamp time.Time, value measurement.Measurement) {
+	values, exists := log.values[value.Name]
 
 	if !exists {
-		logger.buffers[entry.Id] = new([]string)
-		buffer = logger.buffers[entry.Id]
+		values = make([]ValueTimestamp, 100)
 	}
 
-	return buffer
+	log.values[value.Name] = append(values, NewValue(timestamp, value.Value))
 }
 
-func (logger *Logger) write() {
-	for name := range logger.buffers {
-		logger.writeBufferToFile(name)
+func (log *Log) ToString(valueName string) (data string) {
+	for _, value := range log.values[valueName] {
+		data += value.ToString() + "\n"
 	}
-	logger.clearBuffers()
+	return data
 }
 
-func (logger *Logger) writeBufferToFile(bufferName string) {
-	file := logger.getFile(bufferName)
-	for _, text := range *logger.buffers[bufferName] {
-		file.WriteString(fmt.Sprintf("%v\n", text))
+func (log *Log) Write() {
+	for name := range log.values {
+		fmt.Println(name)
+		log.writeValues(name)
 	}
+	log.cleanValues()
 }
 
-func (logger *Logger) getFile(fileName string) *os.File {
-	file, exists := logger.files[fileName]
+func (log *Log) writeValues(valueName string) {
+	file, exists := log.files[valueName]
+	var err error
 	if !exists {
-		file = createFile(logger.baseDir, fileName)
+		file, err = os.Create(path.Join(log.baseDir, valueName))
+		fmt.Println(err)
 	}
 
-	return file
-}
-
-func createFile(dirPath string, fileName string) *os.File {
-	file, err := os.Create(path.Join(dirPath, fileName+".txt"))
 	if err != nil {
-		log.Fatalf("write values: %s\n", err)
+		golog.Fatalf("write values: %s\n", err)
 	}
 
-	return file
+	file.WriteString(log.ToString(valueName))
 }
 
-func (logger *Logger) clearBuffers() {
-	logger.buffers = make(map[string]*[]string)
+func (log *Log) cleanValues() {
+	log.values = make(map[string][]ValueTimestamp, len(log.values))
 }
 
-func (logger *Logger) Stop() {
-	logger.EnableChan <- true
-	<-logger.Done
-}
-
-func (logger *Logger) close() {
-	for _, file := range logger.files {
+func (log *Log) Close() {
+	for _, file := range log.files {
 		file.Close()
 	}
-	logger.writeTicker.Stop()
-	logger.Done <- true
+	log.writeTicker.Stop()
 }
 
-func (logger *Logger) Record() {
-	go func() {
-	loop:
-		for {
-			select {
-			case <-logger.writeTicker.C:
-				logger.write()
-			case entry := <-logger.EntryChan:
-				logger.addEntryToBuffer(entry)
-			case isEnabled := <-logger.EnableChan:
-				if !isEnabled {
-					logger.write()
-					logger.close()
-					break loop
-				}
+func (log Log) Record() {
+loop:
+	for {
+		select {
+		case <-log.writeTicker.C:
+			log.Write()
+		case entries := <-log.EntryChan:
+			log.AddValues(entries)
+		case isEnabled := <-log.EnableChan:
+			if !isEnabled {
+				log.Write()
+				log.Close()
+				break loop
 			}
 		}
-	}()
+	}
 }
