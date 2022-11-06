@@ -31,20 +31,33 @@ func main() {
 
 	packetAdapter := transportController.New(ips, packets)
 
-	logger := logger.NewLog(".", 100, time.Second*5)
+	logger := logger.NewLogger(".", time.Second*5)
 
 	dataTransfer := dataTransfer.New(boards)
 
 	server := server.New(dataTransfer.PacketChannel, make(chan any), make(chan any))
 
-	server.HandleLog("/backend/log", logger.EnableChan)
 	logger.Run()
 
 	go dataTransfer.Invoke(packetAdapter.ReceiveData)
+
+	server.HandleLog("/backend/log", logger.EnableChan)
 
 	server.HandleWebSocketData("/backend/data", streaming.DataSocketHandler)
 
 	server.HandleSPA()
 
+	go func() {
+		for {
+			payload := dataTransfer.Parse(packetAdapter.ReceiveData)
+			select {
+			case logger.EntryChan <- *payload:
+			default:
+			}
+			dataTransfer.PacketChannel <- payload.Packet
+		}
+	}()
+
+	fmt.Println("listening")
 	server.ListenAndServe()
 }
