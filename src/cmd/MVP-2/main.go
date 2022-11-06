@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -16,7 +17,8 @@ import (
 )
 
 func main() {
-	godotenv.Load("./.env")
+	fmt.Println("Starting program")
+	godotenv.Load("../../.env")
 
 	ips := []string{"127.0.0.1", "127.0.0.2"}
 	document := excelRetriever.GetExcel(os.Getenv("SPREADSHEET_ID"), "excel.xlsx", ".", os.Getenv("SECRET_FILE_PATH"))
@@ -38,7 +40,7 @@ func main() {
 	server.HandleLog("/backend/log", logger.EnableChan)
 	logger.Run()
 
-	go dataTransfer.Invoke(logger.EntryChan, packetAdapter.ReceiveData)
+	go dataTransfer.Invoke(packetAdapter.ReceiveData)
 
 	server.HandleWebSocketData("/backend/data", streaming.DataSocketHandler)
 

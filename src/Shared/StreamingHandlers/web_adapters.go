@@ -7,47 +7,48 @@ import (
 )
 
 type PacketWebAdapter struct {
-	Id           uint16
-	Name         string
-	Measurements []MeasurementWebAdapter
-	HexValue     []byte
-	Count        uint
-	CycleTime    uint
+	Id                      uint16                  `json:"id"`
+	Name                    string                  `json:"name"`
+	MeasurementsWebAdapters []MeasurementWebAdapter `json:"measurements"`
+	HexValue                []byte                  `json:"hexValue"`
+	Count                   uint                    `json:"count"`
+	CycleTime               uint                    `json:"cycleTime"`
 }
 
 func newPacketWebAdapter(packet domain.Packet) PacketWebAdapter {
 	measurementWebAdapters := getMeasurementWebAdapters(packet.Measurements)
-
 	return PacketWebAdapter{
-		Id:           packet.Id,
-		Name:         packet.Name,
-		Measurements: measurementWebAdapters,
-		HexValue:     packet.HexValue,
-		Count:        packet.Count,
-		CycleTime:    uint(packet.CycleTime),
+		Id:                      packet.Id,
+		Name:                    packet.Name,
+		MeasurementsWebAdapters: measurementWebAdapters,
+		HexValue:                packet.HexValue,
+		Count:                   packet.Count,
+		CycleTime:               uint(packet.CycleTime),
 	}
 }
 
 func getMeasurementWebAdapters(measurements map[string]measurement.Measurement) []MeasurementWebAdapter {
 	adapters := make([]MeasurementWebAdapter, len(measurements))
+	index := 0
 	for _, measurement := range measurements {
-		adapters = append(adapters, MeasurementWebAdapter{
+		adapters[index] = MeasurementWebAdapter{
 			Name:         measurement.Name,
 			PodValue:     measurement.Value.ToPodUnitsString(),
 			DisplayValue: measurement.Value.ToDisplayUnitsString(),
 			PodUnits:     measurement.Value.GetPodUnits(),
 			DisplayUnits: measurement.Value.GetDisplayUnits(),
-		})
+		}
+		index++
 	}
 	return adapters
 }
 
 type MeasurementWebAdapter struct {
-	Name         string
+	Name         string `json:"name"`
 	PodValue     string
-	DisplayValue string
+	DisplayValue string `json:"value"`
 	PodUnits     string
-	DisplayUnits string
+	DisplayUnits string `json:"units"`
 }
 
 type OrderWebAdapter struct {

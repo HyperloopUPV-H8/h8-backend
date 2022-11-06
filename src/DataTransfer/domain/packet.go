@@ -34,11 +34,11 @@ func (packetTimestampPair *PacketTimestampPair) UpdatePacket(pu packetParser.Pac
 	}
 }
 
-func NewPacketTimestampPairs(rawPackets []excelAdapter.PacketDTO) map[uint16]PacketTimestampPair {
-	packetTimestampPairs := make(map[uint16]PacketTimestampPair, len(rawPackets))
+func NewPacketTimestampPairs(rawPackets []excelAdapter.PacketDTO) map[uint16]*PacketTimestampPair {
+	packetTimestampPairs := make(map[uint16]*PacketTimestampPair, len(rawPackets))
 	for _, packet := range rawPackets {
 		id := getID(packet)
-		packetTimestampPairs[id] = PacketTimestampPair{
+		packetTimestampPairs[id] = &PacketTimestampPair{
 			Packet: Packet{
 				Id:           id,
 				Name:         packet.Description.Name,

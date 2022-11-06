@@ -1,3 +1,4 @@
+
 package main
 
 import (
@@ -5,11 +6,11 @@ import (
 	"os"
 
 	dataTransfer "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer"
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/PacketAdapter/transportController"
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelAdapter"
-	excelAdapterDomain "github.com/HyperloopUPV-H8/Backend-H8/Shared/excelAdapter/domain"
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/excelRetriever"
-	excelRetrieverDomain "github.com/HyperloopUPV-H8/Backend-H8/Shared/excelRetriever/domain"
+	excelAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_adapter"
+	excelAdapterDomain "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_adapter/domain"
+	excelRetriever "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_retriever"
+	excelRetrieverDomain "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_retriever/domain"
+	packetAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter"
 	"github.com/HyperloopUPV-H8/Backend-H8/cmd/MVP-1/logger"
 
 	"github.com/joho/godotenv"
@@ -55,13 +56,13 @@ var structure = excelRetrieverDomain.Document{
 }
 
 func main() {
-	err := godotenv.Load("../../.env")
+	err := godotenv.Load(".env")
 	if err != nil {
 		log.Fatalf("Error finding .env: %v", err)
 	}
-	ips := []string{"127.0.0.1"}
+	ips := []string{"127.0.0.2"}
 
-	credentialsPath := "../../" + os.Getenv("SECRET_FILE_PATH")
+	credentialsPath := os.Getenv("SECRET_FILE_PATH")
 	document := excelRetriever.GetExcel(os.Getenv("SPREADSHEET_ID"), "excel.xlsx", ".", credentialsPath)
 
 	boards := excelAdapter.GetBoards(document)
@@ -70,7 +71,7 @@ func main() {
 		packets = append(packets, board.GetPackets()...)
 	}
 
-	packetAdapter := transportController.New(ips, packets)
+	packetAdapter := packetAdapter.New(ips, packets)
 
 	logFile := logger.CreateFile()
 	defer logFile.Close()
@@ -82,3 +83,4 @@ func main() {
 		logger.WritePacket(packet, logFile)
 	}
 }
+

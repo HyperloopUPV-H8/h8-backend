@@ -1,35 +1,47 @@
-import { Measurement, Packet, Packets } from "./modals";
+import { Measurement, Packet } from "./modals";
 
-var packets = new Map<number, Packet>();
+var globalPackets = new Map<number, Packet>();
 
-export function updateReceiveTable(packets: Packets) {
+export function updateReceiveTable(packets: Map<number, Packet>) {
+  updatePackets(packets);
   let tableBody = document.getElementById(
     "tableBody"
   ) as HTMLTableSectionElement;
   tableBody.textContent = "";
-  for (let packet in packets) {
-    console.log(packets[packet].HexValue)
-    let packetRow = createPacketRow(packets[packet]);
-    tableBody.append(packetRow);
-    let measurementsRows = createMeasurementRows(packets[packet].Measurements);
-    for (let row of measurementsRows) {
-      tableBody.append(row);
-    }
+  for (let [_, packet] of globalPackets) {
+    addPacketToTable(tableBody, packet);
+  }
+}
+
+function updatePackets(packets: Map<number, Packet>) {
+  for (let [id, packet] of packets) {
+    globalPackets.set(id, packet);
+  }
+}
+
+function addPacketToTable(tableBody: HTMLTableSectionElement, packet: Packet) {
+  let packetRow = createPacketRow(packet);
+  tableBody.append(packetRow);
+  let measurementsRows = createMeasurementRows(packet.measurements);
+  for (let row of measurementsRows) {
+    tableBody.append(row);
   }
 }
 
 function createPacketRow(packet: Packet): HTMLTableRowElement {
   let row = document.createElement("tr");
   let id_td = document.createElement("td");
-  id_td.innerHTML = packet.Id.toString(10);
+  id_td.innerHTML = packet.id.toString();
   let name_td = document.createElement("td");
-  name_td.innerHTML = packet.Name.toString();
+  name_td.innerHTML = packet.name.toString();
   let hexValue_td = document.createElement("td");
-  hexValue_td.innerHTML = packet.HexValue.toString(16);
+  let utf8Encode = new TextEncoder();
+  let byteArr = utf8Encode.encode("abc");
+  hexValue_td.innerHTML = byteArr.toString();
   let count_td = document.createElement("td");
-  count_td.innerHTML = packet.Count.toString();
+  count_td.innerHTML = packet.count.toString();
   let cycleTime_td = document.createElement("td");
-  cycleTime_td.innerHTML = packet.CycleTime.toString();
+  cycleTime_td.innerHTML = packet.cycleTime.toString();
 
   row.append(id_td);
   row.append(name_td);
@@ -46,7 +58,7 @@ function createMeasurementRows(
   for (let measurement of measurements) {
     let row = document.createElement("tr");
     let data = document.createElement("td");
-    let dataString = `${measurement.Name}: ${measurement.Value} ${measurement.Units}`;
+    let dataString = `${measurement.name}: ${measurement.value} ${measurement.units}`;
     data.innerHTML += dataString;
     data.setAttribute("colspan", "5");
     row.append(data);
