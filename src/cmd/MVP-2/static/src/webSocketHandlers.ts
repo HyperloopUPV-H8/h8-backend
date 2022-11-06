@@ -9,5 +9,6 @@ dataSocket.onopen = (ev) => {
 
 dataSocket.onmessage = (ev) => {
   let packet = JSON.parse(ev.data) as Packet;
+
   updateReceiveTable(packet);
 };
