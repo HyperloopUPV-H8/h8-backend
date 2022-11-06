@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func DataSocketHandler(ws websocket.Conn, packetChannel <-chan domain.Packet) {
+func DataSocketHandler(ws websocket.Conn, packetChannel chan domain.Packet) {
 	go func() {
 		for {
 			packetWebAdapterBuf := make([]PacketWebAdapter, 100)
@@ -32,7 +32,7 @@ func DataSocketHandler(ws websocket.Conn, packetChannel <-chan domain.Packet) {
 	}()
 }
 
-func OrderSocketHandler(ws websocket.Conn, orderWAChannel chan<- OrderWebAdapter) {
+func OrderSocketHandler(ws websocket.Conn, orderWAChannel chan OrderWebAdapter) {
 	go func() {
 		for {
 			orderWA := OrderWebAdapter{}
@@ -42,7 +42,7 @@ func OrderSocketHandler(ws websocket.Conn, orderWAChannel chan<- OrderWebAdapter
 	}()
 }
 
-func MessageSocketHandler(ws websocket.Conn, messageChannel <-chan packetParser.PacketUpdate) {
+func MessageSocketHandler(ws websocket.Conn, messageChannel chan packetParser.PacketUpdate) {
 	go func() {
 		for {
 			messageWebAdapterBuf := make([]MessageWebAdapter, 100)

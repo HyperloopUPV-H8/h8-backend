@@ -17,8 +17,17 @@ type Logger struct {
 	writeTicker *time.Ticker
 	buffers     map[string]*[]string
 	EntryChan   chan domain.Entry
-	StopChan    chan bool
+	EnableChan  chan bool
 	Done        chan bool
+}
+
+func (log Logger) Run() {
+	go func() {
+		isEnable := <-log.EnableChan
+		if isEnable {
+			log.Record()
+		}
+	}()
 }
 
 func New(path string, delay time.Duration) *Logger {
@@ -34,8 +43,7 @@ func newLogger(dir string, delay time.Duration) *Logger {
 		writeTicker: time.NewTicker(delay),
 		buffers:     make(map[string]*[]string),
 		EntryChan:   make(chan domain.Entry),
-		StopChan:    make(chan bool),
-		Done:        make(chan bool),
+		EnableChan:  make(chan bool),
 	}
 }
 
@@ -106,7 +114,7 @@ func (logger *Logger) clearBuffers() {
 }
 
 func (logger *Logger) Stop() {
-	logger.StopChan <- true
+	logger.EnableChan <- true
 	<-logger.Done
 }
 
@@ -127,10 +135,12 @@ func (logger *Logger) Record() {
 				logger.write()
 			case entry := <-logger.EntryChan:
 				logger.addEntryToBuffer(entry)
-			case <-logger.StopChan:
-				logger.write()
-				logger.close()
-				break loop
+			case isEnabled := <-logger.EnableChan:
+				if !isEnabled {
+					logger.write()
+					logger.close()
+					break loop
+				}
 			}
 		}
 	}()
