@@ -1,4 +1,4 @@
-package dataTransfer
+package infra
 
 import (
 	"fmt"

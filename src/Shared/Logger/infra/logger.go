@@ -4,7 +4,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/Logger/infra/dto"
 )
 
 type Logger struct {
@@ -12,7 +12,7 @@ type Logger struct {
 	currDir    *Dir
 	ticker     *time.Ticker
 	EnableChan chan bool
-	EntryChan  chan domain.PacketTimestampPair
+	EntryChan  chan dto.LogPacket
 }
 
 func NewLogger(baseDir string, delay time.Duration) Logger {
@@ -21,7 +21,7 @@ func NewLogger(baseDir string, delay time.Duration) Logger {
 		currDir:    nil,
 		ticker:     time.NewTicker(delay),
 		EnableChan: make(chan bool),
-		EntryChan:  make(chan domain.PacketTimestampPair, 100),
+		EntryChan:  make(chan dto.LogPacket, 100),
 	}
 }
 
@@ -53,9 +53,9 @@ loop:
 	}
 }
 
-func (log Logger) addPacket(packet domain.PacketTimestampPair) {
-	for name, measurement := range packet.Packet.Measurements {
-		value := NewValue(packet.Timestamp, measurement.Value)
-		log.currDir.AppendValue(name, value)
+func (log Logger) addPacket(packet dto.LogPacket) {
+	for _, measurement := range packet.Values() {
+		value := NewValue(packet.Timestamp(), measurement.Data())
+		log.currDir.AppendValue(measurement.Name(), value)
 	}
 }
