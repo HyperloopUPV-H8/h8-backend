@@ -12,7 +12,7 @@ type Ranges struct {
 	warning [2]int
 }
 
-var rangesExp = regexp.MustCompile(`^\[(-?\d+)\,(-?\d+)\]$`)
+var rangesExp = regexp.MustCompile(`^\[(-?\d*)\,(-?\d*)\]$`)
 
 func NewRanges(safeRangeStr string, warningRangeStr string) Ranges {
 	safeRange := getRangesFromString(strings.ReplaceAll(safeRangeStr, " ", ""))
@@ -31,6 +31,10 @@ func getRangesFromString(str string) [2]int {
 }
 
 func getInt(intString string) int {
+	if len(intString) == 0 {
+		return 0
+	}
+
 	number, err := strconv.ParseInt(intString, 10, 64)
 
 	if err != nil {
