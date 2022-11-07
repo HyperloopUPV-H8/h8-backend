@@ -1,6 +1,7 @@
 package number
 
 import (
+	"fmt"
 	"log"
 	"regexp"
 	"strconv"
@@ -11,7 +12,7 @@ type Operation struct {
 	operand  float64
 }
 
-var operationExp = regexp.MustCompile(`([+\-\/*]{1})(\d+)`)
+var operationExp = regexp.MustCompile(fmt.Sprintf(`([+\-\/*]{1})(%s)`, decimalRegex))
 
 func doOperation(number float64, operation Operation) float64 {
 	switch operation.operator {

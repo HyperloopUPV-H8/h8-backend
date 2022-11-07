@@ -1,15 +1,18 @@
 package number
 
 import (
+	"fmt"
 	"regexp"
 )
+
+const decimalRegex = `[-+]?(\d*\.)?\d+(e[-+]?\d+)?`
 
 type Unit struct {
 	name       string
 	operations []Operation
 }
 
-var unitExp = regexp.MustCompile(`^([a-zA-Z]+)#((?:[+\-\/*]{1}\d+)*)#$`)
+var unitExp = regexp.MustCompile(fmt.Sprintf(`^([a-zA-Z]+)#((?:[+\-\/*]{1}%s)*)#$`, decimalRegex))
 
 func newUnit(unitStr string) Unit {
 	matches := unitExp.FindStringSubmatch(unitStr)
