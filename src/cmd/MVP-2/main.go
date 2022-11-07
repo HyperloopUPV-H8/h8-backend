@@ -12,8 +12,9 @@ import (
 	logger "github.com/HyperloopUPV-H8/Backend-H8/Shared/logger/infra"
 	packetAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter"
 	streaming "github.com/HyperloopUPV-H8/Backend-H8/Shared/streaming_handlers"
-	dataTransfer "github.com/HyperloopUPV-H8/Backend-H8/data_transfer"
 	dataTransferDomain "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/domain"
+	dataTransfer "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/infra"
+	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/infra/mappers"
 	messageTransferDomain "github.com/HyperloopUPV-H8/Backend-H8/message_transfer/domain"
 	orderTransferDomain "github.com/HyperloopUPV-H8/Backend-H8/order_transfer/domain"
 	"github.com/joho/godotenv"
@@ -49,7 +50,7 @@ func main() {
 	go func() {
 		for packetTimestampPair := range dataTransfer.PacketTimestampChannel {
 			select {
-			case logger.EntryChan <- packetTimestampPair:
+			case logger.EntryChan <- mappers.ToLogPacket(packetTimestampPair):
 			default:
 			}
 			select {
