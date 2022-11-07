@@ -5,10 +5,10 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/domain"
 )
 
-func ToLogPacket(packet domain.PacketTimestampPair) dto.LogPacket {
+func ToLogValues(packet domain.PacketTimestampPair) []dto.LogValue {
 	values := make([]dto.LogValue, 0, len(packet.Packet.Measurements))
 	for name, measure := range packet.Packet.Measurements {
-		values = append(values, dto.NewLogValue(name, measure.Value.GetDisplayUnits()))
+		values = append(values, dto.NewLogValue(name, measure.Value.GetDisplayUnits(), packet.Timestamp))
 	}
-	return dto.NewLogPacket(packet.Timestamp, values)
+	return values
 }

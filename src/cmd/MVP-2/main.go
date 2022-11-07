@@ -50,7 +50,7 @@ func main() {
 	go func() {
 		for packetTimestampPair := range dataTransfer.PacketTimestampChannel {
 			select {
-			case logger.EntryChan <- mappers.ToLogPacket(packetTimestampPair):
+			case logger.EntryChan <- mappers.ToLogValues(packetTimestampPair):
 			default:
 			}
 			select {
