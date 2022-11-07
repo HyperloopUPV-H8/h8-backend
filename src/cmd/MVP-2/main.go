@@ -60,18 +60,7 @@ func main() {
 		}
 	}()
 
-	//logger.Run()
-
-	// go func() {
-	// 	for {
-	// 		payload := dataTransfer.Parse(packetAdapter.ReceiveData)
-	// 		select {
-	// 		case logger.EntryChan <- *payload:
-	// 		default:
-	// 		}
-	// 		dataTransfer.PacketTimestampChan <- payload.Packet
-	// 	}
-	// }()
+	logger.Run()
 
 	fmt.Println("listening")
 	server.ListenAndServe()
