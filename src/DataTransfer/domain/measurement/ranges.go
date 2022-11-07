@@ -7,12 +7,14 @@ import (
 	"strings"
 )
 
+const decimalRegex = `[-+]?(\d*\.)?\d+(e[-+]?\d+)?`
+
 type Ranges struct {
 	safe    [2]float64
 	warning [2]float64
 }
 
-var rangesExp = regexp.MustCompile(`^\[(([-+]?(\d*\.)?\d+(e[-+]?\d+)?)*)\,(([-+]?(\d*\.)?\d+(e[-+]?\d+)?)*)\]$`)
+var rangesExp = regexp.MustCompile(fmt.Sprintf(`^\[((%s)*)\,((%s)*)\]$`, decimalRegex, decimalRegex))
 
 func NewRanges(safeRangeStr string, warningRangeStr string) Ranges {
 	safeRange := getRangesFromString(strings.ReplaceAll(safeRangeStr, " ", ""))
