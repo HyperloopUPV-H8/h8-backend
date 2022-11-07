@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/domain"
 )
 
 func CreateFile() *os.File {

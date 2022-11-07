@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/domain/measurement/value"
+	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/domain/measurement/value"
 )
 
 type ValueTimestamp struct {

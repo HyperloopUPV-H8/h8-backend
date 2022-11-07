@@ -9,30 +9,30 @@ import (
 
 type Packet string
 
-func (server HTTPServer[D, O, M]) HandleWebSocketOrder(route string, handler func(websocket.Conn, chan O)) {
-	server.router.Handle(route, SocketHandle[O]{
+func (server HTTPServer[D, O, M]) HandleWebSocketOrder(route string, handler func(websocket.Conn, chan<- O)) {
+	server.router.Handle(route, SocketHandle[chan<- O]{
 		function: handler,
-		channel:  server.OrderSend,
+		channel:  server.OrderChan,
 	})
 }
 
-func (server HTTPServer[D, O, M]) HandleWebSocketData(route string, handler func(websocket.Conn, chan D)) {
-	server.router.Handle(route, SocketHandle[D]{
+func (server HTTPServer[D, O, M]) HandleWebSocketData(route string, handler func(websocket.Conn, <-chan D)) {
+	server.router.Handle(route, SocketHandle[<-chan D]{
 		function: handler,
-		channel:  server.PacketRecv,
+		channel:  server.PacketChan,
 	})
 }
 
-func (server HTTPServer[D, O, M]) HandleWebSocketMessage(route string, handler func(websocket.Conn, chan M)) {
-	server.router.Handle(route, SocketHandle[M]{
+func (server HTTPServer[D, O, M]) HandleWebSocketMessage(route string, handler func(websocket.Conn, <-chan M)) {
+	server.router.Handle(route, SocketHandle[<-chan M]{
 		function: handler,
-		channel:  server.MessageRecv,
+		channel:  server.MessageChan,
 	})
 }
 
 type SocketHandle[T any] struct {
-	channel  chan T
-	function func(websocket.Conn, chan T)
+	channel  T
+	function func(websocket.Conn, T)
 }
 
 var upgrader = websocket.Upgrader{}
@@ -44,5 +44,4 @@ func (handle SocketHandle[T]) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 
 	handle.function(*conn, handle.channel)
-
 }
