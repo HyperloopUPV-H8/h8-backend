@@ -3,9 +3,9 @@ package streaming
 import (
 	"fmt"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/domain"
-	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/domain/measurement"
 	packetParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/domain/measurement"
 )
 
 type PacketWebAdapter struct {

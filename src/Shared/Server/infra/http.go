@@ -16,18 +16,18 @@ const (
 type HTTPServer[D, O, M any] struct {
 	router      *mux.Router
 	page        spaHandler
-	PacketRecv  chan D
-	OrderSend   chan O
-	MessageRecv chan M
+	PacketChan  chan D
+	OrderChan   chan O
+	MessageChan chan M
 }
 
-func New[D, O, M any](dataIn chan D, orderOut chan O, messageIn chan M) HTTPServer[D, O, M] {
+func New[D, O, M any]() HTTPServer[D, O, M] {
 	return HTTPServer[D, O, M]{
 		router:      mux.NewRouter(),
 		page:        NewPage(defaultStaticPath, defaultIndexPath),
-		PacketRecv:  dataIn,
-		OrderSend:   orderOut,
-		MessageRecv: messageIn,
+		PacketChan:  make(chan D),
+		OrderChan:   make(chan O),
+		MessageChan: make(chan M),
 	}
 }
 

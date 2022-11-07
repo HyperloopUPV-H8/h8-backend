@@ -1,8 +1,8 @@
 package measurement
 
 import (
-	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/domain/measurement/value"
 	excelAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_adapter/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/domain/measurement/value"
 )
 
 type Measurement struct {

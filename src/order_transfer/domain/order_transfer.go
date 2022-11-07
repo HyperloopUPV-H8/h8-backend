@@ -1,4 +1,4 @@
-package ordertransfer
+package domain
 
 type OrderTransfer struct {
 	OrderWebAdapterChannel chan OrderWebAdapter

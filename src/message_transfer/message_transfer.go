@@ -1,4 +1,4 @@
-package ordertransfer
+package messageTransfer
 
 import packetParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser/domain"
 
