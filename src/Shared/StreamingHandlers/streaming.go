@@ -10,6 +10,7 @@ import (
 
 func DataSocketHandler(ws websocket.Conn, packetChannel chan domain.Packet) {
 	go func() {
+	routine:
 		for {
 			packetWebAdapterBuf := make(map[uint16]PacketWebAdapter, 100)
 			timeout := time.After(time.Millisecond * 20)
@@ -20,7 +21,9 @@ func DataSocketHandler(ws websocket.Conn, packetChannel chan domain.Packet) {
 					adapter := newPacketWebAdapter(packet)
 					packetWebAdapterBuf[adapter.Id] = adapter
 				case <-timeout:
-					ws.WriteJSON(packetWebAdapterBuf)
+					if err := ws.WriteJSON(packetWebAdapterBuf); err != nil {
+						break routine
+					}
 					break loop
 				}
 			}

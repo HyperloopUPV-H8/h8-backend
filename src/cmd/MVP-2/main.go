@@ -18,7 +18,7 @@ import (
 
 func main() {
 	fmt.Println("Starting program")
-	godotenv.Load("../../.env")
+	godotenv.Load(".env")
 
 	ips := []string{"127.0.0.1", "127.0.0.2"}
 	document := excelRetriever.GetExcel(os.Getenv("SPREADSHEET_ID"), "excel.xlsx", ".", os.Getenv("SECRET_FILE_PATH"))
