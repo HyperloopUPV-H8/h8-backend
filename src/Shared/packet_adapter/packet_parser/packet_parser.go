@@ -76,7 +76,7 @@ func (parser PacketParser) Decode(data []byte) domain.PacketUpdate {
 	id := serde.DecodeID(dataReader)
 	values := parser.decodePacket(parser.packetTypes[id], dataReader)
 
-	return domain.NewPacketUpdate(id, values, dataReader.Bytes())
+	return domain.NewPacketUpdate(id, values, data)
 }
 
 func (parser PacketParser) decodePacket(measurements PacketMeasurements, bytes io.Reader) map[Name]any {

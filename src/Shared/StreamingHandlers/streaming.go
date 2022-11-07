@@ -8,21 +8,17 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func DataSocketHandler(ws websocket.Conn, packetChannel <-chan domain.Packet) {
+func DataSocketHandler(ws websocket.Conn, packetChannel chan domain.Packet) {
 	go func() {
 		for {
-			packetWebAdapterBuf := make([]PacketWebAdapter, 100)
+			packetWebAdapterBuf := make(map[uint16]PacketWebAdapter, 100)
 			timeout := time.After(time.Millisecond * 20)
 		loop:
 			for {
 				select {
 				case packet := <-packetChannel:
 					adapter := newPacketWebAdapter(packet)
-					packetWebAdapterBuf = append(packetWebAdapterBuf, adapter)
-					if len(packetWebAdapterBuf) == 100 {
-						ws.WriteJSON(packetWebAdapterBuf)
-						break loop
-					}
+					packetWebAdapterBuf[adapter.Id] = adapter
 				case <-timeout:
 					ws.WriteJSON(packetWebAdapterBuf)
 					break loop
@@ -32,7 +28,7 @@ func DataSocketHandler(ws websocket.Conn, packetChannel <-chan domain.Packet) {
 	}()
 }
 
-func OrderSocketHandler(ws websocket.Conn, orderWAChannel chan<- OrderWebAdapter) {
+func OrderSocketHandler(ws websocket.Conn, orderWAChannel chan OrderWebAdapter) {
 	go func() {
 		for {
 			orderWA := OrderWebAdapter{}
@@ -42,7 +38,7 @@ func OrderSocketHandler(ws websocket.Conn, orderWAChannel chan<- OrderWebAdapter
 	}()
 }
 
-func MessageSocketHandler(ws websocket.Conn, messageChannel <-chan packetParser.PacketUpdate) {
+func MessageSocketHandler(ws websocket.Conn, messageChannel chan packetParser.PacketUpdate) {
 	go func() {
 		for {
 			messageWebAdapterBuf := make([]MessageWebAdapter, 100)
