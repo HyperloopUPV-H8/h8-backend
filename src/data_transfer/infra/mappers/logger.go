@@ -6,7 +6,7 @@ import (
 )
 
 func ToLogPacket(packet domain.PacketTimestampPair) dto.LogPacket {
-	values := make([]dto.LogValue, len(packet.Packet.Measurements))
+	values := make([]dto.LogValue, 0, len(packet.Packet.Measurements))
 	for name, measure := range packet.Packet.Measurements {
 		values = append(values, dto.NewLogValue(name, measure.Value.GetDisplayUnits()))
 	}
