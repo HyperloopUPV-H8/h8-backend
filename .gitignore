@@ -13,3 +13,6 @@ src/*.json
 
 src/cmd/MVP-2/static/build
 src/cmd/MVP-2/static/node_modules
+
+src/cmd/MVP-2/static/build
+src/cmd/MVP-2/static/node_modules
