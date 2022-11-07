@@ -1,4 +1,4 @@
-package ordertransfer
+package domain
 
 type OrderWebAdapter struct {
 	Id     uint16

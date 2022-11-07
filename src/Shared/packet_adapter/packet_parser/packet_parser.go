@@ -6,10 +6,10 @@ import (
 	"log"
 	"strconv"
 
-	ordertransfer "github.com/HyperloopUPV-H8/Backend-H8/OrderTransfer"
 	excelAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_adapter/domain"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser/domain"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser/infra/serde"
+	ordertransfer "github.com/HyperloopUPV-H8/Backend-H8/order_transfer/domain"
 )
 
 type ID = uint16
