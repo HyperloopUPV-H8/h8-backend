@@ -11,7 +11,7 @@ type Operation struct {
 	operand  float64
 }
 
-var operationExp = regexp.MustCompile(`([+\-\/*]{1})(\d+)`)
+var operationExp = regexp.MustCompile(`([+\-\/*]{1})([-+]?(\d*\.)?\d+(e[-+]?\d+)?)`)
 
 func doOperation(number float64, operation Operation) float64 {
 	switch operation.operator {

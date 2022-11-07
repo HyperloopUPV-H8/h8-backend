@@ -9,7 +9,7 @@ type Unit struct {
 	operations []Operation
 }
 
-var unitExp = regexp.MustCompile(`^([a-zA-Z]+)#((?:[+\-\/*]{1}\d+)*)#$`)
+var unitExp = regexp.MustCompile(`^([a-zA-Z]+)#((?:[+\-\/*]{1}[-+]?(\d*\.)?\d+(e[-+]?\d+)?)*)#$`)
 
 func newUnit(unitStr string) Unit {
 	matches := unitExp.FindStringSubmatch(unitStr)
