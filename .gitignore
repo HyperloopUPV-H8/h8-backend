@@ -1,3 +1,4 @@
+
 .env
 src/cmd/MVP-1/*.xlsx
 src/cmd/MVP-1/*.exe
@@ -13,3 +14,5 @@ src/*.json
 src/cmd/MVP-2/static/build
 src/cmd/MVP-2/static/node_modules
 
+src/cmd/MVP-2/static/build
+src/cmd/MVP-2/static/node_modules
