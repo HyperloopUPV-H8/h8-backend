@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/domain/measurement/value/number"
+	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/domain/measurement/value/number"
 )
 
 type Value interface {

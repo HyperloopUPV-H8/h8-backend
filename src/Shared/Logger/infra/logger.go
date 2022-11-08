@@ -4,7 +4,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/DataTransfer/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/domain"
 )
 
 type Logger struct {
@@ -27,8 +27,7 @@ func NewLogger(baseDir string, delay time.Duration) Logger {
 
 func (log Logger) Run() {
 	go func() {
-		for {
-			isEnable := <-log.EnableChan
+		for isEnable := range log.EnableChan {
 			if isEnable {
 				log.record()
 			}

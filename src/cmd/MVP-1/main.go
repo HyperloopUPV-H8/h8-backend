@@ -1,17 +1,16 @@
-
 package main
 
 import (
 	"log"
 	"os"
 
-	dataTransfer "github.com/HyperloopUPV-H8/Backend-H8/DataTransfer"
 	excelAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_adapter"
 	excelAdapterDomain "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_adapter/domain"
 	excelRetriever "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_retriever"
 	excelRetrieverDomain "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_retriever/domain"
 	packetAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter"
 	"github.com/HyperloopUPV-H8/Backend-H8/cmd/MVP-1/logger"
+	dataTransfer "github.com/HyperloopUPV-H8/Backend-H8/data_transfer"
 
 	"github.com/joho/godotenv"
 )
@@ -79,8 +78,7 @@ func main() {
 	dataTransfer := dataTransfer.New(boards)
 	dataTransfer.Invoke(packetAdapter.ReceiveData)
 
-	for packet := range dataTransfer.PacketChannel {
-		logger.WritePacket(packet, logFile)
+	for packetTimestampPair := range dataTransfer.PacketTimestampChannel {
+		logger.WritePacket(packetTimestampPair.Packet, logFile)
 	}
 }
-
