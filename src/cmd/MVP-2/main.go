@@ -49,9 +49,13 @@ func main() {
 
 	go func() {
 		for packetTimestampPair := range dataTransfer.PacketTimestampChannel {
-			select {
-			case logger.EntryChan <- mappers.ToLogValues(packetTimestampPair):
-			default:
+		loop:
+			for _, value := range mappers.ToLogValues(packetTimestampPair) {
+				select {
+				case logger.ValueChan <- value:
+				default:
+					break loop
+				}
 			}
 			select {
 			case server.PacketChan <- packetTimestampPair.Packet:

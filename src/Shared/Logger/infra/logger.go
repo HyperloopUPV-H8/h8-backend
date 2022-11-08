@@ -12,7 +12,7 @@ type Logger struct {
 	currDir    *Dir
 	ticker     *time.Ticker
 	EnableChan chan bool
-	EntryChan  chan []dto.LogValue
+	ValueChan  chan dto.LogValue
 }
 
 func NewLogger(baseDir string, delay time.Duration) Logger {
@@ -21,7 +21,7 @@ func NewLogger(baseDir string, delay time.Duration) Logger {
 		currDir:    nil,
 		ticker:     time.NewTicker(delay),
 		EnableChan: make(chan bool),
-		EntryChan:  make(chan []dto.LogValue, 100),
+		ValueChan:  make(chan dto.LogValue, 100),
 	}
 }
 
@@ -42,8 +42,8 @@ loop:
 		select {
 		case <-log.ticker.C:
 			log.currDir.Dump()
-		case packets := <-log.EntryChan:
-			log.addPackets(packets)
+		case value := <-log.ValueChan:
+			log.addValue(value)
 		case isEnable := <-log.EnableChan:
 			if !isEnable {
 				log.currDir.Dump()
@@ -53,9 +53,7 @@ loop:
 	}
 }
 
-func (log Logger) addPackets(values []dto.LogValue) {
-	for _, value := range values {
-		val := NewValue(value.Timestamp(), value.Data())
-		log.currDir.AppendValue(value.Name(), val)
-	}
+func (log Logger) addValue(value dto.LogValue) {
+	val := NewValue(value.Timestamp(), value.Data())
+	log.currDir.AppendValue(value.Name(), val)
 }
