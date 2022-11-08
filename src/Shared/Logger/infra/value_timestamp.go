@@ -3,8 +3,6 @@ package infra
 import (
 	"fmt"
 	"time"
-
-	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/domain/measurement/value"
 )
 
 type ValueTimestamp struct {
@@ -12,9 +10,9 @@ type ValueTimestamp struct {
 	timestamp time.Time
 }
 
-func NewValue(timestamp time.Time, measurement value.Value) ValueTimestamp {
+func NewValue(timestamp time.Time, value string) ValueTimestamp {
 	return ValueTimestamp{
-		value:     measurement.ToDisplayUnitsString(),
+		value:     value,
 		timestamp: timestamp,
 	}
 }
