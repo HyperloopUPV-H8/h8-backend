@@ -3,18 +3,21 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
+	loggerDto "github.com/HyperloopUPV-H8/Backend-H8/Shared/Logger/infra/dto"
 	server "github.com/HyperloopUPV-H8/Backend-H8/Shared/Server/infra"
 	excelAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_adapter"
 	excelAdapterDomain "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_adapter/domain"
 	excelRetriever "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_retriever"
 	logger "github.com/HyperloopUPV-H8/Backend-H8/Shared/logger/infra"
 	packetAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter"
-	streaming "github.com/HyperloopUPV-H8/Backend-H8/Shared/streaming_handlers"
-	dataTransferDomain "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/domain"
+	unitsInfra "github.com/HyperloopUPV-H8/Backend-H8/Shared/units/infra"
+	units "github.com/HyperloopUPV-H8/Backend-H8/Shared/units/infra/mappers"
+	dataTransferApplication "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/application"
 	dataTransfer "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/infra"
-	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/infra/mappers"
+	dataTransferPresentation "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/presentation"
 	messageTransferDomain "github.com/HyperloopUPV-H8/Backend-H8/message_transfer/domain"
 	orderTransferDomain "github.com/HyperloopUPV-H8/Backend-H8/order_transfer/domain"
 	"github.com/joho/godotenv"
@@ -29,41 +32,55 @@ func main() {
 
 	boards := excelAdapter.GetBoards(document)
 	packets := make([]excelAdapterDomain.PacketDTO, 0)
+	podUnits := make(map[string]string)
+	displayUnits := make(map[string]string)
 	for _, board := range boards {
-		packets = append(packets, board.GetPackets()...)
+		expandedPackets := board.GetPackets()
+		packets = append(packets, expandedPackets...)
+		for _, packet := range expandedPackets {
+			for _, value := range packet.Measurements {
+				podUnits[value.Name] = strings.Split(value.PodUnits, "#")[1]
+				displayUnits[value.Name] = strings.Split(value.DisplayUnits, "#")[1]
+			}
+
+		}
 	}
 
 	packetAdapter := packetAdapter.New(ips, packets)
 
-	dataTransfer := dataTransfer.New(boards)
-	dataTransfer.Invoke(packetAdapter.ReceiveData)
+	podUnitConverter := unitsInfra.NewUnits(podUnits)
+	displayUnitConverter := unitsInfra.NewUnits(displayUnits)
 
-	logger := logger.NewLogger(".", time.Second*5)
+	packetFactory := dataTransfer.NewFactory()
+
 	server := createServer()
-
-	server.HandleLog("/log", logger.EnableChan)
-	server.HandleWebSocketData("/data", streaming.DataSocketHandler)
-	server.HandleWebSocketOrder("/order", streaming.OrderSocketHandler)
-	//server.HandleWebSocketMessage("/message", streaming.MessageSocketHandler)
-	server.HandleSPA()
+	logger := logger.NewLogger(".", time.Second*5)
 
 	go func() {
-		for packetTimestampPair := range dataTransfer.PacketTimestampChannel {
+		for {
+			packet := units.ConvertUpdate(units.ConvertUpdate(packetAdapter.ReceiveData(), podUnitConverter), displayUnitConverter)
+			json := dataTransferApplication.NewJSON(packetFactory.NewPacket(packet))
+
 		loop:
-			for _, value := range mappers.ToLogValues(packetTimestampPair) {
+			for name, measure := range packet.Values() {
 				select {
-				case logger.ValueChan <- value:
+				case logger.ValueChan <- loggerDto.NewLogValue(name, fmt.Sprintf("%v", measure), packet.Timestamp()):
 				default:
 					break loop
 				}
 			}
+
 			select {
-			case server.PacketChan <- packetTimestampPair.Packet:
+			case server.PacketChan <- json:
 			default:
 			}
 
 		}
 	}()
+
+	server.HandleLog("/log", logger.EnableChan)
+	server.HandleWebSocketData("/data", dataTransferPresentation.DataRoutine)
+	server.HandleSPA()
 
 	logger.Run()
 
@@ -72,12 +89,12 @@ func main() {
 }
 
 func createServer() server.HTTPServer[
-	dataTransferDomain.Packet,
+	dataTransferApplication.PacketJSON,
 	orderTransferDomain.OrderWebAdapter,
 	messageTransferDomain.Message,
 ] {
 	server := server.New[
-		dataTransferDomain.Packet,
+		dataTransferApplication.PacketJSON,
 		orderTransferDomain.OrderWebAdapter,
 		messageTransferDomain.Message]()
 

@@ -1,61 +1,45 @@
 package domain
 
 import (
-	"log"
-	"strconv"
 	"time"
-
-	excelAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_adapter/domain"
-	packetParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser/domain"
-	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/domain/measurement"
 )
 
-type PacketTimestampPair struct {
-	Packet    Packet
-	Timestamp time.Time
-}
+type id = uint16
 
 type Packet struct {
-	Id           uint16
-	Name         string
-	HexValue     []byte
-	Measurements map[string]measurement.Measurement
-	Count        uint
-	CycleTime    int64
+	id        id
+	count     uint
+	cycleTime time.Duration
+	hexValue  []byte
+	values    map[string]any
 }
 
-func (packetTimestampPair *PacketTimestampPair) UpdatePacket(pu packetParser.PacketUpdate) {
-	packetTimestampPair.Packet.Count++
-	packetTimestampPair.Packet.HexValue = pu.HexValue
-	packetTimestampPair.Packet.CycleTime = pu.Timestamp.Sub(packetTimestampPair.Timestamp).Milliseconds()
-	packetTimestampPair.Timestamp = pu.Timestamp
-	for name, value := range pu.UpdatedValues {
-		packetTimestampPair.Packet.Measurements[name].Value.Update(value)
+func NewPacket(id id, count uint, cycleTime time.Duration, hexValue []byte, values map[string]any) Packet {
+	return Packet{
+		id:        id,
+		count:     count,
+		cycleTime: cycleTime,
+		hexValue:  hexValue,
+		values:    values,
 	}
 }
 
-func NewPacketTimestampPairs(rawPackets []excelAdapter.PacketDTO) map[uint16]*PacketTimestampPair {
-	packetTimestampPairs := make(map[uint16]*PacketTimestampPair, len(rawPackets))
-	for _, packet := range rawPackets {
-		id := getID(packet)
-		packetTimestampPairs[id] = &PacketTimestampPair{
-			Packet: Packet{
-				Id:           id,
-				Name:         packet.Description.Name,
-				Measurements: measurement.NewMeasurements(packet.Measurements),
-				Count:        0,
-				CycleTime:    0,
-			},
-			Timestamp: time.Now(),
-		}
-	}
-	return packetTimestampPairs
+func (packet Packet) ID() id {
+	return packet.id
 }
 
-func getID(packet excelAdapter.PacketDTO) uint16 {
-	id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
-	if err != nil {
-		log.Fatalf("get id: expected valid id, got %s\n", packet.Description.ID)
-	}
-	return uint16(id)
+func (packet Packet) Count() uint {
+	return packet.count
+}
+
+func (packet Packet) CycleTime() time.Duration {
+	return packet.cycleTime
+}
+
+func (packet Packet) HexValue() []byte {
+	return packet.hexValue
+}
+
+func (packet Packet) Values() map[string]any {
+	return packet.values
 }

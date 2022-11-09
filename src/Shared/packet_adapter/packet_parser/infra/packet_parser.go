@@ -1,4 +1,4 @@
-package domain
+package infra
 
 import (
 	"bytes"
@@ -8,17 +8,18 @@ import (
 
 	excelAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_adapter/domain"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser/infra/dto"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser/infra/serde"
 	ordertransfer "github.com/HyperloopUPV-H8/Backend-H8/order_transfer/domain"
 )
 
-type ID = uint16
-type PacketMeasurements = []domain.MeasurementData
-type Name = string
+type id = uint16
+type packetMeasurements = []domain.MeasurementData
+type name = string
 
 type PacketParser struct {
-	packetTypes map[ID]PacketMeasurements
-	enums       map[Name]domain.Enum
+	packetTypes map[id]packetMeasurements
+	enums       map[name]domain.Enum
 }
 
 func NewParser(packets []excelAdapter.PacketDTO) PacketParser {
@@ -28,8 +29,8 @@ func NewParser(packets []excelAdapter.PacketDTO) PacketParser {
 	}
 }
 
-func getEnums(packets []excelAdapter.PacketDTO) map[Name]domain.Enum {
-	enums := make(map[Name]domain.Enum, 0)
+func getEnums(packets []excelAdapter.PacketDTO) map[name]domain.Enum {
+	enums := make(map[name]domain.Enum, 0)
 	for _, packet := range packets {
 		for _, measurement := range packet.Measurements {
 			if domain.IsEnum(measurement.ValueType) {
@@ -41,8 +42,8 @@ func getEnums(packets []excelAdapter.PacketDTO) map[Name]domain.Enum {
 	return enums
 }
 
-func getPacketTypes(packets []excelAdapter.PacketDTO) map[uint16]PacketMeasurements {
-	packetMeasurements := make(map[ID]PacketMeasurements, len(packets))
+func getPacketTypes(packets []excelAdapter.PacketDTO) map[uint16]packetMeasurements {
+	packetMeasurements := make(map[id]packetMeasurements, len(packets))
 
 	for _, packet := range packets {
 		measurementDataArr := getMeasurementData(packet)
@@ -71,16 +72,16 @@ func getMeasurementData(packet excelAdapter.PacketDTO) []domain.MeasurementData 
 	return measurementDataArr
 }
 
-func (parser PacketParser) Decode(data []byte) domain.PacketUpdate {
+func (parser PacketParser) Decode(data []byte) dto.PacketUpdate {
 	dataReader := bytes.NewBuffer(data)
 	id := serde.DecodeID(dataReader)
 	values := parser.decodePacket(parser.packetTypes[id], dataReader)
 
-	return domain.NewPacketUpdate(id, values, data)
+	return dto.NewPacketUpdate(id, values, data)
 }
 
-func (parser PacketParser) decodePacket(measurements PacketMeasurements, bytes io.Reader) map[Name]any {
-	values := make(map[Name]any, len(measurements))
+func (parser PacketParser) decodePacket(measurements packetMeasurements, bytes io.Reader) map[name]any {
+	values := make(map[name]any, len(measurements))
 	for _, measurementData := range measurements {
 		values[measurementData.Name] = parser.decodeMeasurement(measurementData, bytes)
 	}

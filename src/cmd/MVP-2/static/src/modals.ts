@@ -4,11 +4,5 @@ export type Packet = {
   hexValue: string;
   count: number;
   cycleTime: number;
-  measurements: Measurement[];
-};
-
-export type Measurement = {
-  name: string;
-  value: string;
-  units: string;
+  values: Map<string, string>;
 };
