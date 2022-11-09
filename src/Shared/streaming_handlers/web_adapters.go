@@ -16,7 +16,7 @@ type PacketWebAdapter struct {
 }
 
 func newPacketWebAdapter(packet dto.Packet) PacketWebAdapter {
-	measurementWebAdapters := getMeasurementWebAdapters(packet.Measurements())
+	measurementWebAdapters := getMeasurementWebAdapters(packet.Values())
 	return PacketWebAdapter{
 		Id:                      packet.ID(),
 		MeasurementsWebAdapters: measurementWebAdapters,
@@ -31,7 +31,7 @@ func getMeasurementWebAdapters(measurements map[string]any) []MeasurementWebAdap
 	for name, value := range measurements {
 		adapters = append(adapters, MeasurementWebAdapter{
 			Name:  name,
-			Value: fmt.Sprintf("%s", value),
+			Value: fmt.Sprintf("%v", value),
 		})
 	}
 	return adapters

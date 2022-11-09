@@ -8,5 +8,5 @@ type Update interface {
 	ID() id
 	Timestamp() time.Time
 	HexValue() []byte
-	Measurements() map[string]any
+	Values() map[string]any
 }

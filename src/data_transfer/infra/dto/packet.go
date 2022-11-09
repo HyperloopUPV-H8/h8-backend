@@ -9,20 +9,20 @@ import (
 type id = uint16
 
 type Packet struct {
-	id           id
-	count        uint
-	cycleTime    time.Duration
-	hexValue     []byte
-	measurements map[string]any
+	id        id
+	count     uint
+	cycleTime time.Duration
+	hexValue  []byte
+	values    map[string]any
 }
 
 func NewPacket(count uint, cycleTime time.Duration, update interfaces.Update) Packet {
 	return Packet{
-		id:           update.ID(),
-		count:        count,
-		cycleTime:    cycleTime,
-		hexValue:     update.HexValue(),
-		measurements: update.Measurements(),
+		id:        update.ID(),
+		count:     count,
+		cycleTime: cycleTime,
+		hexValue:  update.HexValue(),
+		values:    update.Values(),
 	}
 }
 
@@ -42,6 +42,6 @@ func (packet Packet) HexValue() []byte {
 	return packet.hexValue
 }
 
-func (packet Packet) Measurements() map[string]any {
-	return packet.measurements
+func (packet Packet) Values() map[string]any {
+	return packet.values
 }
