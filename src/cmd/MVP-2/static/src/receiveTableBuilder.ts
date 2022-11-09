@@ -1,9 +1,9 @@
-import { Measurement, Packet } from "./modals";
+import { Packet } from "./modals";
 
 var globalPackets = new Map<number, Packet>();
 
-export function updateReceiveTable(packets: Map<number, Packet>) {
-  updatePackets(packets);
+export function updateReceiveTable(packet: Packet) {
+  updatePackets(packet);
   let tableBody = document.getElementById(
     "tableBody"
   ) as HTMLTableSectionElement;
@@ -13,16 +13,14 @@ export function updateReceiveTable(packets: Map<number, Packet>) {
   }
 }
 
-function updatePackets(packets: Map<number, Packet>) {
-  for (let [id, packet] of packets) {
-    globalPackets.set(id, packet);
-  }
+function updatePackets(packet: Packet) {
+  globalPackets.set(packet.id, packet);
 }
 
 function addPacketToTable(tableBody: HTMLTableSectionElement, packet: Packet) {
   let packetRow = createPacketRow(packet);
   tableBody.append(packetRow);
-  let measurementsRows = createMeasurementRows(packet.measurements);
+  let measurementsRows = createMeasurementRows(packet.values);
   for (let row of measurementsRows) {
     tableBody.append(row);
   }
@@ -33,13 +31,13 @@ function createPacketRow(packet: Packet): HTMLTableRowElement {
   let id_td = document.createElement("td");
   id_td.innerHTML = packet.id.toString(10);
   let name_td = document.createElement("td");
-  name_td.innerHTML = packet.name.toString();
+  name_td.innerHTML = "___";
   let hexValue_td = document.createElement("td");
   hexValue_td.innerHTML = packet.hexValue.toString();
   let count_td = document.createElement("td");
-  count_td.innerHTML = packet.count.toString();
+  count_td.innerHTML = packet.count.toString(10);
   let cycleTime_td = document.createElement("td");
-  cycleTime_td.innerHTML = packet.cycleTime.toString();
+  cycleTime_td.innerHTML = packet.cycleTime.toString(10);
 
   row.append(id_td);
   row.append(name_td);
@@ -50,13 +48,14 @@ function createPacketRow(packet: Packet): HTMLTableRowElement {
 }
 
 function createMeasurementRows(
-  measurements: Measurement[]
+  measurements: Map<string, string>
 ): HTMLTableRowElement[] {
+  console.log(measurements)
   let rows = [];
-  for (let measurement of measurements) {
+  for (let measurement in measurements) {
     let row = document.createElement("tr");
     let data = document.createElement("td");
-    let dataString = `${measurement.name}: ${measurement.value} ${measurement.units}`;
+    let dataString = `${measurement}: ${measurements.get(measurement)} ___`;
     data.innerHTML += dataString;
     data.setAttribute("colspan", "5");
     row.append(data);

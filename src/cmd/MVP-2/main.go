@@ -13,11 +13,11 @@ import (
 	excelRetriever "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_retriever"
 	logger "github.com/HyperloopUPV-H8/Backend-H8/Shared/logger/infra"
 	packetAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter"
-	streaming "github.com/HyperloopUPV-H8/Backend-H8/Shared/streaming_handlers"
 	unitsInfra "github.com/HyperloopUPV-H8/Backend-H8/Shared/units/infra"
 	units "github.com/HyperloopUPV-H8/Backend-H8/Shared/units/infra/mappers"
+	dataTransferApplication "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/application"
 	dataTransfer "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/infra"
-	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/infra/dto"
+	dataTransferPresentation "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/presentation"
 	messageTransferDomain "github.com/HyperloopUPV-H8/Backend-H8/message_transfer/domain"
 	orderTransferDomain "github.com/HyperloopUPV-H8/Backend-H8/order_transfer/domain"
 	"github.com/joho/godotenv"
@@ -46,45 +46,41 @@ func main() {
 		}
 	}
 
-	// TODO: Change main logic to incorporate structure changes
 	packetAdapter := packetAdapter.New(ips, packets)
 
-	unitConverter := unitsInfra.NewUnits(podUnits, displayUnits)
-
-	logger := logger.NewLogger(".", time.Second*5)
-	server := createServer()
-
-	server.HandleLog("/log", logger.EnableChan)
-	server.HandleWebSocketData("/data", streaming.DataSocketHandler)
-	server.HandleSPA()
+	podUnitConverter := unitsInfra.NewUnits(podUnits)
+	displayUnitConverter := unitsInfra.NewUnits(displayUnits)
 
 	packetFactory := dataTransfer.NewFactory()
 
-	go func() {
-		raw := packetAdapter.ReceiveData()
-		update := units.ConvertUpdate(raw, unitConverter)
-		fmt.Println(raw)
-		fmt.Println(update)
-		for {
-			raw := packetAdapter.ReceiveData()
-			update := units.ConvertUpdate(raw, unitConverter)
-			packet := packetFactory.NewPacket(update)
+	server := createServer()
+	logger := logger.NewLogger(".", time.Second*5)
 
-			select {
-			case server.PacketChan <- packet:
-			default:
-			}
+	go func() {
+		for {
+			packet := units.ConvertUpdate(units.ConvertUpdate(packetAdapter.ReceiveData(), podUnitConverter), displayUnitConverter)
+			json := dataTransferApplication.NewJSON(packetFactory.NewPacket(packet))
 
 		loop:
 			for name, measure := range packet.Values() {
 				select {
-				case logger.ValueChan <- loggerDto.NewLogValue(name, fmt.Sprintf("%v", measure), update.Timestamp()):
+				case logger.ValueChan <- loggerDto.NewLogValue(name, fmt.Sprintf("%v", measure), packet.Timestamp()):
 				default:
 					break loop
 				}
 			}
+
+			select {
+			case server.PacketChan <- json:
+			default:
+			}
+
 		}
 	}()
+
+	server.HandleLog("/log", logger.EnableChan)
+	server.HandleWebSocketData("/data", dataTransferPresentation.DataRoutine)
+	server.HandleSPA()
 
 	logger.Run()
 
@@ -93,12 +89,12 @@ func main() {
 }
 
 func createServer() server.HTTPServer[
-	dto.Packet,
+	dataTransferApplication.PacketJSON,
 	orderTransferDomain.OrderWebAdapter,
 	messageTransferDomain.Message,
 ] {
 	server := server.New[
-		dto.Packet,
+		dataTransferApplication.PacketJSON,
 		orderTransferDomain.OrderWebAdapter,
 		messageTransferDomain.Message]()
 

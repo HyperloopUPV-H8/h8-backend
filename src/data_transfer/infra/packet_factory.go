@@ -3,7 +3,7 @@ package infra
 import (
 	"time"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/infra/dto"
+	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/domain"
 	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/infra/interfaces"
 )
 
@@ -21,17 +21,14 @@ func NewFactory() *PacketFactory {
 	}
 }
 
-func (factory *PacketFactory) NewPacket(data interfaces.Update) dto.Packet {
-	return dto.NewPacket(factory.getCount(data.ID()), factory.getCycleTime(data.ID(), data.Timestamp()), data)
+func (factory *PacketFactory) NewPacket(data interfaces.Update) domain.Packet {
+	cycleTime := data.Timestamp().Sub(factory.timestamp[data.ID()])
+	factory.update(data.ID(), data.Timestamp())
+	count := factory.count[data.ID()]
+	return domain.NewPacket(data.ID(), count, cycleTime, data.HexValue(), data.Values())
 }
 
-func (factory *PacketFactory) getCount(id id) uint {
+func (factory *PacketFactory) update(id id, timestamp time.Time) {
 	factory.count[id] += 1
-	return factory.count[id]
-}
-
-func (factory *PacketFactory) getCycleTime(id id, timestamp time.Time) (cycleTime time.Duration) {
-	cycleTime = timestamp.Sub(factory.timestamp[id])
 	factory.timestamp[id] = timestamp
-	return cycleTime
 }

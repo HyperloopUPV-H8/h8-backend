@@ -42,8 +42,8 @@ loop:
 		select {
 		case <-log.ticker.C:
 			log.currDir.Dump()
-		case packets := <-log.ValueChan:
-			log.addValue(packets)
+		case value := <-log.ValueChan:
+			log.addValue(value)
 		case isEnable := <-log.EnableChan:
 			if !isEnable {
 				log.currDir.Dump()

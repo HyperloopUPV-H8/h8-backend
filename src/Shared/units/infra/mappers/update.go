@@ -8,7 +8,7 @@ import (
 func ConvertUpdate(input dto.PacketUpdate, units infra.Units) dto.PacketUpdate {
 	converted := make(map[string]any, len(input.Values()))
 	for name, value := range input.Values() {
-		converted[name] = units.ConvertDisplay(name, units.ConvertInternational(name, value))
+		converted[name] = units.Convert(name, value)
 	}
 	return dto.NewPacketUpdate(input.ID(), converted, input.HexValue())
 }

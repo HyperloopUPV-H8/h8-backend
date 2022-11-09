@@ -14,34 +14,6 @@ type operation struct {
 	operand  float64
 }
 
-func (op operation) convert(value float64) float64 {
-	switch op.operator {
-	case "+":
-		return value + op.operand
-	case "-":
-		return value - op.operand
-	case "*":
-		return value * op.operand
-	case "/":
-		return value / op.operand
-	}
-	return value
-}
-
-func (op operation) revert(value float64) float64 {
-	switch op.operator {
-	case "+":
-		return value - op.operand
-	case "-":
-		return value + op.operand
-	case "*":
-		return value / op.operand
-	case "/":
-		return value * op.operand
-	}
-	return value
-}
-
 const decimalRegex = `[-+]?(\d*\.)?\d+(e[-+]?\d+)?`
 
 var operationExp = regexp.MustCompile(fmt.Sprintf(`([+\-\/*]{1})(%s)`, decimalRegex))
@@ -68,18 +40,48 @@ func getOperation(operator string, operand string) operation {
 	}
 }
 
-func (operations Operations) Convert(value any) any {
-	final := value.(float64)
+func DoOperations(operations Operations, value float64) (converted float64) {
+	converted = value
 	for _, operation := range operations {
-		final = operation.convert(final)
+		converted = doOperation(operation, converted)
 	}
-	return final
+	return converted
 }
 
-func (operations Operations) Revert(value any) any {
-	final := value.(float64)
-	for _, operation := range operations {
-		final = operation.revert(final)
+func doOperation(operation operation, value float64) (converted float64) {
+	switch operation.operator {
+	case "+":
+		return value + operation.operand
+	case "-":
+		return value - operation.operand
+	case "*":
+		return value * operation.operand
+	case "/":
+		return value / operation.operand
+	default:
+		return value
 	}
-	return final
+}
+
+func DoReverseOperations(operations Operations, value float64) (converted float64) {
+	converted = value
+	for _, operation := range operations {
+		converted = doReverseOperation(operation, converted)
+	}
+	return converted
+}
+
+func doReverseOperation(operation operation, value float64) (converted float64) {
+	switch operation.operator {
+	case "+":
+		return value - operation.operand
+	case "-":
+		return value + operation.operand
+	case "*":
+		return value / operation.operand
+	case "/":
+		return value * operation.operand
+	default:
+		return value
+	}
 }

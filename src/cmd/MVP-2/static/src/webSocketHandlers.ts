@@ -8,10 +8,6 @@ dataSocket.onopen = (ev) => {
 };
 
 dataSocket.onmessage = (ev) => {
-  let packetsObject = JSON.parse(ev.data);
-  let packetMap = new Map<number, Packet>();
-  for (let [key, value] of Object.entries(packetsObject)) {
-    packetMap.set(Number.parseInt(key), value as Packet);
-  }
-  updateReceiveTable(packetMap);
+  let packetObject = JSON.parse(ev.data);
+  updateReceiveTable(packetObject);
 };

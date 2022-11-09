@@ -1,9 +1,7 @@
-package dto
+package domain
 
 import (
 	"time"
-
-	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/infra/interfaces"
 )
 
 type id = uint16
@@ -16,13 +14,13 @@ type Packet struct {
 	values    map[string]any
 }
 
-func NewPacket(count uint, cycleTime time.Duration, update interfaces.Update) Packet {
+func NewPacket(id id, count uint, cycleTime time.Duration, hexValue []byte, values map[string]any) Packet {
 	return Packet{
-		id:        update.ID(),
+		id:        id,
 		count:     count,
 		cycleTime: cycleTime,
-		hexValue:  update.HexValue(),
-		values:    update.Values(),
+		hexValue:  hexValue,
+		values:    values,
 	}
 }
 
