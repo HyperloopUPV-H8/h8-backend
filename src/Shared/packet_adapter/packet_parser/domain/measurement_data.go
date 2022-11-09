@@ -1,13 +1,21 @@
 package domain
 
 type MeasurementData struct {
-	Name      string
-	ValueType string
+	name      string
+	valueType string
 }
 
 func NewMeasurement(name string, valueType string) MeasurementData {
 	return MeasurementData{
-		Name:      name,
-		ValueType: valueType,
+		name:      name,
+		valueType: valueType,
 	}
+}
+
+func (measurement MeasurementData) Name() string {
+	return measurement.name
+}
+
+func (measurement MeasurementData) ValueType() string {
+	return measurement.valueType
 }

@@ -7,13 +7,13 @@ import (
 type id = uint16
 
 type PacketUpdate struct {
-	id        uint16
+	id        id
 	hexValue  []byte
 	values    map[string]any
 	timestamp time.Time
 }
 
-func NewPacketUpdate(id uint16, update map[string]any, hexValues []byte) PacketUpdate {
+func NewPacketUpdate(id id, update map[string]any, hexValues []byte) PacketUpdate {
 	return PacketUpdate{
 		id:        id,
 		hexValue:  hexValues,

@@ -90,12 +90,12 @@ func main() {
 
 func createServer() server.HTTPServer[
 	dataTransferApplication.PacketJSON,
-	orderTransferDomain.OrderWebAdapter,
+	orderTransferDomain.Order,
 	messageTransferDomain.Message,
 ] {
 	server := server.New[
 		dataTransferApplication.PacketJSON,
-		orderTransferDomain.OrderWebAdapter,
+		orderTransferDomain.Order,
 		messageTransferDomain.Message]()
 
 	return server
