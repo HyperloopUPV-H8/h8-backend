@@ -3,9 +3,7 @@ package streaming
 import (
 	"fmt"
 
-	packetParser "github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser/domain"
-	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/domain"
-	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/domain/measurement"
+	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/infra/dto"
 )
 
 type PacketWebAdapter struct {
@@ -17,65 +15,30 @@ type PacketWebAdapter struct {
 	CycleTime               uint                    `json:"cycleTime"`
 }
 
-func newPacketWebAdapter(packet domain.Packet) PacketWebAdapter {
-	measurementWebAdapters := getMeasurementWebAdapters(packet.Measurements)
+func newPacketWebAdapter(packet dto.Packet) PacketWebAdapter {
+	measurementWebAdapters := getMeasurementWebAdapters(packet.Measurements())
 	return PacketWebAdapter{
-		Id:                      packet.Id,
-		Name:                    packet.Name,
+		Id:                      packet.ID(),
 		MeasurementsWebAdapters: measurementWebAdapters,
-		HexValue:                fmt.Sprintf("%x", packet.HexValue),
-		Count:                   packet.Count,
-		CycleTime:               uint(packet.CycleTime),
+		HexValue:                fmt.Sprintf("%x", packet.HexValue()),
+		Count:                   packet.Count(),
+		CycleTime:               uint(packet.CycleTime().Milliseconds()),
 	}
 }
 
-func getMeasurementWebAdapters(measurements map[string]measurement.Measurement) []MeasurementWebAdapter {
-	adapters := make([]MeasurementWebAdapter, len(measurements))
-	index := 0
-	for _, measurement := range measurements {
-		adapters[index] = MeasurementWebAdapter{
-			Name:         measurement.Name,
-			PodValue:     measurement.Value.ToPodUnitsString(),
-			DisplayValue: measurement.Value.ToDisplayUnitsString(),
-			PodUnits:     measurement.Value.GetPodUnits(),
-			DisplayUnits: measurement.Value.GetDisplayUnits(),
-		}
-		index++
+func getMeasurementWebAdapters(measurements map[string]any) []MeasurementWebAdapter {
+	adapters := make([]MeasurementWebAdapter, 0, len(measurements))
+	for name, value := range measurements {
+		adapters = append(adapters, MeasurementWebAdapter{
+			Name:  name,
+			Value: fmt.Sprintf("%s", value),
+		})
 	}
 	return adapters
 }
 
 type MeasurementWebAdapter struct {
-	Name         string `json:"name"`
-	PodValue     string
-	DisplayValue string `json:"value"`
-	PodUnits     string
-	DisplayUnits string `json:"units"`
-}
-
-type OrderWebAdapter struct {
-	Id     uint16
-	Fields map[string]string
-}
-
-type MessageWebAdapter struct {
-	Id        uint16
-	Fields    map[string]string
-	Timestamp int64
-}
-
-func newMessageWebAdapter(packet packetParser.PacketUpdate) MessageWebAdapter {
-	var value string
-	var name string
-	for n, val := range packet.UpdatedValues {
-		value = val.(string)
-		name = n
-		break
-	}
-
-	return MessageWebAdapter{
-		Id:        packet.ID,
-		Fields:    map[string]string{name: value},
-		Timestamp: packet.Timestamp.UnixNano(),
-	}
+	Name  string `json:"name"`
+	Value string `json:"value"`
+	Units string `json:"units"`
 }

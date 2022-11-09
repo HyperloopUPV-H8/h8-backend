@@ -14,7 +14,6 @@ import (
 	streaming "github.com/HyperloopUPV-H8/Backend-H8/Shared/streaming_handlers"
 	dataTransferDomain "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/domain"
 	dataTransfer "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/infra"
-	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/infra/mappers"
 	messageTransferDomain "github.com/HyperloopUPV-H8/Backend-H8/message_transfer/domain"
 	orderTransferDomain "github.com/HyperloopUPV-H8/Backend-H8/order_transfer/domain"
 	"github.com/joho/godotenv"
@@ -33,18 +32,16 @@ func main() {
 		packets = append(packets, board.GetPackets()...)
 	}
 
+	// TODO: Change main logic to incorporate structure changes
 	packetAdapter := packetAdapter.New(ips, packets)
 
-	dataTransfer := dataTransfer.New(boards)
-	dataTransfer.Invoke(packetAdapter.ReceiveData)
+	packetFactory := dataTransfer.NewFactory()
 
 	logger := logger.NewLogger(".", time.Second*5)
 	server := createServer()
 
 	server.HandleLog("/log", logger.EnableChan)
 	server.HandleWebSocketData("/data", streaming.DataSocketHandler)
-	server.HandleWebSocketOrder("/order", streaming.OrderSocketHandler)
-	//server.HandleWebSocketMessage("/message", streaming.MessageSocketHandler)
 	server.HandleSPA()
 
 	go func() {

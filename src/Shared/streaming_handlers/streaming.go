@@ -3,12 +3,11 @@ package streaming
 import (
 	"time"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/domain"
-	ordertransfer "github.com/HyperloopUPV-H8/Backend-H8/order_transfer/domain"
+	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/infra/dto"
 	"github.com/gorilla/websocket"
 )
 
-func DataSocketHandler(ws websocket.Conn, packetChannel <-chan domain.Packet) {
+func DataSocketHandler(ws websocket.Conn, packetChannel <-chan dto.Packet) {
 	go func() {
 	routine:
 		for {
@@ -30,37 +29,3 @@ func DataSocketHandler(ws websocket.Conn, packetChannel <-chan domain.Packet) {
 		}
 	}()
 }
-
-func OrderSocketHandler(ws websocket.Conn, orderWAChannel chan<- ordertransfer.OrderWebAdapter) {
-	go func() {
-		for {
-			orderWA := ordertransfer.OrderWebAdapter{}
-			ws.ReadJSON(orderWA)
-			orderWAChannel <- orderWA
-		}
-	}()
-}
-
-// func MessageSocketHandler(ws websocket.Conn, messageChannel chan messageTransferDomain.Message) {
-// 	go func() {
-// 		for {
-// 			messageWebAdapterBuf := make([]MessageWebAdapter, 100)
-// 			timeout := time.After(time.Millisecond * 20)
-// 		loop:
-// 			for {
-// 				select {
-// 				case packet := <-messageChannel:
-// 					adapter := newMessageWebAdapter(packet)
-// 					messageWebAdapterBuf = append(messageWebAdapterBuf, adapter)
-// 					if len(messageWebAdapterBuf) == 100 {
-// 						ws.WriteJSON(messageWebAdapterBuf)
-// 						break loop
-// 					}
-// 				case <-timeout:
-// 					ws.WriteJSON(messageWebAdapterBuf)
-// 					break loop
-// 				}
-// 			}
-// 		}
-// 	}()
-// }

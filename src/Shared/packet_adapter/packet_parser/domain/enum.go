@@ -5,8 +5,8 @@ import (
 	"strings"
 )
 
-type EnumVariant = string
-type Enum = map[uint8]EnumVariant
+type enumVariant = string
+type Enum = map[uint8]enumVariant
 
 var enumExp = regexp.MustCompile(`(?i)^ENUM\((\w+(?:,\w+)*)\)$`)
 var itemsExp = regexp.MustCompile(`(\w+),?`)
@@ -17,9 +17,9 @@ func NewEnum(enumString string) Enum {
 }
 
 func parseEnum(matches [][]string) Enum {
-	variants := make(map[uint8]EnumVariant, len(matches))
+	variants := make(map[uint8]enumVariant, len(matches))
 	for i, match := range matches {
-		variants[uint8(i)] = EnumVariant(match[1])
+		variants[uint8(i)] = enumVariant(match[1])
 	}
 	return Enum(variants)
 }
