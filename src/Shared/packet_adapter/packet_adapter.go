@@ -24,3 +24,8 @@ func (adapter PacketAdapter) ReceiveData() dto.PacketUpdate {
 	decodedPayload := adapter.parser.Decode(payload)
 	return decodedPayload
 }
+
+func (adapter PacketAdapter) Send(addr string, payload dto.PacketValues) {
+	encodedPayload := adapter.parser.Encode(payload)
+	adapter.controller.Send(addr, encodedPayload)
+}

@@ -20,6 +20,8 @@ import (
 	dataTransferPresentation "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/presentation"
 	messageTransferDomain "github.com/HyperloopUPV-H8/Backend-H8/message_transfer/domain"
 	orderTransferDomain "github.com/HyperloopUPV-H8/Backend-H8/order_transfer/domain"
+	orderTransferInfra "github.com/HyperloopUPV-H8/Backend-H8/order_transfer/infra/mappers"
+	orderTransferPresentation "github.com/HyperloopUPV-H8/Backend-H8/order_transfer/presentation"
 	"github.com/joho/godotenv"
 )
 
@@ -78,8 +80,17 @@ func main() {
 		}
 	}()
 
+	go func() {
+		for {
+			rawOrder := <-server.OrderChan
+			order := orderTransferInfra.GetPacketValues(rawOrder)
+			packetAdapter.Send("TODO: change this value", order)
+		}
+	}()
+
 	server.HandleLog("/log", logger.EnableChan)
 	server.HandleWebSocketData("/data", dataTransferPresentation.DataRoutine)
+	server.HandleWebSocketOrder("/order", orderTransferPresentation.OrderRoutine)
 	server.HandleSPA()
 
 	logger.Run()

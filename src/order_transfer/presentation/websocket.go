@@ -1,7 +1,7 @@
 package presentation
 
 import (
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/Server/infra/interfaces"
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/server/infra/interfaces"
 	"github.com/HyperloopUPV-H8/Backend-H8/order_transfer/domain"
 )
 
