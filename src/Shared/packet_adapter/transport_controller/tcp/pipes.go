@@ -37,6 +37,7 @@ func (pipes *Pipes) RemoveConnection(ip IP) {
 	if !exists {
 		return
 	}
+
 	conn.Close()
 	delete(pipes.conns, ip)
 }
