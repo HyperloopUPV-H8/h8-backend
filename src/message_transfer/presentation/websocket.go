@@ -7,6 +7,7 @@ import (
 
 func MessageRoutine(socket interfaces.WebSocket, messages <-chan domain.Message) {
 	go func() {
+		defer socket.Close()
 		var err error
 		for err == nil {
 			err = socket.WriteJSON(<-messages)
