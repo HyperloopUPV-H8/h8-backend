@@ -92,9 +92,6 @@ func (server *Server) isValidAddr(addr IP) bool {
 }
 
 func (server *Server) Close() {
-	if server == nil {
-		return
-	}
 	server.listener.Close()
 	server.pipes.Close()
 }
