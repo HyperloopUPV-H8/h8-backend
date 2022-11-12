@@ -31,14 +31,24 @@ func NewParser(packets []excelAdapter.PacketDTO) PacketParser {
 func getEnums(packets []excelAdapter.PacketDTO) map[name]domain.Enum {
 	enums := make(map[name]domain.Enum, 0)
 	for _, packet := range packets {
-		for _, measurement := range packet.Measurements {
-			if domain.IsEnum(measurement.ValueType) {
-				enums[measurement.Name] = domain.NewEnum(measurement.ValueType)
-			}
-		}
+		extend(enums, getPacketEnums(packet))
 	}
 
 	return enums
+}
+
+func getPacketEnums(packet excelAdapter.PacketDTO) map[name]domain.Enum {
+	enums := make(map[name]domain.Enum, 0)
+	for _, measurement := range packet.Measurements {
+		enums[measurement.Name] = domain.NewEnum(measurement.ValueType)
+	}
+	return enums
+}
+
+func extend[K comparable, V any](base map[K]V, extension map[K]V) {
+	for key, value := range extension {
+		base[key] = value
+	}
 }
 
 func getPacketTypes(packets []excelAdapter.PacketDTO) map[uint16]packetMeasurements {
