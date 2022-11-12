@@ -206,13 +206,85 @@ func TestDisconnect(t *testing.T) {
 
 	server.Send("127.0.0.2", []byte{0x00})
 
-	<-time.After(time.Millisecond * 500)
+	<-time.After(time.Millisecond * 50)
 	connected = server.ConnectedAddresses()
 	expect = []string{}
 	if !reflect.DeepEqual(connected, expect) {
 		t.Fatalf("expected %v, got %v", expect, connected)
 	}
+}
 
+func TestRecieve(t *testing.T) {
+	type testCase struct {
+		addrs    []string
+		payloads map[string][]byte
+	}
+
+	tests := map[string]testCase{
+		"single connection": {
+			addrs: []string{"127.0.0.2"},
+			payloads: map[string][]byte{
+				"127.0.0.2": {0xff, 0xff, 0xff},
+			},
+		},
+		"multiple connections": {
+			addrs: []string{"127.0.0.2", "127.0.0.3"},
+			payloads: map[string][]byte{
+				"127.0.0.2": {0xff, 0xff, 0xff},
+				"127.0.0.3": {0xff, 0xff},
+			},
+		},
+	}
+
+	for name, test := range tests {
+		port := getTCPPort()
+
+		testAddrs := make([]string, len(test.addrs))
+		for i, addr := range test.addrs {
+			testAddrs[i] = fmt.Sprintf("%s:%d", addr, port)
+		}
+
+		testPayloads := make([][]byte, 0, len(test.payloads))
+		for _, payload := range test.payloads {
+			testPayloads = append(testPayloads, payload)
+		}
+
+		t.Run(name, func(t *testing.T) {
+			server := Open(port, test.addrs)
+			defer server.Close()
+
+			performTCP(testAddrs, fmt.Sprintf("127.0.0.1:%d", port), func(conn *net.TCPConn) {
+				addr := strings.Split(conn.LocalAddr().String(), ":")[0]
+				n, err := conn.Write(test.payloads[addr])
+				fmt.Println(name, n, err)
+			})
+
+			for _, payload := range trimPayloads(server.ReceiveNext()) {
+				if !contains(testPayloads, payload) {
+					t.Fatalf("unexpected payload %v", payload)
+				}
+			}
+
+		})
+	}
+}
+
+func TestRecieveBlock(t *testing.T) {
+	port := getTCPPort()
+	server := Open(port, []string{})
+
+	done := make(chan bool)
+	go func() {
+		server.ReceiveNext()
+		done <- true
+	}()
+
+	select {
+	case <-time.After(time.Second):
+		t.Log("server blocks")
+	case <-done:
+		t.Fatal("server didn't block on read")
+	}
 }
 
 func BenchmarkValidAddr(b *testing.B) {
@@ -229,7 +301,6 @@ func BenchmarkValidAddr(b *testing.B) {
 			server.isValidAddr("127.0.0.4")
 		}
 	})
-
 }
 
 func connectTCP(laddr string, raddr string) (*net.TCPConn, error) {
@@ -281,4 +352,33 @@ func getTCPPort() uint16 {
 	}
 	defer conn.Close()
 	return uint16(conn.Addr().(*net.TCPAddr).Port)
+}
+
+func contains[T any](slice []T, value T) bool {
+	for _, val := range slice {
+		if reflect.DeepEqual(val, value) {
+			return true
+		}
+	}
+	return false
+}
+
+func trimPayload(payload []byte) []byte {
+	result := make([]byte, 0, len(payload))
+	for _, data := range payload {
+		if data != 0 {
+			result = append(result, data)
+		} else {
+			break
+		}
+	}
+	return result
+}
+
+func trimPayloads(payloads [][]byte) [][]byte {
+	result := make([][]byte, len(payloads))
+	for i, payload := range payloads {
+		result[i] = trimPayload(payload)
+	}
+	return result
 }
