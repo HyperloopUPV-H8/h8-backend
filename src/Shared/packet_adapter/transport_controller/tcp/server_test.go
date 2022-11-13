@@ -71,36 +71,36 @@ func TestClose(t *testing.T) {
 
 func TestConnect(t *testing.T) {
 	type testCase struct {
-		addrs   []string
-		connect []string
-		expect  []string
+		remoteAddrs []string
+		connect     []string
+		expect      []string
 	}
 
 	tests := map[string]testCase{
 		"single connection": {
-			addrs:   []string{"127.0.0.2"},
-			connect: []string{"127.0.0.2"},
-			expect:  []string{"127.0.0.2"},
+			remoteAddrs: []string{"127.0.0.2"},
+			connect:     []string{"127.0.0.2"},
+			expect:      []string{"127.0.0.2"},
 		},
 		"multiple connections (all connected) (all in list)": {
-			addrs:   []string{"127.0.0.2", "127.0.0.3"},
-			connect: []string{"127.0.0.2", "127.0.0.3"},
-			expect:  []string{"127.0.0.2", "127.0.0.3"},
+			remoteAddrs: []string{"127.0.0.2", "127.0.0.3"},
+			connect:     []string{"127.0.0.2", "127.0.0.3"},
+			expect:      []string{"127.0.0.2", "127.0.0.3"},
 		},
 		"multiple connections (all in list)": {
-			addrs:   []string{"127.0.0.2", "127.0.0.3", "127.0.0.4"},
-			connect: []string{"127.0.0.2", "127.0.0.3"},
-			expect:  []string{"127.0.0.2", "127.0.0.3"},
+			remoteAddrs: []string{"127.0.0.2", "127.0.0.3", "127.0.0.4"},
+			connect:     []string{"127.0.0.2", "127.0.0.3"},
+			expect:      []string{"127.0.0.2", "127.0.0.3"},
 		},
 		"multiple connections (all connected)": {
-			addrs:   []string{"127.0.0.2", "127.0.0.3"},
-			connect: []string{"127.0.0.2", "127.0.0.4"},
-			expect:  []string{"127.0.0.2"},
+			remoteAddrs: []string{"127.0.0.2", "127.0.0.3"},
+			connect:     []string{"127.0.0.2", "127.0.0.4"},
+			expect:      []string{"127.0.0.2"},
 		},
 		"multiple connections": {
-			addrs:   []string{"127.0.0.2", "127.0.0.3", "127.0.04"},
-			connect: []string{"127.0.0.2", "127.0.0.5"},
-			expect:  []string{"127.0.0.2"},
+			remoteAddrs: []string{"127.0.0.2", "127.0.0.3", "127.0.04"},
+			connect:     []string{"127.0.0.2", "127.0.0.5"},
+			expect:      []string{"127.0.0.2"},
 		},
 	}
 
@@ -113,7 +113,7 @@ func TestConnect(t *testing.T) {
 		}
 
 		t.Run("server: connect: "+name, func(t *testing.T) {
-			server := Open(port, test.addrs)
+			server := Open(port, test.remoteAddrs)
 			defer server.Close()
 
 			performTCP(testAddrs, fmt.Sprintf("127.0.0.1:%d", port), func(conn *net.TCPConn) {})
@@ -255,8 +255,7 @@ func TestRecieve(t *testing.T) {
 
 			performTCP(testAddrs, fmt.Sprintf("127.0.0.1:%d", port), func(conn *net.TCPConn) {
 				addr := strings.Split(conn.LocalAddr().String(), ":")[0]
-				n, err := conn.Write(test.payloads[addr])
-				fmt.Println(name, n, err)
+				conn.Write(test.payloads[addr])
 			})
 
 			for _, payload := range trimPayloads(server.ReceiveNext()) {
