@@ -10,7 +10,6 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser/domain"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser/infra/dto"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser/infra/serde"
-	ordertransfer "github.com/HyperloopUPV-H8/Backend-H8/order_transfer/domain"
 )
 
 type id = uint16
@@ -32,14 +31,24 @@ func NewParser(packets []excelAdapter.PacketDTO) PacketParser {
 func getEnums(packets []excelAdapter.PacketDTO) map[name]domain.Enum {
 	enums := make(map[name]domain.Enum, 0)
 	for _, packet := range packets {
-		for _, measurement := range packet.Measurements {
-			if domain.IsEnum(measurement.ValueType) {
-				enums[measurement.Name] = domain.NewEnum(measurement.ValueType)
-			}
-		}
+		extend(enums, getPacketEnums(packet))
 	}
 
 	return enums
+}
+
+func getPacketEnums(packet excelAdapter.PacketDTO) map[name]domain.Enum {
+	enums := make(map[name]domain.Enum, 0)
+	for _, measurement := range packet.Measurements {
+		enums[measurement.Name] = domain.NewEnum(measurement.ValueType)
+	}
+	return enums
+}
+
+func extend[K comparable, V any](base map[K]V, extension map[K]V) {
+	for key, value := range extension {
+		base[key] = value
+	}
 }
 
 func getPacketTypes(packets []excelAdapter.PacketDTO) map[uint16]packetMeasurements {
@@ -83,36 +92,36 @@ func (parser PacketParser) Decode(data []byte) dto.PacketUpdate {
 func (parser PacketParser) decodePacket(measurements packetMeasurements, bytes io.Reader) map[name]any {
 	values := make(map[name]any, len(measurements))
 	for _, measurementData := range measurements {
-		values[measurementData.Name] = parser.decodeMeasurement(measurementData, bytes)
+		values[measurementData.Name()] = parser.decodeMeasurement(measurementData, bytes)
 	}
 	return values
 }
 
 func (parser PacketParser) decodeMeasurement(measurement domain.MeasurementData, reader io.Reader) any {
-	switch measurement.ValueType {
+	switch measurement.ValueType() {
 	case "enum":
-		return serde.DecodeEnum(parser.enums[measurement.Name], reader)
+		return serde.DecodeEnum(parser.enums[measurement.Name()], reader)
 	case "bool":
 		return serde.DecodeBool(reader)
 	case "string":
 		return serde.DecodeString(reader)
 	default:
-		return serde.DecodeNumber(measurement.ValueType, reader)
+		return serde.DecodeNumber(measurement.ValueType(), reader)
 	}
 }
 
-func (parser PacketParser) Encode(packet ordertransfer.OrderWebAdapter) []byte {
+func (parser PacketParser) Encode(packet dto.PacketValues) []byte {
 	dataWriter := bytes.NewBuffer(make([]byte, 0))
-	serde.EncodeID(packet.Id, dataWriter)
-	for name, value := range packet.Fields {
-		parser.encodeValue(packet.Id, name, value, dataWriter)
+	serde.EncodeID(packet.ID(), dataWriter)
+	for _, measurement := range parser.packetTypes[packet.ID()] {
+		parser.encodeValue(packet.ID(), measurement.Name(), packet.GetValue(measurement.Name()), dataWriter)
 	}
 
 	return dataWriter.Bytes()
 }
 
 func (parser PacketParser) encodeValue(id uint16, name string, value string, bytes io.Writer) {
-	switch parser.findMeasurement(id, name).ValueType {
+	switch parser.findMeasurement(id, name).ValueType() {
 	case "enum":
 		serde.EncodeEnum(parser.enums[name], value, bytes)
 	case "bool":
@@ -128,13 +137,13 @@ func (parser PacketParser) encodeValue(id uint16, name string, value string, byt
 		if err != nil {
 			log.Fatalf("encode value: %s\n", err)
 		}
-		serde.EncodeNumber(parser.findMeasurement(id, name).ValueType, val, bytes)
+		serde.EncodeNumber(parser.findMeasurement(id, name).ValueType(), val, bytes)
 	}
 }
 
 func (parser PacketParser) findMeasurement(id uint16, name string) domain.MeasurementData {
 	for _, measurement := range parser.packetTypes[id] {
-		if measurement.Name == name {
+		if measurement.Name() == name {
 			return measurement
 		}
 	}
