@@ -1,6 +1,23 @@
 package domain
 
+type id = uint16
+
 type Message struct {
-	Id     uint16
-	Fields map[string]string
+	id     id
+	values map[string]any
+}
+
+func NewMessage(id id, values map[string]any) Message {
+	return Message{
+		id:     id,
+		values: values,
+	}
+}
+
+func (msg Message) ID() id {
+	return msg.id
+}
+
+func (msg Message) Values() map[string]any {
+	return msg.values
 }
