@@ -7,7 +7,7 @@ import (
 )
 
 func (server HTTPServer[D, O, M]) HandleLog(route string, loggerEnable chan<- bool) {
-	server.router.Handle(route, LogHandle{logEnable: loggerEnable}).Methods("PUT")
+	server.router.Handle(route, LogHandle{logEnable: loggerEnable}).Methods(http.MethodPut)
 }
 
 type LogHandle struct {
@@ -20,5 +20,13 @@ func (handler LogHandle) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Fatalln("http server: log handle:", err)
 	}
 
-	handler.logEnable <- (string(body) == "enable")
+	go func() {
+		if string(body) == "enable" {
+			handler.logEnable <- true
+		} else if string(body) == "disable" {
+			handler.logEnable <- false
+		}
+	}()
+
+	w.Write([]byte{})
 }
