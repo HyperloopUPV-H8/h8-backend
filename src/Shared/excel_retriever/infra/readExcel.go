@@ -1,4 +1,3 @@
-
 package infra
 
 import (
@@ -136,10 +135,7 @@ func parseRow(cols [][]string, offset int, start int, end int) domain.Row {
 	for i, col := range cols[start:end] {
 		if offset < len(col) {
 			row[i] = col[offset]
-		} else {
-			row[i] = ""
 		}
-
 	}
 	return row
 }

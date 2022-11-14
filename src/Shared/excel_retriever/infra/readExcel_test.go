@@ -1,7 +1,8 @@
-
 package infra
 
 import (
+	"log"
+	"path"
 	"reflect"
 	"testing"
 
@@ -10,96 +11,219 @@ import (
 )
 
 func TestReadExcel(t *testing.T) {
-	name := "excelDownloaded.xlsx"
-	DocumentExcel, err := openExcelFile(name)
+	type testCase struct {
+		file   string
+		expect domain.Document
+	}
 
+	tests := map[string]testCase{
+		"test1": {
+			file:   "test1.xlsx",
+			expect: test1,
+		},
+		"test2": {
+			file:   "test2.xlsx",
+			expect: test2,
+		},
+		"test3": {
+			file:   "test3.xlsx",
+			expect: test3,
+		},
+		"test4": {
+			file:   "test4.xlsx",
+			expect: test4,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			file := openExcelFile(path.Join("test", "resources", test.file))
+			got := GetDocument(file)
+			if !reflect.DeepEqual(got, test.expect) {
+				t.Fatalf("expected %v, got %v", test.expect, got)
+			}
+		})
+	}
+}
+
+func openExcelFile(name string) *excelize.File {
+	file, err := excelize.OpenFile(name)
 	if err != nil {
-		t.Fatalf("couldn't open the file")
+		log.Fatalln(err)
 	}
 
-	document := GetDocument(DocumentExcel)
-
-	correctObject := getCorrectDocument()
-
-	areEquals := reflect.DeepEqual(document, correctObject)
-
-	if !areEquals {
-		t.Fatalf("objects are not equal")
-	}
+	return file
 }
 
-func openExcelFile(name string) (*excelize.File, error) {
-	f, err := excelize.OpenFile(name)
+var test1 domain.Document = domain.Document{
+	Sheets: map[string]domain.Sheet{
+		"Test1": {
+			Name: "Test1",
+			Tables: map[string]domain.Table{
+				"PacketDescription": {
+					Name: "PacketDescription",
+					Rows: [][]string{
+						{"1", "Voltage", "200", "Input", "UDP"},
+						{"2", "Speed", "300", "Input", "UDP"},
+						{"3", "Current", "400", "Input", "UDP"},
+						{"4", "Airgap", "500", "Input", "UDP"},
+						{"5", "Position", "600", "Input", "UDP"},
+						{"6", "Battery", "700", "Input", "UDP"},
+					},
+				},
 
-	return f, err
+				"PacketStructure": {
+					Name: "PacketStructure",
+					Rows: [][]string{
+						{"Voltage", "Speed", "Current", "Airgap", "Position", "Battery"},
+						{"Voltage0", "Speed0", "Current0", "Airgap0", "Position0", "Battery0"},
+					},
+				},
+
+				"ValueDescription": {
+					Name: "ValueDescription",
+					Rows: [][]string{
+						{"Voltage0", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Speed0", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Current0", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Airgap0", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Position0", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Battery0", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+					},
+				},
+			},
+		},
+	},
 }
 
-func getCorrectDocument() domain.Document {
+var test2 domain.Document = domain.Document{
+	Sheets: map[string]domain.Sheet{
+		"Test2": {
+			Name: "Test2",
+			Tables: map[string]domain.Table{
+				"PacketDescription": {
+					Name: "PacketDescription",
+					Rows: [][]string{
+						{"1", "Voltage", "200", "Input", "UDP"},
+						{"2", "Speed", "300", "Input", "UDP"},
+						{"3", "Current", "400", "Input", "UDP"},
+						{"4", "Airgap", "500", "Input", "UDP"},
+						{"5", "Position", "600", "Input", "UDP"},
+						{"6", "Battery", "700", "Input", "UDP"},
+					},
+				},
 
-	correctRows1_1 := [][]string{{"1", "1", "1", "1"}, {"2", "2", "2", "2"}, {"3", "3", "3", "3"}}
+				"PacketStructure": {
+					Name: "PacketStructure",
+					Rows: [][]string{
+						{"Voltage", "Speed", "Current", "Airgap", "Position", "Battery"},
+						{"Voltage0", "Speed0", "Current0", "Airgap0", "Position0", "Battery0"},
+						{"", "Speed1", "Current1", "", "Position1", ""},
+						{"", "", "Current2", "", "Position2", ""},
+						{"", "", "", "", "Position3", ""},
+					},
+				},
 
-	correctTable1_1 := domain.Table{
-		Name: "NOMBRE1",
-		Rows: correctRows1_1,
-	}
-	correctSheet1 := domain.Sheet{
-		Name: "Hoja 1",
-		Tables: map[string]domain.Table{
-			"NOMBRE1": correctTable1_1,
+				"ValueDescription": {
+					Name: "ValueDescription",
+					Rows: [][]string{
+						{"Voltage0", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Speed0", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Speed1", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Current0", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Current1", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Current2", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Airgap0", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Position0", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Position1", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Position2", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Position3", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Battery0", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+					},
+				},
+			},
 		},
-	}
-	correctRows2_1 := [][]string{{"1", "1", "1"}, {"2", "2", ""}, {"3", "3", "3"}}
-
-	correctTable2_1 := domain.Table{
-		Name: "NOMBRE1",
-		Rows: correctRows2_1,
-	}
-
-	correctRows2_2 := [][]string{{"4", "4", "4"}, {"5", "5", "5"}, {"6", "6", "6"}}
-
-	correctTable2_2 := domain.Table{
-		Name: "NOMBRE2",
-		Rows: correctRows2_2,
-	}
-
-	correctSheet2 := domain.Sheet{
-		Name: "Hoja 2",
-		Tables: map[string]domain.Table{
-			"NOMBRE1": correctTable2_1,
-			"NOMBRE2": correctTable2_2,
-		},
-	}
-
-	correctRows3_1 := [][]string{{"", "1", "1", "1"}, {"2", "2", "2", "2"}, {"3", "3", "", "3"}}
-
-	correctTable3_1 := domain.Table{
-		Name: "NOMBRE1",
-		Rows: correctRows3_1,
-	}
-
-	correctRows3_2 := [][]string{{"", "4", "4", ""}, {"5", "5", "5", "5"}, {"", "6", "6", ""}}
-
-	correctTable3_2 := domain.Table{
-		Name: "NOMBRE2",
-		Rows: correctRows3_2,
-	}
-
-	correctSheet3 := domain.Sheet{
-		Name: "Hoja 3",
-		Tables: map[string]domain.Table{
-			"NOMBRE1": correctTable3_1,
-			"NOMBRE2": correctTable3_2,
-		},
-	}
-
-	document := domain.Document{
-		Sheets: map[string]domain.Sheet{
-			"Hoja 1": correctSheet1,
-			"Hoja 2": correctSheet2,
-			"Hoja 3": correctSheet3,
-		},
-	}
-
-	return document
+	},
 }
 
+var test3 domain.Document = domain.Document{
+	Sheets: map[string]domain.Sheet{
+		"Test3": {
+			Name: "Test3",
+			Tables: map[string]domain.Table{
+				"PacketDescription": {
+					Name: "PacketDescription",
+					Rows: [][]string{
+						{"1", "Voltage", "200", "Input", "UDP"},
+						{"2", "Speed", "300", "Input", "UDP"},
+						{"3", "Current", "400", "Input", "UDP"},
+						{"4", "Airgap", "500", "Input", "UDP"},
+						{"5", "Position", "600", "Input", "UDP"},
+						{"6", "Battery", "700", "Input", "UDP"},
+					},
+				},
+
+				"PacketStructure": {
+					Name: "PacketStructure",
+					Rows: [][]string{
+						{"Voltage", "Speed", "Current", "Airgap", "Position", "Battery"},
+						{"Voltage0", "Speed0", "Current0", "Airgap0", "Position0", "Battery0"},
+					},
+				},
+
+				"ValueDescription": {
+					Name: "ValueDescription",
+					Rows: [][]string{
+						{"Voltage0", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Speed0", "bool", "", "", "", ""},
+						{"Current0", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Airgap0", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Position0", "ENUM(a,b,c)", "", "", "", ""},
+						{"Battery0", "bool", "", "", "", ""},
+					},
+				},
+			},
+		},
+	},
+}
+
+var test4 domain.Document = domain.Document{
+	Sheets: map[string]domain.Sheet{
+		"Test4": {
+			Name: "Test4",
+			Tables: map[string]domain.Table{
+				"PacketDescription": {
+					Name: "PacketDescription",
+					Rows: [][]string{
+						{"1", "Voltage", "200", "Input", "UDP"},
+						{"2", "Speed", "300", "Input", "UDP"},
+						{"3", "Current", "400", "Input", "UDP"},
+						{"4", "Airgap", "500", "Input", "UDP"},
+						{"5", "Position", "600", "Input", "UDP"},
+						{"6", "Battery", "700", "Input", "UDP"},
+					},
+				},
+
+				"PacketStructure": {
+					Name: "PacketStructure",
+					Rows: [][]string{
+						{"Voltage", "Speed", "Current", "Airgap", "Position", "Battery"},
+						{"Voltage0", "Speed0", "Current0", "Airgap0", "Position0", "Battery0"},
+					},
+				},
+
+				"ValueDescription": {
+					Name: "ValueDescription",
+					Rows: [][]string{
+						{"Voltage0", "uint8", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Speed0", "float64", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Current0", "uint16", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Airgap0", "int32", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Position0", "foo", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+						{"Battery0", "float32", "cdeg#/100#", "deg##", "[0,10]", "[-10,20]"},
+					},
+				},
+			},
+		},
+	},
+}
