@@ -11,6 +11,9 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/HyperloopUPV-H8/Backend-H8/Shared/server/infra/interfaces"
+	"github.com/gorilla/websocket"
 )
 
 func TestPage(t *testing.T) {
@@ -125,6 +128,38 @@ func TestLog(t *testing.T) {
 	}
 }
 
+func TestWebSocket(t *testing.T) {
+	defaultStaticPath = path.Join("test", "resources")
+	serverAddr = "127.0.0.1:4002"
+
+	server := New[any, any, any]()
+	server.HandleWebSocketData("/backend/data", func(interfaces.WebSocket, <-chan any) {})
+	server.HandleWebSocketMessage("/backend/message", func(interfaces.WebSocket, <-chan any) {})
+	server.HandleWebSocketOrder("/backend/order", func(interfaces.WebSocket, chan<- any) {})
+	go server.ListenAndServe()
+
+	_, resp := wsClient("ws://" + serverAddr + "/backend/data")
+	resp.Body.Close()
+
+	if resp.StatusCode != http.StatusSwitchingProtocols {
+		t.Fatalf("expected status %d, got %d", http.StatusSwitchingProtocols, resp.StatusCode)
+	}
+
+	_, resp = wsClient("ws://" + serverAddr + "/backend/message")
+	resp.Body.Close()
+
+	if resp.StatusCode != http.StatusSwitchingProtocols {
+		t.Fatalf("expected status %d, got %d", http.StatusSwitchingProtocols, resp.StatusCode)
+	}
+
+	_, resp = wsClient("ws://" + serverAddr + "/backend/order")
+	resp.Body.Close()
+
+	if resp.StatusCode != http.StatusSwitchingProtocols {
+		t.Fatalf("expected status %d, got %d", http.StatusSwitchingProtocols, resp.StatusCode)
+	}
+}
+
 func put(client http.Client, path string, body string) *http.Response {
 	resp, err := client.Do(&http.Request{
 		Method:        http.MethodPut,
@@ -141,6 +176,15 @@ func put(client http.Client, path string, body string) *http.Response {
 	}
 
 	return resp
+}
+
+func wsClient(path string) (*websocket.Conn, *http.Response) {
+	conn, resp, err := websocket.DefaultDialer.Dial(path, http.Header{})
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	return conn, resp
 }
 
 func getURL(path string) *url.URL {
