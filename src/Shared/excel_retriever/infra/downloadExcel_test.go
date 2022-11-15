@@ -1,4 +1,3 @@
-
 package infra
 
 import (
@@ -12,9 +11,9 @@ import (
 func TestDownloadExcel(t *testing.T) {
 	godotenv.Load("../../../.env")
 
-	spreadsheetID := "1nbiLvA0weR_DiLkL9TI90cdLNXlvOAZgikhKIdxbhRk"
+	spreadsheetID := "1QiulbGwbOjYPJeNNF-HKrMsGJt9_Fk--X-syHbcJUcA"
 
-	fileName := "excelDownloaded.xlsx"
+	fileName := "test/resources/test4.xlsx"
 
 	if fileExists(fileName) {
 		deleteExcel(fileName)
