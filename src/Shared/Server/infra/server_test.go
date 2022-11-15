@@ -138,26 +138,26 @@ func TestWebSocket(t *testing.T) {
 	server.HandleWebSocketOrder("/backend/order", func(interfaces.WebSocket, chan<- any) {})
 	go server.ListenAndServe()
 
-	_, resp := wsClient("ws://" + serverAddr + "/backend/data")
-	resp.Body.Close()
+	testWSSwitch := func(path string, t *testing.T) {
+		_, resp := wsClient("ws://" + serverAddr + path)
+		resp.Body.Close()
 
-	if resp.StatusCode != http.StatusSwitchingProtocols {
-		t.Fatalf("expected status %d, got %d", http.StatusSwitchingProtocols, resp.StatusCode)
+		if resp.StatusCode != http.StatusSwitchingProtocols {
+			t.Fatalf("expected status %d, got %d", http.StatusSwitchingProtocols, resp.StatusCode)
+		}
 	}
 
-	_, resp = wsClient("ws://" + serverAddr + "/backend/message")
-	resp.Body.Close()
+	t.Run("data", func(t *testing.T) {
+		testWSSwitch("/backend/data", t)
+	})
 
-	if resp.StatusCode != http.StatusSwitchingProtocols {
-		t.Fatalf("expected status %d, got %d", http.StatusSwitchingProtocols, resp.StatusCode)
-	}
+	t.Run("message", func(t *testing.T) {
+		testWSSwitch("/backend/message", t)
+	})
 
-	_, resp = wsClient("ws://" + serverAddr + "/backend/order")
-	resp.Body.Close()
-
-	if resp.StatusCode != http.StatusSwitchingProtocols {
-		t.Fatalf("expected status %d, got %d", http.StatusSwitchingProtocols, resp.StatusCode)
-	}
+	t.Run("order", func(t *testing.T) {
+		testWSSwitch("/backend/order", t)
+	})
 }
 
 func put(client http.Client, path string, body string) *http.Response {
