@@ -40,7 +40,9 @@ func getEnums(packets []excelAdapter.PacketDTO) map[name]domain.Enum {
 func getPacketEnums(packet excelAdapter.PacketDTO) map[name]domain.Enum {
 	enums := make(map[name]domain.Enum, 0)
 	for _, measurement := range packet.Measurements {
-		enums[measurement.Name] = domain.NewEnum(measurement.ValueType)
+		if domain.IsEnum(measurement.ValueType) {
+			enums[measurement.Name] = domain.NewEnum(measurement.ValueType)
+		}
 	}
 	return enums
 }
