@@ -11,6 +11,20 @@ import (
 func getPackets(packets []excelAdapter.PacketDTO) map[uint16]domain.Packet {
 	result := make(map[uint16]domain.Packet, len(packets))
 	for _, packet := range packets {
+		if packet.Description.Direction == "Input" {
+			continue
+		}
+		result[getID(packet.Description.ID)] = getPacket(packet)
+	}
+	return result
+}
+
+func getOrders(packets []excelAdapter.PacketDTO) map[uint16]domain.Packet {
+	result := make(map[uint16]domain.Packet, len(packets))
+	for _, packet := range packets {
+		if packet.Description.Direction == "Output" {
+			continue
+		}
 		result[getID(packet.Description.ID)] = getPacket(packet)
 	}
 	return result

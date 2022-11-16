@@ -17,5 +17,6 @@ func newBoard(board excelAdapter.BoardDTO) domain.Board {
 	return domain.Board{
 		Name:    board.Name,
 		Packets: getPackets(board.GetPackets()),
+		Orders:  getOrders(board.GetPackets()),
 	}
 }
