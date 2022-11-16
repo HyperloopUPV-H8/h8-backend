@@ -3,14 +3,15 @@ package infra
 import (
 	"log"
 	"net/http"
+	"path"
 
 	"github.com/gorilla/mux"
 )
 
-const (
+var (
 	serverAddr        = "127.0.0.1:4000"
 	defaultIndexPath  = "index.html"
-	defaultStaticPath = "static\\build"
+	defaultStaticPath = path.Join("static", "build")
 )
 
 type HTTPServer[D, O, M any] struct {
