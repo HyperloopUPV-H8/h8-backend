@@ -37,6 +37,7 @@ func (pipes *Pipes) RemoveConnection(ip IP) {
 	if !exists {
 		return
 	}
+
 	conn.Close()
 	delete(pipes.conns, ip)
 }
@@ -56,7 +57,7 @@ func (pipes *Pipes) Receive() []Payload {
 
 	payloads := make([]Payload, 0, len(pipes.conns))
 	for _, conn := range pipes.conns {
-		conn.SetDeadline(time.Now().Add(time.Second * 2))
+		conn.SetDeadline(time.Now().Add(time.Millisecond))
 		buf := make(Payload, packetMaxLength)
 		n, _ := conn.Read(buf)
 		if n > 0 {

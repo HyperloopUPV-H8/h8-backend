@@ -50,6 +50,7 @@ func (server *Server) listenConnections() {
 	for {
 		conn, err := server.listener.AcceptTCP()
 		if err == nil && server.isValidAddr(getTCPConnIP(conn)) {
+			conn.SetLinger(0)
 			server.pipes.AddConnection(getTCPConnIP(conn), conn)
 		}
 	}
