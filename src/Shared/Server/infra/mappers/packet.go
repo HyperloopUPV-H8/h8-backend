@@ -8,24 +8,13 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/server/domain"
 )
 
-func getPackets(packets []excelAdapter.PacketDTO) map[uint16]domain.Packet {
-	result := make(map[uint16]domain.Packet, len(packets))
+func getPackets(packets []excelAdapter.PacketDTO) []domain.Packet {
+	result := make([]domain.Packet, 0, len(packets))
 	for _, packet := range packets {
-		if packet.Description.Direction == "Input" {
+		if packet.Description.Direction != "Input" {
 			continue
 		}
-		result[getID(packet.Description.ID)] = getPacket(packet)
-	}
-	return result
-}
-
-func getOrders(packets []excelAdapter.PacketDTO) map[uint16]domain.Packet {
-	result := make(map[uint16]domain.Packet, len(packets))
-	for _, packet := range packets {
-		if packet.Description.Direction == "Output" {
-			continue
-		}
-		result[getID(packet.Description.ID)] = getPacket(packet)
+		result = append(result, getPacket(packet))
 	}
 	return result
 }

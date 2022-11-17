@@ -5,10 +5,10 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/server/domain"
 )
 
-func newBoards(boards map[string]excelAdapter.BoardDTO) map[string]domain.Board {
-	result := make(map[string]domain.Board, len(boards))
-	for name, board := range boards {
-		result[name] = newBoard(board)
+func newBoards(boards map[string]excelAdapter.BoardDTO) []domain.Board {
+	result := make([]domain.Board, 0, len(boards))
+	for _, board := range boards {
+		result = append(result, newBoard(board))
 	}
 	return result
 }
@@ -17,6 +17,5 @@ func newBoard(board excelAdapter.BoardDTO) domain.Board {
 	return domain.Board{
 		Name:    board.Name,
 		Packets: getPackets(board.GetPackets()),
-		Orders:  getOrders(board.GetPackets()),
 	}
 }

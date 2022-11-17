@@ -11,7 +11,7 @@ func DataRoutine(socket interfaces.WebSocket, data <-chan application.PacketJSON
 	go func() {
 		var err error
 		for err == nil {
-			err = socket.WriteJSON(<-data)
+			err = socket.WriteJSON([]application.PacketJSON{<-data})
 		}
 	}()
 }

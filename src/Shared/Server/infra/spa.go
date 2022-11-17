@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"fmt"
 	"net/http"
 )
 
@@ -17,6 +18,8 @@ func NewPage(staticPath string, indexPath string) spaHandler {
 }
 
 func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("handle spa")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	http.FileServer(http.Dir(h.staticPath)).ServeHTTP(w, r)
 }
 

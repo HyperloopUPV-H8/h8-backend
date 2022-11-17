@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -15,6 +16,8 @@ type LogHandle struct {
 }
 
 func (handler LogHandle) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("handle log")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Fatalln("http server: log handle:", err)

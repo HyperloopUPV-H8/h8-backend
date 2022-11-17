@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -36,9 +37,13 @@ type SocketHandle[T any] struct {
 	function func(interfaces.WebSocket, T)
 }
 
-var upgrader = websocket.Upgrader{}
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
+}
 
 func (handle SocketHandle[T]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("handle socket")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Fatalf("websocket handle: %s\n", err)

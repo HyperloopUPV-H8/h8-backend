@@ -72,7 +72,6 @@ func main() {
 		for {
 			packet := unitsMappers.ConvertUpdate(unitsMappers.ConvertUpdate(packetAdapter.ReceiveData(), podUnitConverter), displayUnitConverter)
 			json := dataTransferApplication.NewJSON(packetFactory.NewPacket(packet))
-
 		loop:
 			for name, measure := range packet.Values() {
 				select {
@@ -88,7 +87,7 @@ func main() {
 			}
 		}
 	}()
-	server.HandleWebSocketData("/backend/data", dataTransferPresentation.DataRoutine)
+	server.HandleWebSocketData("/backend/packets", dataTransferPresentation.DataRoutine)
 	log.Println("\t\t\tDone!")
 
 	log.Println("\t\tStarting order routine")
@@ -110,8 +109,8 @@ func main() {
 	log.Println("\t\t\tDone!")
 
 	server.HandleLog("/backend/log", logger.EnableChan)
+	server.HandlePodData("/backend/podDataDescription", serverMappers.NewPodData(boards))
 	server.HandleSPA()
-	server.HandlePodData("/backend/log", serverMappers.NewPodData(boards))
 
 	log.Println("\tDone!")
 

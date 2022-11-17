@@ -8,10 +8,15 @@ import (
 
 type PacketJSON struct {
 	ID        uint16            `json:"id"`
-	Count     uint              `json:"count"`
-	CycleTime uint64            `json:"cycleTime"`
 	HexValue  string            `json:"hexValue"`
-	Values    map[string]string `json:"values"`
+	CycleTime uint64            `json:"cycleTime"`
+	Count     uint              `json:"count"`
+	Values    []MeasurementJSON `json:"measurementUpdates"`
+}
+
+type MeasurementJSON struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
 func NewJSON(packet domain.Packet) PacketJSON {
@@ -24,10 +29,13 @@ func NewJSON(packet domain.Packet) PacketJSON {
 	}
 }
 
-func getValues(values map[string]any) map[string]string {
-	result := make(map[string]string, len(values))
+func getValues(values map[string]any) []MeasurementJSON {
+	result := make([]MeasurementJSON, 0, len(values))
 	for name, value := range values {
-		result[name] = fmt.Sprintf("%v", value)
+		result = append(result, MeasurementJSON{
+			Name:  name,
+			Value: fmt.Sprintf("%v", value),
+		})
 	}
 	return result
 }

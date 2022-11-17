@@ -7,6 +7,7 @@ import (
 
 func NewPodData(boards map[string]excelAdapter.BoardDTO) domain.PodData {
 	return domain.PodData{
-		Boards: newBoards(boards),
+		Boards:       newBoards(boards),
+		LastBatchIDs: []uint16{},
 	}
 }
