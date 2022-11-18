@@ -22,7 +22,7 @@ import (
 	dataTransferPresentation "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/infra/presentation"
 	messageTransferApplication "github.com/HyperloopUPV-H8/Backend-H8/message_transfer/application"
 	messageTransferPresentation "github.com/HyperloopUPV-H8/Backend-H8/message_transfer/infra/presentation"
-	orderTransferDomain "github.com/HyperloopUPV-H8/Backend-H8/order_transfer/domain"
+	orderTransferApplication "github.com/HyperloopUPV-H8/Backend-H8/order_transfer/application"
 	orderTransferInfra "github.com/HyperloopUPV-H8/Backend-H8/order_transfer/infra/mappers"
 	orderTransferPresentation "github.com/HyperloopUPV-H8/Backend-H8/order_transfer/infra/presentation"
 	"github.com/joho/godotenv"
@@ -64,7 +64,7 @@ func main() {
 	log.Println("Setting up server...")
 	server := server.New[
 		dataTransferApplication.PacketJSON,
-		orderTransferDomain.Order,
+		orderTransferApplication.OrderJSON,
 		messageTransferApplication.MessageJSON]()
 
 	log.Println("\t\tStarting data routine")
@@ -87,7 +87,7 @@ func main() {
 			}
 		}
 	}()
-	server.HandleWebSocketData("/backend/packets", dataTransferPresentation.DataRoutine)
+	server.HandleWebSocketData("/backend/"+os.Getenv("DATA_ENDPOINT"), dataTransferPresentation.DataRoutine)
 	log.Println("\t\t\tDone!")
 
 	log.Println("\t\tStarting order routine")
@@ -98,18 +98,18 @@ func main() {
 			packetAdapter.Send(os.Getenv("TARGET_IP"), order)
 		}
 	}()
-	server.HandleWebSocketOrder("/backend/order", orderTransferPresentation.OrderRoutine)
+	server.HandleWebSocketOrder("/backend/"+os.Getenv("ORDER_ENDPOINT"), orderTransferPresentation.OrderRoutine)
 	log.Println("\t\t\tDone!")
 
 	log.Println("\t\tStarting message routine")
 	go func() {
 
 	}()
-	server.HandleWebSocketMessage("/backend/message", messageTransferPresentation.MessageRoutine)
+	server.HandleWebSocketMessage("/backend/"+os.Getenv("MESSAGE_ENDPOINT"), messageTransferPresentation.MessageRoutine)
 	log.Println("\t\t\tDone!")
 
-	server.HandleLog("/backend/log", logger.EnableChan)
-	server.HandlePodData("/backend/podDataDescription", serverMappers.NewPodData(boards))
+	server.HandleLog("/backend/"+os.Getenv("LOG_ENDPOINT"), logger.EnableChan)
+	server.HandlePodData("/backend/"+os.Getenv("POD_DATA_ENDPOINT"), serverMappers.NewPodData(boards))
 	server.HandleSPA()
 
 	log.Println("\tDone!")
