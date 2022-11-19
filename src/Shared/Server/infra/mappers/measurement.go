@@ -16,9 +16,17 @@ func getMeasurements(measurements []excelAdapter.MeasurementDTO) []domain.Measur
 }
 
 func getMeasurement(measurement excelAdapter.MeasurementDTO) domain.Measurement {
+	valueType := getType(measurement.ValueType)
+	var value string
+	if valueType == "Number" {
+		value = "0"
+	} else {
+		value = ""
+	}
+
 	return domain.Measurement{
 		Name:  measurement.Name,
-		Value: "",
+		Value: value,
 		Units: strings.Split(measurement.DisplayUnits, "#")[0],
 		Type:  getType(measurement.ValueType),
 	}
