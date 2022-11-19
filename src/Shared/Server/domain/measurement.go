@@ -1,8 +1,8 @@
 package domain
 
 type Measurement struct {
-	Name  string `json:"Name"`
+	Name  string `json:"name"`
 	Type  string `json:"type"`
-	Value string `json:"Value"`
+	Value string `json:"value"`
 	Units string `json:"units"`
 }
