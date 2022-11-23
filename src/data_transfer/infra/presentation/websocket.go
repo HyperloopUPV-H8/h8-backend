@@ -12,7 +12,7 @@ func DataRoutine(socket interfaces.WebSocket, data <-chan application.PacketJSON
 		var err error
 		for err == nil {
 			payload := <-data
-			err = socket.WriteJSON([]application.PacketJSON{payload})
+			err = socket.WriteJSON(map[uint16]application.PacketJSON{payload.ID: payload})
 		}
 	}()
 }
