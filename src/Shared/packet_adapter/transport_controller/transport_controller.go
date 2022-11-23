@@ -17,7 +17,7 @@ type TransportController struct {
 }
 
 var (
-	snifferTarget string = "\\Device\\NPF_Loopback"
+	snifferTarget string = "\\Device\\NPF_{55DEEDC9-90C6-4179-8179-BC84450C8321}"
 	snifferLive   bool   = true
 
 	serverPort Port = 6000
