@@ -33,5 +33,5 @@ func New[D, O, M any]() HTTPServer[D, O, M] {
 }
 
 func (server HTTPServer[D, O, M]) ListenAndServe() {
-	log.Fatalln(http.ListenAndServe(serverAddr, server.router))
+	go log.Fatalln(http.ListenAndServe(serverAddr, server.router))
 }

@@ -10,7 +10,7 @@ import (
 )
 
 func encodeRaw(value any, bytes io.Writer) {
-	err := binary.Write(bytes, binary.BigEndian, value)
+	err := binary.Write(bytes, binary.LittleEndian, value)
 	if err != nil {
 		panic(err)
 	}

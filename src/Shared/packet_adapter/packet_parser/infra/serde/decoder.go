@@ -15,7 +15,7 @@ type EnumVariant = string
 type Enum = map[uint8]EnumVariant
 
 func decodeRaw[T any](bytes io.Reader) (value T) {
-	err := binary.Read(bytes, binary.BigEndian, &value)
+	err := binary.Read(bytes, binary.LittleEndian, &value)
 	if err != nil {
 		panic(err)
 	}

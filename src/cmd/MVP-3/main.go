@@ -131,7 +131,12 @@ func main() {
 
 	log.Println("Backend Ready!")
 	log.Println("\tListening on:", os.Getenv("SERVER_ADDR"))
-	server.ListenAndServe()
+	go server.ListenAndServe()
+
+	stop := "n"
+	for stop == "n" {
+		fmt.Scanf("%s", &stop)
+	}
 }
 
 func getPackets(boards map[string]excelAdapterDomain.BoardDTO) []excelAdapterDomain.PacketDTO {
