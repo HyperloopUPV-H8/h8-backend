@@ -1,9 +1,11 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
+	"runtime/pprof"
 	"strings"
 	"time"
 
@@ -28,7 +30,19 @@ import (
 	"github.com/joho/godotenv"
 )
 
+var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+
 func main() {
+	flag.Parse()
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
+
 	log.Println("Starting Backend...")
 
 	godotenv.Load(".env")
@@ -110,6 +124,7 @@ func main() {
 
 	server.HandleLog("/backend/"+os.Getenv("LOG_ENDPOINT"), logger.EnableChan)
 	server.HandlePodData("/backend/"+os.Getenv("POD_DATA_ENDPOINT"), serverMappers.NewPodData(boards))
+	server.HandlePodData("/backend/"+os.Getenv("ORDER_DESCRIPTION_ENDPOINT"), serverMappers.GetOrders(boards))
 	server.HandleSPA()
 
 	log.Println("\tDone!")
