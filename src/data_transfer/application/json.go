@@ -18,7 +18,7 @@ func NewJSON(packet domain.Packet) PacketJSON {
 	return PacketJSON{
 		ID:                 packet.ID(),
 		Count:              packet.Count(),
-		CycleTime:          uint64(packet.CycleTime().Milliseconds()),
+		CycleTime:          uint64(packet.CycleTime().Nanoseconds()),
 		HexValue:           fmt.Sprintf("%x", packet.HexValue()),
 		MeasurementUpdates: getValues(packet.Values()),
 	}
