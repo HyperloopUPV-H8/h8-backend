@@ -16,8 +16,10 @@ func expandPacket(description DescriptionDTO, measurements []MeasurementDTO) []P
 	packets := make([]PacketDTO, len(ids))
 	for index, id := range ids {
 		newPacket := PacketDTO{Description: descriptionWithID(description, id), Measurements: measurements}
-		sufix := fmt.Sprintf("_%v", index)
-		newPacket = packetWithSufix(newPacket, sufix)
+		if len(id) > 1 {
+			sufix := fmt.Sprintf("_%v", index)
+			newPacket = packetWithSufix(newPacket, sufix)
+		}
 		packets[index] = newPacket
 	}
 
