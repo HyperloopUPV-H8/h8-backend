@@ -26,9 +26,9 @@ func New[D, O, M any]() HTTPServer[D, O, M] {
 	return HTTPServer[D, O, M]{
 		router:      mux.NewRouter(),
 		page:        NewPage(defaultStaticPath, defaultIndexPath),
-		PacketChan:  make(chan D),
-		OrderChan:   make(chan O),
-		MessageChan: make(chan M),
+		PacketChan:  make(chan D, 2024),
+		OrderChan:   make(chan O, 2024),
+		MessageChan: make(chan M, 2024),
 	}
 }
 

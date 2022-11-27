@@ -13,8 +13,8 @@ type Config struct {
 	timeout time.Duration
 }
 
-func DefaultConfig(srcAddrs []string, dstAddrs []string) Config {
-	return Config{
+func DefaultConfig(srcAddrs []string, dstAddrs []string) *Config {
+	return &Config{
 		snaplen: ^int32(0),
 		promisc: true,
 		timeout: pcap.BlockForever,

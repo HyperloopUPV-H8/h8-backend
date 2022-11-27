@@ -2,6 +2,7 @@ package infra
 
 import (
 	"net"
+	"strings"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/transport_controller/infra/sniffer"
 	"github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/transport_controller/infra/tcp"
@@ -19,11 +20,11 @@ type TransportController struct {
 
 func NewTransportController(config Config) *TransportController {
 	if config.TCPConfig == nil {
-		*config.TCPConfig = *tcp.DefaultConfig()
+		config.TCPConfig = tcp.DefaultConfig()
 	}
 
 	if config.SnifferConfig == nil {
-		*config.SnifferConfig = sniffer.DefaultConfig(config.TCPConfig.RemoteIPs, append(config.TCPConfig.RemoteIPs, getLocalIPs()...))
+		config.SnifferConfig = sniffer.DefaultConfig(config.TCPConfig.RemoteIPs, append(config.TCPConfig.RemoteIPs, getLocalIPs()...))
 	}
 
 	return &TransportController{
@@ -59,7 +60,7 @@ func getLocalIPs() []IP {
 	for _, iface := range ifaces {
 		addrs, _ := iface.Addrs()
 		for _, addr := range addrs {
-			ips = append(ips, IP(addr.String()))
+			ips = append(ips, IP(strings.Split(addr.String(), "/")[0]))
 		}
 	}
 

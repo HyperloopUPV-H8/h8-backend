@@ -77,13 +77,13 @@ func (pipe *Pipe) read() {
 		buf := make([]byte, pipe.snaplen)
 
 		pipe.connMx.Lock()
-		_, err := pipe.conn.Read(buf)
+		n, err := pipe.conn.Read(buf)
 		pipe.connMx.Unlock()
 
 		if err != nil {
 			pipe.close()
 		} else {
-			pipe.onRead(buf)
+			pipe.onRead(buf[:n])
 		}
 	}
 }

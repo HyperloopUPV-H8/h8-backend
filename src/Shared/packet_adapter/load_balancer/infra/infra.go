@@ -1,6 +1,8 @@
 package infra
 
-import "container/ring"
+import (
+	"container/ring"
+)
 
 type LoadBalancer struct {
 	buf *ring.Ring

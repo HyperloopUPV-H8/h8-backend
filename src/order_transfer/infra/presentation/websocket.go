@@ -11,7 +11,9 @@ func OrderRoutine(socket interfaces.WebSocket, orders chan<- application.OrderJS
 		for err == nil {
 			var ord application.OrderJSON
 			err = socket.ReadJSON(ord)
-			orders <- ord
+			if err == nil {
+				orders <- ord
+			}
 		}
 	}()
 }

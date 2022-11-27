@@ -35,7 +35,7 @@ func obtainSource(target string, live bool, snaplen int32, promisc bool, timeout
 	}
 
 	if err := handle.SetBPFFilter(bpf); err != nil {
-		log.Fatalf("sniffer: obtain source: %s\n", err)
+		log.Fatalf("sniffer: obtain source bpf: %s\n", err)
 	}
 
 	return handle
@@ -47,7 +47,7 @@ func (sniffer *Sniffer) GetNext() ([]byte, gopacket.CaptureInfo) {
 		log.Fatalf("sniffer: get next: %s\n", err)
 	}
 
-	return payload, info
+	return payload[32:], info
 }
 
 func (sniffer *Sniffer) Close() {
