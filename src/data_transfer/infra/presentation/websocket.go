@@ -9,6 +9,7 @@ type id = uint16
 
 func DataRoutine(socket interfaces.WebSocket, data <-chan application.PacketJSON) {
 	go func() {
+		defer socket.Close()
 		var err error
 		for err == nil {
 			payload := <-data
