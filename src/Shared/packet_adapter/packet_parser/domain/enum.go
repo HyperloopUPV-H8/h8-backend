@@ -1,38 +1,32 @@
 package domain
 
 import (
-	"regexp"
 	"strings"
 )
 
-type enumVariant = string
-type Enum = map[uint8]enumVariant
+type Enum map[uint8]string
 
-var enumExp = regexp.MustCompile(`(?i)^ENUM\((\w+(?:,\w+)*)\)$`)
-var itemsExp = regexp.MustCompile(`(\w+),?`)
-
-func NewEnum(enumString string) Enum {
-	matches := getEnumMatches(enumString)
-	return parseEnum(matches)
-}
-
-func parseEnum(matches [][]string) Enum {
-	variants := make(map[uint8]enumVariant, len(matches))
-	for i, match := range matches {
-		variants[uint8(i)] = enumVariant(match[1])
+func (enum Enum) Find(value string) (uint8, bool) {
+	for val, repr := range enum {
+		if repr == value {
+			return val, true
+		}
 	}
-	return Enum(variants)
+	return 0, false
 }
 
-func getEnumMatches(enumString string) [][]string {
-	itemList := enumExp.FindStringSubmatch(removeWhitespace(enumString))[1]
-	return itemsExp.FindAllStringSubmatch(itemList, -1)
+func NewEnum(literal string) Enum {
+	enum := make(map[uint8]string)
+	for i, variant := range strings.Split(strings.TrimSuffix(strings.TrimPrefix(removeWhitespace(literal), "ENUM("), ")"), ",") {
+		enum[uint8(i)] = variant
+	}
+	return enum
 }
 
 func removeWhitespace(input string) string {
 	return strings.ReplaceAll(input, " ", "")
 }
 
-func IsEnum(valueType string) bool {
-	return enumExp.MatchString(removeWhitespace(valueType))
+func IsEnum(literal string) bool {
+	return strings.HasPrefix(literal, "ENUM")
 }

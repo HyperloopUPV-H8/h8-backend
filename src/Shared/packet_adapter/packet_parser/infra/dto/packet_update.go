@@ -22,18 +22,22 @@ func NewPacketUpdate(id id, update map[string]any, hexValues []byte) PacketUpdat
 	}
 }
 
-func (update PacketUpdate) ID() id {
+func (update *PacketUpdate) SetValue(name string, newValue any) {
+	update.values[name] = newValue
+}
+
+func (update *PacketUpdate) ID() id {
 	return update.id
 }
 
-func (update PacketUpdate) HexValue() []byte {
+func (update *PacketUpdate) HexValue() []byte {
 	return update.hexValue
 }
 
-func (update PacketUpdate) Values() map[string]any {
+func (update *PacketUpdate) Values() map[string]any {
 	return update.values
 }
 
-func (update PacketUpdate) Timestamp() time.Time {
+func (update *PacketUpdate) Timestamp() time.Time {
 	return update.timestamp
 }
