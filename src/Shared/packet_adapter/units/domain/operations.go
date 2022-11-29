@@ -65,7 +65,7 @@ func doOperation(operation operation, value float64) (converted float64) {
 
 func DoReverseOperations(operations Operations, value float64) (converted float64) {
 	converted = value
-	for i := len(operations) - 1; i >= 0; i++ {
+	for i := (len(operations) - 1); i >= 0; i-- {
 		converted = doReverseOperation(operations[i], converted)
 	}
 	return converted

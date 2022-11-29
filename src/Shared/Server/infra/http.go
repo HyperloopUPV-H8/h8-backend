@@ -22,13 +22,13 @@ type HTTPServer[D, O, M any] struct {
 	MessageChan chan M
 }
 
-func New[D, O, M any]() HTTPServer[D, O, M] {
+func New[D, O, M any](bufSize int) HTTPServer[D, O, M] {
 	return HTTPServer[D, O, M]{
 		router:      mux.NewRouter(),
 		page:        NewPage(defaultStaticPath, defaultIndexPath),
-		PacketChan:  make(chan D, 2024),
-		OrderChan:   make(chan O, 2024),
-		MessageChan: make(chan M, 2024),
+		PacketChan:  make(chan D, bufSize),
+		OrderChan:   make(chan O, bufSize),
+		MessageChan: make(chan M, bufSize),
 	}
 }
 

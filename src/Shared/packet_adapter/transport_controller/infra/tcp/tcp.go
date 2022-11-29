@@ -9,14 +9,12 @@ import (
 type Server struct {
 	listener *net.TCPListener
 	pipes    map[string]*Pipe
-	onRead   func([]byte)
 }
 
 func Open(config *Config) Server {
 	server := Server{
 		listener: bindListener(resolvePortAddr(config.LocalPort)),
 		pipes:    getPipes(fmt.Sprintf(":%d", config.LocalPort), config.RemoteIPs, config.RemotePorts, config.Snaplen),
-		onRead:   func([]byte) {},
 	}
 
 	go server.listenConnections()
@@ -25,9 +23,14 @@ func Open(config *Config) Server {
 }
 
 func (server *Server) SetOnRead(action func([]byte)) {
-	server.onRead = action
 	for _, pipe := range server.pipes {
 		pipe.setOnRead(action)
+	}
+}
+
+func (server *Server) SetOnConnUpdate(action func(*net.TCPAddr, bool)) {
+	for _, pipe := range server.pipes {
+		pipe.setOnUpdate(action)
 	}
 }
 
@@ -52,8 +55,11 @@ func bindListener(addr *net.TCPAddr) *net.TCPListener {
 func (server *Server) listenConnections() {
 	for {
 		conn, err := server.listener.AcceptTCP()
+		if err != nil {
+			continue
+		}
 		pipe, exists := server.pipes[getTCPConnIP(conn)]
-		if err != nil && exists {
+		if err == nil && exists {
 			pipe.connect(conn)
 		} else {
 			conn.Close()

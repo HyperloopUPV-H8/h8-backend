@@ -12,17 +12,15 @@ type id = uint16
 func DataRoutine(socket interfaces.WebSocket, data <-chan application.PacketJSON) {
 	go func() {
 		var err error
-		buf := make(map[uint16]application.PacketJSON, 10)
+		buf := make(map[uint16]application.PacketJSON)
 		ticker := time.NewTicker(time.Millisecond * 10)
 		for err == nil {
-			payload := <-data
-			buf[payload.ID] = payload
 			select {
 			case <-ticker.C:
-				err = socket.WriteJSON(map[uint16]application.PacketJSON{payload.ID: payload})
-			default:
+				err = socket.WriteJSON(buf)
+			case payload := <-data:
+				buf[payload.ID] = payload
 			}
-
 		}
 	}()
 }

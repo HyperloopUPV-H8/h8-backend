@@ -13,7 +13,8 @@ type Pipe struct {
 	raddr *net.TCPAddr
 
 	conn         *net.TCPConn
-	connMx       sync.Mutex
+	connRMx      sync.Mutex
+	connWMx      sync.Mutex
 	onConnUpdate func(*net.TCPAddr, bool)
 
 	onRead  func([]byte)
@@ -38,14 +39,20 @@ func getPipes(laddr string, rips []string, rports []uint16, snaplen int32) map[s
 }
 
 func newPipe(laddr *net.TCPAddr, raddr *net.TCPAddr, snaplen int32) *Pipe {
-	return &Pipe{
-		laddr:   laddr,
-		raddr:   raddr,
-		conn:    nil,
-		connMx:  sync.Mutex{},
-		onRead:  func([]byte) {},
-		snaplen: snaplen,
+	pipe := &Pipe{
+		laddr:        laddr,
+		raddr:        raddr,
+		conn:         nil,
+		connRMx:      sync.Mutex{},
+		connWMx:      sync.Mutex{},
+		onRead:       func(b []byte) {},
+		onConnUpdate: func(t *net.TCPAddr, b bool) {},
+		snaplen:      snaplen,
 	}
+
+	go pipe.tryConnect()
+
+	return pipe
 }
 
 func (pipe *Pipe) setOnRead(action func([]byte)) {
@@ -62,23 +69,25 @@ func (pipe *Pipe) tryConnect() {
 			pipe.connect(conn)
 		}
 	}
-	pipe.onConnUpdate(pipe.raddr, true)
-	go pipe.read()
 }
 
 func (pipe *Pipe) connect(conn *net.TCPConn) {
-	pipe.connMx.Lock()
-	defer pipe.connMx.Unlock()
+	pipe.connRMx.Lock()
+	pipe.connWMx.Lock()
+	defer pipe.connRMx.Unlock()
+	defer pipe.connWMx.Unlock()
 	pipe.conn = conn
+	go pipe.read()
+	pipe.onConnUpdate(pipe.raddr, true)
 }
 
 func (pipe *Pipe) read() {
 	for pipe.conn != nil {
 		buf := make([]byte, pipe.snaplen)
 
-		pipe.connMx.Lock()
+		pipe.connRMx.Lock()
 		n, err := pipe.conn.Read(buf)
-		pipe.connMx.Unlock()
+		pipe.connRMx.Unlock()
 
 		if err != nil {
 			pipe.close()
@@ -89,8 +98,8 @@ func (pipe *Pipe) read() {
 }
 
 func (pipe *Pipe) write(payload []byte) error {
-	pipe.connMx.Lock()
-	defer pipe.connMx.Unlock()
+	pipe.connWMx.Lock()
+	defer pipe.connWMx.Unlock()
 	if pipe.conn == nil {
 		return errors.New("tcp: write: board is disconnected")
 	}
@@ -107,10 +116,15 @@ func (pipe *Pipe) write(payload []byte) error {
 }
 
 func (pipe *Pipe) close() {
-	pipe.connMx.Lock()
-	defer pipe.connMx.Unlock()
+	pipe.connRMx.Lock()
+	pipe.connWMx.Lock()
+	defer pipe.connRMx.Unlock()
+	defer pipe.connWMx.Unlock()
+	if pipe.conn == nil {
+		return
+	}
 	pipe.conn.Close()
 	pipe.conn = nil
-	pipe.onConnUpdate(pipe.raddr, false)
 	go pipe.tryConnect()
+	pipe.onConnUpdate(pipe.raddr, false)
 }

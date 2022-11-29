@@ -12,20 +12,17 @@ import (
 	loggerDto "github.com/HyperloopUPV-H8/Backend-H8/Shared/Logger/infra/dto"
 	excelAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_adapter"
 	excelRetriever "github.com/HyperloopUPV-H8/Backend-H8/Shared/excel_retriever"
-	packetAdapter "github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter"
-	"github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser/infra/dto"
+	packetParserInfra "github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/packet_parser/infra"
 	transportControllerInfra "github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/transport_controller/infra"
+	unitsInfra "github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/units/infra"
+	unitsMappers "github.com/HyperloopUPV-H8/Backend-H8/Shared/packet_adapter/units/infra/mappers"
 	server "github.com/HyperloopUPV-H8/Backend-H8/Shared/server/infra"
 	serverMappers "github.com/HyperloopUPV-H8/Backend-H8/Shared/server/infra/mappers"
 	dataTransferApplication "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/application"
 	dataTransfer "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/infra"
 	dataTransferPresentation "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/infra/presentation"
 	messageTransferApplication "github.com/HyperloopUPV-H8/Backend-H8/message_transfer/application"
-	messageTransferMappers "github.com/HyperloopUPV-H8/Backend-H8/message_transfer/infra/mappers"
-	messageTransferPresentation "github.com/HyperloopUPV-H8/Backend-H8/message_transfer/infra/presentation"
 	orderTransferApplication "github.com/HyperloopUPV-H8/Backend-H8/order_transfer/application"
-	orderTransferInfra "github.com/HyperloopUPV-H8/Backend-H8/order_transfer/infra/mappers"
-	orderTransferPresentation "github.com/HyperloopUPV-H8/Backend-H8/order_transfer/infra/presentation"
 	"github.com/joho/godotenv"
 )
 
@@ -56,9 +53,10 @@ func main() {
 		SnifferConfig: nil,
 	}
 
-	dataChan := make(chan dto.PacketUpdate)
-	messageChan := make(chan dto.PacketUpdate)
-	orderChan := make(chan dto.PacketUpdate)
+	transportController := transportControllerInfra.NewTransportController(config)
+	packetParser := packetParserInfra.NewPacketAggregate(boards)
+	podUnits := unitsInfra.NewPodUnitAggregate(boards)
+	displayUnits := unitsInfra.NewDisplayUnitAggregate(boards)
 
 	packetFactory := dataTransfer.NewFactory()
 
@@ -67,17 +65,24 @@ func main() {
 	server := server.New[
 		dataTransferApplication.PacketJSON,
 		orderTransferApplication.OrderJSON,
-		messageTransferApplication.MessageJSON]()
+		messageTransferApplication.MessageJSON](1024)
 
+	count1 := 0
+	count2 := 0
 	go func() {
 		for {
-			packet := <-dataChan
-			json := dataTransferApplication.NewJSON(packetFactory.NewPacket(packet))
+			packet, _ := transportController.ReceiveData()
+			count1 += 1
+			dto := packetParserInfra.Decode(packet, *packetParser)
+			unitsMappers.ConvertUpdate(&dto, *podUnits)
+			unitsMappers.ConvertUpdate(&dto, *displayUnits)
+
+			json := dataTransferApplication.NewJSON(packetFactory.NewPacket(dto))
 
 		loop:
-			for name, measure := range packet.Values() {
+			for name, measure := range dto.Values() {
 				select {
-				case logger.ValueChan <- loggerDto.NewLogValue(name, fmt.Sprintf("%v", measure), packet.Timestamp()):
+				case logger.ValueChan <- loggerDto.NewLogValue(name, fmt.Sprintf("%v", measure), dto.Timestamp()):
 				default:
 					break loop
 				}
@@ -85,33 +90,18 @@ func main() {
 
 			select {
 			case server.PacketChan <- json:
+				count2 += 1
 			default:
 			}
 		}
-		
+
 	}()
 	server.HandleWebSocketData("/backend/"+os.Getenv("DATA_ENDPOINT"), dataTransferPresentation.DataRoutine)
-
-	go func() {
-		for {
-			orderChan <- orderTransferInfra.GetPacketValues(<-server.OrderChan)
-		}
-	}()
-	server.HandleWebSocketOrder("/backend/"+os.Getenv("ORDER_ENDPOINT"), orderTransferPresentation.OrderRoutine)
-
-	go func() {
-		for {
-			server.MessageChan <- messageTransferApplication.NewMessageJSON(messageTransferMappers.GetMessage(<-messageChan))
-		}
-	}()
-	server.HandleWebSocketMessage("/backend/"+os.Getenv("MESSAGE_ENDPOINT"), messageTransferPresentation.MessageRoutine)
 
 	server.HandleLog("/backend/"+os.Getenv("LOG_ENDPOINT"), logger.EnableChan)
 	server.HandlePodData("/backend/"+os.Getenv("POD_DATA_ENDPOINT"), serverMappers.NewPodData(boards))
 	server.HandlePodData("/backend/"+os.Getenv("ORDER_DESCRIPTION_ENDPOINT"), serverMappers.GetOrders(boards))
 	server.HandleSPA()
-
-	packetAdapter.New(config, 10, 10, dataChan, messageChan, orderChan, boards)
 
 	log.Println("Backend Ready!")
 	log.Println("\tListening on:", os.Getenv("SERVER_ADDR"))
@@ -121,4 +111,5 @@ func main() {
 	for stop == "n" {
 		fmt.Scanf("%s", &stop)
 	}
+	log.Println(count2, "/", count1)
 }
