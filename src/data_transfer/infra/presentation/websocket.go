@@ -11,6 +11,7 @@ type id = uint16
 
 func DataRoutine(socket interfaces.WebSocket, data <-chan application.PacketJSON) {
 	go func() {
+		defer socket.Close()
 		var err error
 		buf := make(map[uint16]application.PacketJSON)
 		ticker := time.NewTicker(time.Millisecond * 10)

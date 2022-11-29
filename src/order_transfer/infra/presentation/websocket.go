@@ -7,6 +7,7 @@ import (
 
 func OrderRoutine(socket interfaces.WebSocket, orders chan<- application.OrderJSON) {
 	go func() {
+		defer socket.Close()
 		var err error
 		for err == nil {
 			var ord application.OrderJSON
