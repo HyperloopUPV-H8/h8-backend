@@ -18,7 +18,7 @@ func OpenSniffer(device string, live bool, config models.Config) *Sniffer {
 		config: config,
 	}
 
-	go sniffer.Read()
+	go sniffer.StartReading()
 
 	return sniffer
 }
@@ -47,7 +47,7 @@ func obtainSource(device string, live bool, config models.Config) *pcap.Handle {
 	return source
 }
 
-func (sniffer *Sniffer) Read() {
+func (sniffer *Sniffer) StartReading() {
 	for {
 		payload, _, err := sniffer.source.ReadPacketData()
 		if err != nil {

@@ -66,7 +66,7 @@ func (pipe *Pipe) write(payload []byte) (success bool) {
 	return true
 }
 
-func getPipe(laddr *net.TCPAddr, raddr *net.TCPAddr, config models.Config) *Pipe {
+func createPipe(laddr *net.TCPAddr, raddr *net.TCPAddr, config models.Config) *Pipe {
 	pipe := &Pipe{
 		conn:   nil,
 		laddr:  laddr,
