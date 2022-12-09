@@ -36,6 +36,9 @@ func (dataTransfer *DataTransfer) HandleConn(socket *websocket.Conn) {
 
 func (dataTransfer *DataTransfer) Broadcast(update models.PacketUpdate) {
 	for _, routine := range dataTransfer.routines {
-		routine <- update
+		select {
+		case routine <- update:
+		default:
+		}
 	}
 }

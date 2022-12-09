@@ -39,7 +39,7 @@ func formatValues(values map[string]any) map[string]string {
 }
 
 func (factory PacketFactory) getNext(id uint16) (count uint64, cycleTime uint64) {
-	timestamp := uint64(time.Now().UnixNano())
+	timestamp := uint64(time.Now().UnixMicro())
 	cycleTime = timestamp - factory.timestamp[id]
 	factory.timestamp[id] = timestamp
 	factory.count[id] += 1
