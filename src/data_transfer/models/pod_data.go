@@ -13,10 +13,6 @@ type PodData struct {
 }
 
 func (podData *PodData) AddPacket(board string, ip string, desc excelAdapterModels.Description, values []excelAdapterModels.Value) {
-	if podData.Boards == nil {
-		podData.Boards = make(map[string]Board)
-	}
-
 	id, err := strconv.ParseUint(desc.ID, 10, 16)
 	if err != nil {
 		log.Fatalf("data transfer: AddPacket: %s\n", err)
@@ -31,6 +27,17 @@ func (podData *PodData) AddPacket(board string, ip string, desc excelAdapterMode
 		dataBoard = podData.Boards[board]
 	}
 
+	dataBoard.Packets[uint16(id)] = Packet{
+		ID:           uint16(id),
+		Name:         desc.Name,
+		HexValue:     "",
+		Count:        0,
+		CycleTime:    0,
+		Measurements: getMeasurements(values),
+	}
+}
+
+func getMeasurements(values []excelAdapterModels.Value) map[string]Measurement {
 	measurements := make(map[string]Measurement, len(values))
 	for _, value := range values {
 		measurements[value.Name] = Measurement{
@@ -41,14 +48,7 @@ func (podData *PodData) AddPacket(board string, ip string, desc excelAdapterMode
 			WarningRange: parseRange(value.WarningRange),
 		}
 	}
-	dataBoard.Packets[uint16(id)] = Packet{
-		ID:           uint16(id),
-		Name:         desc.Name,
-		HexValue:     "",
-		Count:        0,
-		CycleTime:    0,
-		Measurements: measurements,
-	}
+	return measurements
 }
 
 func parseRange(literal string) [2]float64 {
