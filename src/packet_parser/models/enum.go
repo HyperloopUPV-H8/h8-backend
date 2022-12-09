@@ -7,7 +7,7 @@ import (
 
 type Enum map[uint8]string
 
-func (enum Enum) GetRepr(value string) uint8 {
+func (enum Enum) GetNumericValue(value string) uint8 {
 	for repr, variant := range enum {
 		if value == variant {
 			return repr

@@ -18,10 +18,6 @@ type PacketParser struct {
 }
 
 func (parser *PacketParser) AddPacket(board string, ip string, desc excelAdapterModels.Description, values []excelAdapterModels.Value) {
-	if parser.descriptors == nil {
-		parser.descriptors = make(map[uint16]models.PacketDescriptor)
-	}
-
 	id, err := strconv.ParseUint(desc.ID, 10, 16)
 	if err != nil {
 		log.Fatalf("packet parser: AddPacket: %s\n", err)
@@ -32,9 +28,6 @@ func (parser *PacketParser) AddPacket(board string, ip string, desc excelAdapter
 		kind := value.Type
 		if strings.HasPrefix(kind, "ENUM") {
 			kind = "enum"
-			if parser.enums == nil {
-				parser.enums = make(map[string]models.Enum)
-			}
 			parser.enums[value.Name] = models.GetEnum(value.Type)
 		}
 
@@ -47,10 +40,10 @@ func (parser *PacketParser) AddPacket(board string, ip string, desc excelAdapter
 	parser.descriptors[uint16(id)] = valueDescriptors
 }
 
-func NewPacketParser(descriptors map[uint16]models.PacketDescriptor, enums map[string]models.Enum) PacketParser {
+func NewPacketParser() PacketParser {
 	return PacketParser{
-		descriptors: descriptors,
-		enums:       enums,
+		descriptors: make(map[uint16]models.PacketDescriptor),
+		enums:       make(map[string]models.Enum),
 	}
 }
 
