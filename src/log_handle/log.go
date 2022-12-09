@@ -33,6 +33,10 @@ func NewLogger(source <-chan models.Value, config models.Config) *LogHandle {
 func (log *LogHandle) Run() {
 	for {
 		if !log.config.Running {
+			select {
+			case <-log.source:
+			default:
+			}
 			continue
 		}
 		select {
