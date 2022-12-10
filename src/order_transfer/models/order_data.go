@@ -19,11 +19,9 @@ func (orderData *OrderData) AddPacket(board string, ip string, desc excelAdapter
 		log.Fatalf("order transfer: AddPacket: %s\n", err)
 	}
 
-	fields := make(map[string]FieldDescription, len(values))
+	fields := make(map[string]string, len(values))
 	for _, value := range values {
-		fields[value.Name] = FieldDescription{
-			Type: value.Type,
-		}
+		fields[value.Name] = value.Type
 	}
 
 	(*orderData)[desc.Name] = OrderDescription{
@@ -34,11 +32,7 @@ func (orderData *OrderData) AddPacket(board string, ip string, desc excelAdapter
 }
 
 type OrderDescription struct {
-	ID     uint16                      `json:"id"`
-	Name   string                      `json:"name"`
-	Fields map[string]FieldDescription `json:"fieldDescriptions"`
-}
-
-type FieldDescription struct {
-	Type string `json:"valueType"`
+	ID     uint16            `json:"id"`
+	Name   string            `json:"name"`
+	Fields map[string]string `json:"fieldDescriptions"`
 }
