@@ -14,11 +14,15 @@ func (connHandle *ConnectionTransfer) HandleConn(socket *websocket.Conn) {
 	go func(socket *websocket.Conn, updates <-chan models.Connection) {
 		for update := range updates {
 			connHandle.BoardStatus[update.Name] = update
-			status := make([]models.Connection, 0, len(connHandle.BoardStatus))
-			for _, sts := range connHandle.BoardStatus {
-				status = append(status, sts)
-			}
-			socket.WriteJSON(status)
+			socket.WriteJSON(mapToArray(connHandle.BoardStatus))
 		}
 	}(socket, connHandle.Updates)
+}
+
+func mapToArray[T any](input map[any]T) []T {
+	output := make([]T, 0, len(input))
+	for _, value := range input {
+		output = append(output, value)
+	}
+	return output
 }
