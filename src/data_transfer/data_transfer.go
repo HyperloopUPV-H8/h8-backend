@@ -57,6 +57,7 @@ func (dataTransfer *DataTransfer) getJSON() []byte {
 	if err != nil {
 		log.Fatalf("data transfer: getJSON: %s\n", err)
 	}
+	dataTransfer.packetBuf = make(map[uint16]models.PacketUpdate, len(dataTransfer.packetBuf))
 	return data
 }
 
