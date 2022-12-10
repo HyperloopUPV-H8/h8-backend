@@ -8,39 +8,31 @@ import (
 )
 
 type DataTransfer struct {
-	routines []chan<- models.PacketUpdate
-	Rate     time.Duration
+	packetBuf map[uint16]models.PacketUpdate
+	rate      time.Duration
+}
+
+func New(rate time.Duration) *DataTransfer {
+	return &DataTransfer{
+		packetBuf: make(map[uint16]models.PacketUpdate),
+		rate:      rate,
+	}
 }
 
 func (dataTransfer *DataTransfer) HandleConn(socket *websocket.Conn) {
-	updates := make(chan models.PacketUpdate)
-	dataTransfer.routines = append(dataTransfer.routines, updates)
+	go func(socket *websocket.Conn) {
+		defer socket.Close()
+		ticker := time.NewTicker(dataTransfer.rate)
 
-	go dataTransfer.socketConnection(socket, updates, dataTransfer.Rate)
-}
-
-func (dataTransfer *DataTransfer) socketConnection(socket *websocket.Conn, updates <-chan models.PacketUpdate, rate time.Duration) {
-	defer socket.Close()
-	buf := make(map[uint16]models.PacketUpdate)
-	ticker := time.NewTicker(rate)
-loop:
-	for {
-		select {
-		case payload := <-updates:
-			buf[payload.ID] = payload
-		case <-ticker.C:
-			if err := socket.WriteJSON(buf); err != nil {
-				break loop
+		for {
+			<-ticker.C
+			if err := socket.WriteJSON(dataTransfer.packetBuf); err != nil {
+				break
 			}
 		}
-	}
+	}(socket)
 }
 
-func (dataTransfer *DataTransfer) Broadcast(update models.PacketUpdate) {
-	for _, routine := range dataTransfer.routines {
-		select {
-		case routine <- update:
-		default:
-		}
-	}
+func (dataTransfer *DataTransfer) Update(update models.PacketUpdate) {
+	dataTransfer.packetBuf[update.ID] = update
 }
