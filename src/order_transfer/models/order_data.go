@@ -24,12 +24,14 @@ func (orderData *OrderData) AddPacket(board string, ip string, desc excelAdapter
 
 	(*orderData)[desc.Name] = OrderDescription{
 		ID:     uint16(id),
+		Name:   desc.Name,
 		Fields: fields,
 	}
 }
 
 type OrderDescription struct {
 	ID     uint16                      `json:"id"`
+	Name   string                      `json:"name"`
 	Fields map[string]FieldDescription `json:"fieldDescriptions"`
 }
 
