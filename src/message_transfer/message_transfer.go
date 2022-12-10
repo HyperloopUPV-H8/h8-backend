@@ -11,6 +11,12 @@ type MessageTransfer struct {
 	sockets map[string]*websocket.Conn
 }
 
+func New() *MessageTransfer {
+	return &MessageTransfer{
+		sockets: make(map[string]*websocket.Conn),
+	}
+}
+
 func (messageTransfer *MessageTransfer) HandleConn(socket *websocket.Conn) {
 	messageTransfer.sockets[betterguid.New()] = socket
 }

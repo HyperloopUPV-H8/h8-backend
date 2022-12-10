@@ -66,3 +66,10 @@ func getPipes(laddr *net.TCPAddr, raddrs []*net.TCPAddr, config models.Config) m
 func withoutPort(addr net.Addr) string {
 	return strings.Split(addr.String(), ":")[0]
 }
+
+func (handle *PipeHandle) Close() {
+	handle.listener.Close()
+	for _, pipe := range handle.pipes {
+		pipe.close()
+	}
+}

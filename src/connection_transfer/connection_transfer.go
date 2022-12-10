@@ -14,6 +14,13 @@ type ConnectionTransfer struct {
 	sockets     map[string]*websocket.Conn
 }
 
+func New() *ConnectionTransfer {
+	return &ConnectionTransfer{
+		boardStatus: make(map[string]models.Connection),
+		sockets:     make(map[string]*websocket.Conn),
+	}
+}
+
 func (connectionTransfer *ConnectionTransfer) HandleConn(socket *websocket.Conn) {
 	connectionTransfer.sockets[betterguid.New()] = socket
 }
