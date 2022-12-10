@@ -19,6 +19,10 @@ func NewPodData() PodData {
 }
 
 func (podData *PodData) AddPacket(board string, ip string, desc excelAdapterModels.Description, values []excelAdapterModels.Value) {
+	if desc.Type != "data" {
+		return
+	}
+
 	id, err := strconv.ParseUint(desc.ID, 10, 16)
 	if err != nil {
 		log.Fatalf("data transfer: AddPacket: %s\n", err)
