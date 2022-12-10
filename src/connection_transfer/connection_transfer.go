@@ -19,8 +19,8 @@ func (connHandle *ConnectionTransfer) HandleConn(socket *websocket.Conn) {
 	}(socket, connHandle.Updates)
 }
 
-func mapToArray[T any](input map[any]T) []T {
-	output := make([]T, 0, len(input))
+func mapToArray(input map[string]models.Connection) []models.Connection {
+	output := make([]models.Connection, 0, len(input))
 	for _, value := range input {
 		output = append(output, value)
 	}

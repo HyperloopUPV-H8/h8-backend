@@ -58,7 +58,7 @@ func (handle *PipeHandle) Write(addr string, payload []byte) bool {
 func getPipes(laddr *net.TCPAddr, raddrs []*net.TCPAddr, config models.Config) map[string]*Pipe {
 	pipes := make(map[string]*Pipe, len(raddrs))
 	for _, raddr := range raddrs {
-		pipes[raddr.IP.String()] = getPipe(laddr, raddr, config)
+		pipes[raddr.IP.String()] = createPipe(laddr, raddr, config)
 	}
 	return pipes
 }

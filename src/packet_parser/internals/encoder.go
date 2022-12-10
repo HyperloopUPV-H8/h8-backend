@@ -19,7 +19,7 @@ func EncodeID(writer io.Writer, id uint16) {
 }
 
 func EncodeEnum(writer io.Writer, enum models.Enum, value string) {
-	encodeNext(writer, enum.GetRepr(value))
+	encodeNext(writer, enum.GetNumericValue(value))
 }
 
 func EncodeBool(writer io.Writer, value bool) {
