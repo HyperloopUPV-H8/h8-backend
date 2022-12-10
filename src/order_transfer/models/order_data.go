@@ -10,6 +10,10 @@ import (
 type OrderData map[string]OrderDescription
 
 func (orderData *OrderData) AddPacket(board string, ip string, desc excelAdapterModels.Description, values []excelAdapterModels.Value) {
+	if desc.Type != "order" {
+		return
+	}
+
 	id, err := strconv.ParseUint(desc.ID, 10, 16)
 	if err != nil {
 		log.Fatalf("order transfer: AddPacket: %s\n", err)
