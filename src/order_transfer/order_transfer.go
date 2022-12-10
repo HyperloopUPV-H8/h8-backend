@@ -6,18 +6,18 @@ import (
 )
 
 type OrderTransfer struct {
-	Dump chan<- models.Order
+	OrderChannel chan<- models.Order
 }
 
 func (orderTransfer *OrderTransfer) HandleConn(socket *websocket.Conn) {
-	go func(socket *websocket.Conn, dump chan<- models.Order) {
+	go func(socket *websocket.Conn, orderChannel chan<- models.Order) {
 		defer socket.Close()
 		for {
 			var payload models.Order
 			if err := socket.ReadJSON(payload); err != nil {
 				return
 			}
-			dump <- payload
+			orderChannel <- payload
 		}
-	}(socket, orderTransfer.Dump)
+	}(socket, orderTransfer.OrderChannel)
 }
