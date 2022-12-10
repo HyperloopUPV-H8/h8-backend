@@ -1,19 +1,18 @@
 package message_transfer
 
 import (
-	"time"
-
 	dataTransferModels "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/message_transfer/models"
 	"github.com/gorilla/websocket"
+	"github.com/kjk/betterguid"
 )
 
 type MessageTransfer struct {
-	sockets map[int64]*websocket.Conn
+	sockets map[string]*websocket.Conn
 }
 
 func (messageTransfer *MessageTransfer) HandleConn(socket *websocket.Conn) {
-	messageTransfer.sockets[time.Now().UnixNano()] = socket
+	messageTransfer.sockets[betterguid.New()] = socket
 }
 
 func (messageTransfer *MessageTransfer) Broadcast(update dataTransferModels.PacketUpdate) {
@@ -32,7 +31,7 @@ func (messageTransfer *MessageTransfer) Broadcast(update dataTransferModels.Pack
 		}
 	}
 
-	closed := make([]int64, 0, len(messageTransfer.sockets))
+	closed := make([]string, 0, len(messageTransfer.sockets))
 	for id, socket := range messageTransfer.sockets {
 		if err := socket.WriteJSON(message); err != nil {
 			closed = append(closed, id)
