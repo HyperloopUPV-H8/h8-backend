@@ -37,9 +37,16 @@ func (dataTransfer *DataTransfer) run() {
 		data := dataTransfer.getJSON()
 		for id, socket := range dataTransfer.sockets {
 			if err := socket.WriteMessage(websocket.TextMessage, data); err != nil {
+				socket.Close()
 				delete(dataTransfer.sockets, id)
 			}
 		}
+	}
+}
+
+func (dataTransfer *DataTransfer) Close() {
+	for _, socket := range dataTransfer.sockets {
+		socket.Close()
 	}
 }
 

@@ -31,8 +31,15 @@ func (connectionTransfer *ConnectionTransfer) Update(name string, up bool) {
 
 	for id, socket := range connectionTransfer.sockets {
 		if err := socket.WriteMessage(websocket.TextMessage, message); err != nil {
+			socket.Close()
 			delete(connectionTransfer.sockets, id)
 		}
+	}
+}
+
+func (ConnectionTransfer *ConnectionTransfer) Close() {
+	for _, socket := range ConnectionTransfer.sockets {
+		socket.Close()
 	}
 }
 

@@ -19,8 +19,15 @@ func (messageTransfer *MessageTransfer) Broadcast(update dataTransferModels.Pack
 	message := getMessage(update)
 	for id, socket := range messageTransfer.sockets {
 		if err := socket.WriteJSON(message); err != nil {
+			socket.Close()
 			delete(messageTransfer.sockets, id)
 		}
+	}
+}
+
+func (messageTransfer *MessageTransfer) Close() {
+	for _, socket := range messageTransfer.sockets {
+		socket.Close()
 	}
 }
 
