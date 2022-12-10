@@ -72,17 +72,23 @@ func (log *LogHandle) Dump() {
 }
 
 func (log *LogHandle) writeCSV(value string, buffer []models.Value) {
-	file, ok := log.dumps[value]
-	if !ok {
-		file = log.createFile(value)
-		log.dumps[value] = file
-	}
-
+	file := log.getFile(value)
 	data := ""
 	for _, value := range buffer {
 		data += fmt.Sprintf("%d,\"%v\"\n", value.Timestamp.Nanosecond(), value.Value)
 	}
 	file.WriteString(data)
+}
+
+func (log *LogHandle) getFile(value string) *os.File {
+	if file, ok := log.dumps[value]; ok {
+		return file
+	} else {
+		log.dumpMx.Lock()
+		defer log.dumpMx.Unlock()
+		log.dumps[value] = log.createFile(value)
+		return log.dumps[value]
+	}
 }
 
 func (log *LogHandle) createFile(value string) *os.File {
