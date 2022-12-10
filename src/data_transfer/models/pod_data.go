@@ -12,6 +12,12 @@ type PodData struct {
 	Boards map[string]Board `json:"boards"`
 }
 
+func NewPodData() PodData {
+	return PodData{
+		Boards: make(map[string]Board),
+	}
+}
+
 func (podData *PodData) AddPacket(board string, ip string, desc excelAdapterModels.Description, values []excelAdapterModels.Value) {
 	id, err := strconv.ParseUint(desc.ID, 10, 16)
 	if err != nil {
