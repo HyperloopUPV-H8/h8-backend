@@ -19,7 +19,7 @@ func (pipe *Pipe) open(conn *net.TCPConn) {
 	}
 
 	pipe.conn = conn
-	pipe.config.OnConnUpdate(pipe.laddr, true)
+	pipe.config.OnConnUpdate(pipe.raddr, true)
 	go pipe.read()
 }
 
@@ -33,7 +33,7 @@ func (pipe *Pipe) close() error {
 	}
 
 	pipe.conn = nil
-	pipe.config.OnConnUpdate(pipe.laddr, false)
+	pipe.config.OnConnUpdate(pipe.raddr, false)
 	go pipe.connect()
 
 	return nil
