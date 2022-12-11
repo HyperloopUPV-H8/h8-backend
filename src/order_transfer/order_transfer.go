@@ -20,7 +20,7 @@ func (orderTransfer *OrderTransfer) HandleConn(socket *websocket.Conn) {
 		defer socket.Close()
 		for {
 			var payload models.Order
-			if err := socket.ReadJSON(payload); err != nil {
+			if err := socket.ReadJSON(&payload); err != nil {
 				return
 			}
 			orderChannel <- payload
