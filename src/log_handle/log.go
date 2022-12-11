@@ -51,7 +51,7 @@ func (logger *LogHandle) Update(updates map[string]any) {
 	}
 
 	if dump {
-		logger.dump()
+		go logger.dump()
 	}
 }
 
