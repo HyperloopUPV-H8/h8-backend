@@ -118,3 +118,11 @@ func (logger *LogHandle) HandleRequest(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("log handle: HandleRequest: unexpected body %s\n", payload)
 	}
 }
+
+func (logger *LogHandle) Close() {
+	logger.filesMx.Lock()
+	defer logger.filesMx.Unlock()
+	for _, file := range logger.files {
+		file.Close()
+	}
+}
