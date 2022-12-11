@@ -24,9 +24,7 @@ func (server *Server) ServeData(route string, data []byte) {
 }
 
 func (server *Server) FileServer(route string, path string) {
-	server.Router.HandleFunc(route, func(w http.ResponseWriter, r *http.Request) {
-		http.FileServer(http.Dir(path))
-	})
+	server.Router.PathPrefix(route).HandlerFunc(http.FileServer(http.Dir(path)).ServeHTTP)
 }
 
 var upgrader = websocket.Upgrader{
