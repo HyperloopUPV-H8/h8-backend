@@ -59,7 +59,6 @@ func (sniffer *Sniffer) StartReading() {
 
 func (sniffer *Sniffer) Close() {
 	sniffer.source.Close()
-	sniffer.source = nil
 }
 
 func (sniffer *Sniffer) Stats() (recieved int, dropped int) {
