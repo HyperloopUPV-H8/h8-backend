@@ -28,3 +28,8 @@ func (controller *TransportController) Write(addr string, payload []byte) bool {
 func (controller *TransportController) Stats() (recieved int, dropped int) {
 	return controller.sniffer.Stats()
 }
+
+func (controller *TransportController) Close() {
+	controller.sniffer.Close()
+	controller.pipes.Close()
+}

@@ -11,11 +11,33 @@ type MessageTransfer struct {
 	sockets map[string]*websocket.Conn
 }
 
+func New() *MessageTransfer {
+	return &MessageTransfer{
+		sockets: make(map[string]*websocket.Conn),
+	}
+}
+
 func (messageTransfer *MessageTransfer) HandleConn(socket *websocket.Conn) {
 	messageTransfer.sockets[betterguid.New()] = socket
 }
 
 func (messageTransfer *MessageTransfer) Broadcast(update dataTransferModels.PacketUpdate) {
+	message := getMessage(update)
+	for id, socket := range messageTransfer.sockets {
+		if err := socket.WriteJSON(message); err != nil {
+			socket.Close()
+			delete(messageTransfer.sockets, id)
+		}
+	}
+}
+
+func (messageTransfer *MessageTransfer) Close() {
+	for _, socket := range messageTransfer.sockets {
+		socket.Close()
+	}
+}
+
+func getMessage(update dataTransferModels.PacketUpdate) models.Message {
 	var message models.Message
 	if msg, ok := update.Values["warning"]; ok {
 		message = models.Message{
@@ -30,14 +52,5 @@ func (messageTransfer *MessageTransfer) Broadcast(update dataTransferModels.Pack
 			Type:        "warning",
 		}
 	}
-
-	closed := make([]string, 0, len(messageTransfer.sockets))
-	for id, socket := range messageTransfer.sockets {
-		if err := socket.WriteJSON(message); err != nil {
-			closed = append(closed, id)
-		}
-	}
-	for _, id := range closed {
-		delete(messageTransfer.sockets, id)
-	}
+	return message
 }
