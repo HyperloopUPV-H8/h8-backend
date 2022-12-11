@@ -6,7 +6,13 @@ import (
 )
 
 type OrderTransfer struct {
-	OrderChannel chan<- models.Order
+	orderChannel chan<- models.Order
+}
+
+func New(channel chan<- models.Order) *OrderTransfer {
+	return &OrderTransfer{
+		orderChannel: channel,
+	}
 }
 
 func (orderTransfer *OrderTransfer) HandleConn(socket *websocket.Conn) {
@@ -19,5 +25,5 @@ func (orderTransfer *OrderTransfer) HandleConn(socket *websocket.Conn) {
 			}
 			orderChannel <- payload
 		}
-	}(socket, orderTransfer.OrderChannel)
+	}(socket, orderTransfer.orderChannel)
 }
