@@ -3,6 +3,7 @@ package connection_transfer
 import (
 	"encoding/json"
 	"log"
+	"sync"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer/models"
 	"github.com/gorilla/websocket"
@@ -10,12 +11,14 @@ import (
 )
 
 type ConnectionTransfer struct {
+	writeMx     sync.Mutex
 	boardStatus map[string]models.Connection
 	sockets     map[string]*websocket.Conn
 }
 
 func New() *ConnectionTransfer {
 	return &ConnectionTransfer{
+		writeMx:     sync.Mutex{},
 		boardStatus: make(map[string]models.Connection),
 		sockets:     make(map[string]*websocket.Conn),
 	}
@@ -26,6 +29,8 @@ func (connectionTransfer *ConnectionTransfer) HandleConn(socket *websocket.Conn)
 }
 
 func (connectionTransfer *ConnectionTransfer) Update(name string, up bool) {
+	connectionTransfer.writeMx.Lock()
+	defer connectionTransfer.writeMx.Unlock()
 	connectionTransfer.boardStatus[name] = models.Connection{
 		Name:        name,
 		IsConnected: up,
