@@ -2,7 +2,9 @@ package log_handle
 
 import (
 	"fmt"
-	golog "log"
+	"io"
+	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,66 +15,69 @@ import (
 )
 
 type LogHandle struct {
-	source <-chan models.Value
-	buffer map[string][]models.Value
-	config models.Config
-	dumpMx sync.Mutex
-	dumps  map[string]*os.File
+	bufferMx sync.Mutex
+	buffer   map[string][]models.Value
+	config   models.Config
+	filesMx  sync.Mutex
+	files    map[string]*os.File
 }
 
-func NewLogger(source <-chan models.Value, config models.Config) *LogHandle {
+func NewLogger(config models.Config) *LogHandle {
 	return &LogHandle{
-		source: source,
-		buffer: make(map[string][]models.Value),
-		config: config,
-		dumpMx: sync.Mutex{},
-		dumps:  make(map[string]*os.File),
+		bufferMx: sync.Mutex{},
+		buffer:   make(map[string][]models.Value),
+		config:   config,
+		filesMx:  sync.Mutex{},
+		files:    make(map[string]*os.File),
 	}
 }
 
-func (log *LogHandle) Run() {
-	for {
-		if !log.config.Running {
-			select {
-			case <-log.source:
-			default:
-			}
-			continue
-		}
-		select {
-		case value := <-log.source:
-			log.buffer[value.Name] = append(log.buffer[value.Name], value)
-			if len(log.buffer[value.Name]) > int(log.config.DumpSize/log.config.RowSize) {
-				log.Dump()
-			}
-		case <-log.config.Timeout.C:
-			log.Dump()
-		default:
+func (logger *LogHandle) Update(updates map[string]any) {
+	if !logger.config.IsRunning {
+		return
+	}
+
+	logger.bufferMx.Lock()
+	defer logger.bufferMx.Unlock()
+	dump := false
+	for name, value := range updates {
+		logger.buffer[name] = append(logger.buffer[name], models.Value{
+			Value:     value,
+			Timestamp: time.Now(),
+		})
+		if len(logger.buffer[name]) > int(logger.config.DumpSize/logger.config.RowSize) {
+			dump = true
 		}
 	}
-}
 
-func (log *LogHandle) Start() {
-	log.config.Running = true
-	log.buffer = make(map[string][]models.Value)
-}
-
-func (log *LogHandle) Stop() {
-	log.config.Running = false
-	log.Dump()
-}
-
-func (log *LogHandle) Dump() {
-	log.dumpMx.Lock()
-	defer log.dumpMx.Unlock()
-	for value, buffer := range log.buffer {
-		log.writeCSV(value, buffer)
+	if dump {
+		logger.dump()
 	}
-	log.buffer = make(map[string][]models.Value)
 }
 
-func (log *LogHandle) writeCSV(value string, buffer []models.Value) {
-	file := log.getFile(value)
+func (logger *LogHandle) start() {
+	logger.config.IsRunning = true
+	logger.buffer = make(map[string][]models.Value)
+}
+
+func (logger *LogHandle) stop() {
+	logger.config.IsRunning = false
+	logger.dump()
+}
+
+func (logger *LogHandle) dump() {
+	logger.filesMx.Lock()
+	defer logger.filesMx.Unlock()
+	logger.bufferMx.Lock()
+	defer logger.bufferMx.Unlock()
+	for value, buffer := range logger.buffer {
+		logger.writeCSV(value, buffer)
+	}
+	logger.buffer = make(map[string][]models.Value)
+}
+
+func (logger *LogHandle) writeCSV(value string, buffer []models.Value) {
+	file := logger.getFile(value)
 	data := ""
 	for _, value := range buffer {
 		data += fmt.Sprintf("%d,\"%v\"\n", value.Timestamp.Nanosecond(), value.Value)
@@ -80,22 +85,36 @@ func (log *LogHandle) writeCSV(value string, buffer []models.Value) {
 	file.WriteString(data)
 }
 
-func (log *LogHandle) getFile(value string) *os.File {
-	if file, ok := log.dumps[value]; ok {
-		return file
-	} else {
-		log.dumpMx.Lock()
-		defer log.dumpMx.Unlock()
-		log.dumps[value] = log.createFile(value)
-		return log.dumps[value]
+func (logger *LogHandle) getFile(value string) *os.File {
+	if _, ok := logger.files[value]; !ok {
+		logger.filesMx.Lock()
+		defer logger.filesMx.Unlock()
+		logger.files[value] = logger.createFile(value)
 	}
+	return logger.files[value]
 }
 
-func (log *LogHandle) createFile(value string) *os.File {
-	os.Mkdir(filepath.Join(log.config.BasePath, value), os.ModeDir)
-	file, err := os.Create(filepath.Join(log.config.BasePath, value, strings.ReplaceAll(fmt.Sprintf("%v.csv", time.Now()), " ", "_")))
+func (logger *LogHandle) createFile(value string) *os.File {
+	os.Mkdir(filepath.Join(logger.config.BasePath, value), os.ModeDir)
+	file, err := os.Create(filepath.Join(logger.config.BasePath, value, strings.ReplaceAll(fmt.Sprintf("%v.csv", time.Now()), " ", "_")))
 	if err != nil {
-		golog.Fatalf("LogHandle: WriteCSV: %s\n", err)
+		log.Fatalf("LogHandle: WriteCSV: %s\n", err)
 	}
 	return file
+}
+
+func (logger *LogHandle) HandleRequest(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+	payload, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Fatalf("log handle: HandleRequest: %s\n", err)
+	}
+
+	if string(payload) == "enable" && !logger.config.IsRunning {
+		logger.start()
+	} else if string(payload) == "disable" && logger.config.IsRunning {
+		logger.stop()
+	} else if string(payload) != "enable" && string(payload) != "disable" {
+		log.Fatalf("log handle: HandleRequest: unexpected body %s\n", payload)
+	}
 }
