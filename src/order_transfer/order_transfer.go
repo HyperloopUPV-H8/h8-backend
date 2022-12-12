@@ -2,6 +2,7 @@ package order_transfer
 
 import (
 	"github.com/HyperloopUPV-H8/Backend-H8/order_transfer/models"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gorilla/websocket"
 )
 
@@ -23,6 +24,7 @@ func (orderTransfer *OrderTransfer) HandleConn(socket *websocket.Conn) {
 			if err := socket.ReadJSON(&payload); err != nil {
 				return
 			}
+			spew.Dump(payload)
 			orderChannel <- payload
 		}
 	}(socket, orderTransfer.orderChannel)

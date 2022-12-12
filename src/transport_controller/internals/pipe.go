@@ -59,6 +59,10 @@ func (pipe *Pipe) read() {
 }
 
 func (pipe *Pipe) write(payload []byte) (success bool) {
+	if pipe.conn == nil {
+		return false
+	}
+
 	if _, err := pipe.conn.Write(payload); err != nil {
 		pipe.close()
 		return false

@@ -19,8 +19,14 @@ func (converter *UnitConverter) AddPacket(board string, ip string, desc excelAda
 
 	for _, val := range values {
 		if converter.Kind == "pod" {
+			if val.PodOps == "" {
+				continue
+			}
 			converter.operations[val.Name] = models.NewOperations(val.PodOps)
 		} else if converter.Kind == "display" {
+			if val.DisplayOps == "" {
+				continue
+			}
 			converter.operations[val.Name] = models.NewOperations(val.DisplayOps)
 		} else {
 			log.Fatalf("unit converter: AddValue: invalid UnitConverter kind %s\n", converter.Kind)
