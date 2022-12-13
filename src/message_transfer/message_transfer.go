@@ -49,7 +49,7 @@ func getMessage(update dataTransferModels.PacketUpdate) models.Message {
 		message = models.Message{
 			ID:          update.ID,
 			Description: msg,
-			Type:        "warning",
+			Type:        "fault",
 		}
 	}
 	return message
