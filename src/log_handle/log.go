@@ -115,8 +115,15 @@ func (logger *LogHandle) HandleRequest(w http.ResponseWriter, r *http.Request) {
 	} else if string(payload) == "disable" && logger.config.IsRunning {
 		logger.stop()
 	} else if string(payload) != "enable" && string(payload) != "disable" {
+		http.Error(w, "failed to update logger state", http.StatusBadRequest)
 		log.Fatalf("log handle: HandleRequest: unexpected body %s\n", payload)
+		return
+	} else {
+		http.Error(w, "failed to update logger state", http.StatusConflict)
+		return
 	}
+
+	w.Write([]byte{})
 }
 
 func (logger *LogHandle) Close() {
