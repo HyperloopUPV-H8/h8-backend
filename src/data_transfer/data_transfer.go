@@ -34,6 +34,9 @@ func New(rate time.Duration) *DataTransfer {
 func (dataTransfer *DataTransfer) run() {
 	for {
 		<-dataTransfer.ticker.C
+		if len(dataTransfer.packetBuf) == 0 {
+			continue
+		}
 		data := dataTransfer.getJSON()
 		for id, socket := range dataTransfer.sockets {
 			if err := socket.WriteMessage(websocket.TextMessage, data); err != nil {
