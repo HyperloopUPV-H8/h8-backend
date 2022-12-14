@@ -48,16 +48,20 @@ func (logger *LogHandle) run() {
 				})
 			}
 
-			for _, buf := range logger.buffer {
-				if len(buf) > int(logger.config.DumpSize/logger.config.RowSize) {
-					logger.flush()
-					break
-				}
-			}
+			logger.checkDump()
 		case <-logger.config.Autosave.C:
 			logger.flush()
 		case <-logger.done:
 			return
+		}
+	}
+}
+
+func (logger *LogHandle) checkDump() {
+	for _, buf := range logger.buffer {
+		if len(buf) > int(logger.config.DumpSize/logger.config.RowSize) {
+			logger.flush()
+			break
 		}
 	}
 }
