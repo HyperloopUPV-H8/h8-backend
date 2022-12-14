@@ -122,6 +122,7 @@ func (logger *LogHandle) HandleRequest(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("log handle: HandleRequest: %s\n", err)
 	}
 
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	if string(payload) == "enable" && !logger.running {
 		logger.start()
 	} else if string(payload) == "disable" && logger.running {
