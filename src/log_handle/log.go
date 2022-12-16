@@ -15,61 +15,75 @@ import (
 )
 
 type LogHandle struct {
-	bufferMx sync.Mutex
+	flushing bool
 	buffer   map[string][]models.Value
 	config   models.Config
-	filesMx  sync.Mutex
+	fileMx   sync.Mutex
 	files    map[string]*os.File
+	done     chan struct{}
+	running  bool
 }
 
 func NewLogger(config models.Config) *LogHandle {
 	return &LogHandle{
-		bufferMx: sync.Mutex{},
+		flushing: false,
 		buffer:   make(map[string][]models.Value),
 		config:   config,
-		filesMx:  sync.Mutex{},
+		fileMx:   sync.Mutex{},
 		files:    make(map[string]*os.File),
+		done:     make(chan struct{}),
 	}
 }
 
-func (logger *LogHandle) Update(updates map[string]any) {
-	if !logger.config.IsRunning {
-		return
-	}
+func (logger *LogHandle) run() {
+	logger.running = true
+	defer func() { logger.running = false }()
+	for {
+		select {
+		case update := <-logger.config.Updates:
+			for name, value := range update {
+				logger.buffer[name] = append(logger.buffer[name], models.Value{
+					Value:     value,
+					Timestamp: time.Now(),
+				})
+			}
 
-	logger.bufferMx.Lock()
-	defer logger.bufferMx.Unlock()
-	dump := false
-	for name, value := range updates {
-		logger.buffer[name] = append(logger.buffer[name], models.Value{
-			Value:     value,
-			Timestamp: time.Now(),
-		})
-		if len(logger.buffer[name]) > int(logger.config.DumpSize/logger.config.RowSize) {
-			dump = true
+			logger.checkDump()
+		case <-logger.config.Autosave.C:
+			logger.flush()
+		case <-logger.done:
+			return
 		}
 	}
+}
 
-	if dump {
-		go logger.dump()
+func (logger *LogHandle) checkDump() {
+	for _, buf := range logger.buffer {
+		if len(buf) > int(logger.config.DumpSize/logger.config.RowSize) {
+			logger.flush()
+			break
+		}
+	}
+}
+
+func (logger *LogHandle) Update(values map[string]any) {
+	if logger.running {
+		logger.config.Updates <- values
 	}
 }
 
 func (logger *LogHandle) start() {
-	logger.config.IsRunning = true
 	logger.buffer = make(map[string][]models.Value)
+	go logger.run()
 }
 
 func (logger *LogHandle) stop() {
-	logger.config.IsRunning = false
-	logger.dump()
+	logger.done <- struct{}{}
+	logger.flush()
+	logger.Close()
 }
 
-func (logger *LogHandle) dump() {
-	logger.filesMx.Lock()
-	defer logger.filesMx.Unlock()
-	logger.bufferMx.Lock()
-	defer logger.bufferMx.Unlock()
+func (logger *LogHandle) flush() {
 	for value, buffer := range logger.buffer {
 		logger.writeCSV(value, buffer)
 	}
@@ -87,16 +101,14 @@ func (logger *LogHandle) writeCSV(value string, buffer []models.Value) {
 
 func (logger *LogHandle) getFile(value string) *os.File {
 	if _, ok := logger.files[value]; !ok {
-		logger.filesMx.Lock()
-		defer logger.filesMx.Unlock()
 		logger.files[value] = logger.createFile(value)
 	}
 	return logger.files[value]
 }
 
 func (logger *LogHandle) createFile(value string) *os.File {
-	os.Mkdir(filepath.Join(logger.config.BasePath, value), os.ModeDir)
-	file, err := os.Create(filepath.Join(logger.config.BasePath, value, strings.ReplaceAll(fmt.Sprintf("%v.csv", time.Now()), " ", "_")))
+	os.MkdirAll(filepath.Join(logger.config.BasePath, value), os.ModeDir)
+	file, err := os.Create(filepath.Join(logger.config.BasePath, value, strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v.csv", time.Now()), " ", "_"), ":", "-")))
 	if err != nil {
 		log.Fatalf("LogHandle: WriteCSV: %s\n", err)
 	}
@@ -110,9 +122,10 @@ func (logger *LogHandle) HandleRequest(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("log handle: HandleRequest: %s\n", err)
 	}
 
-	if string(payload) == "enable" && !logger.config.IsRunning {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	if string(payload) == "enable" && !logger.running {
 		logger.start()
-	} else if string(payload) == "disable" && logger.config.IsRunning {
+	} else if string(payload) == "disable" && logger.running {
 		logger.stop()
 	} else if string(payload) != "enable" && string(payload) != "disable" {
 		http.Error(w, "failed to update logger state", http.StatusBadRequest)
@@ -127,9 +140,8 @@ func (logger *LogHandle) HandleRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (logger *LogHandle) Close() {
-	logger.filesMx.Lock()
-	defer logger.filesMx.Unlock()
 	for _, file := range logger.files {
 		file.Close()
 	}
+	logger.files = make(map[string]*os.File, len(logger.files))
 }
