@@ -21,5 +21,5 @@ alternatively you can download a version that is ready for production from the r
 
 ## About
 
-HyperloopUPV is a student team based at Universitat Politecnica de Valencia (Spain) working every year to develop the transport of the future, the hyperloop.
+HyperloopUPV is a student team based at Universitat Politècnica de València (Spain) working every year to develop the transport of the future, the hyperloop.
 [Our website](https://hyperloopupv.com/#/)
