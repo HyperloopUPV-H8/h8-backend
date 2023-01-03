@@ -2,7 +2,7 @@
 
 This is the official backend for the HyperloopUPV pod control interface.
 
-# Building
+## Building
 
 The main project file is inside `cmd`, each of the folders contains one version of the backend, the latest is the one with the highest number (so `cmd/MVP-2` is more recent than `cmd/MVP-1`).
 To build the project just run `go build` inside one of these folders. In order to run there are three more files that need to be present in the same folder as the executable:
@@ -12,14 +12,14 @@ To build the project just run `go build` inside one of these folders. In order t
 
 alternatively you can download a version that is ready for production from the releases.
 
-# Authors
+## Authors
 
 * [Juan Martinez Alonso](https://github.com/jmaralo)
 * [Sergio Moreno Suay](https://github.com/smorsua)
 * [Felipe Zaballa Martinez](https://github.com/lipezaballa)
 * [Alejandro Losa](https://github.com/Losina24)
 
-# About
+## About
 
 HyperloopUPV is a student team based at Universitat Politecnica de Valencia (Spain) working every year to develop the transport of the future, the hyperloop.
 [Our website](https://hyperloopupv.com/#/)
