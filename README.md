@@ -1,6 +1,6 @@
-# Backend-H8
+# Ethernet View - Backend
 
-This is the official backend for the HyperloopUPV pod control interface.
+This is the official backend for the HyperloopUPV verification software *Ethernet View*.
 
 ## Building
 
