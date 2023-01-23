@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/HyperloopUPV-H8/Backend-H8/bootloader_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer"
 	dataTransferModels "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/models"
@@ -134,6 +135,7 @@ func main() {
 	}()
 
 	httpServer.HandleFunc("/backend/"+os.Getenv("LOGGER_ENDPOINT"), logger.HandleRequest)
+	httpServer.HandleFunc("/backend/"+os.Getenv("BOOTLOADER_ENDPOINT"), bootloader_transfer.HandleRequest)
 
 	httpServer.ServeData("/backend/"+os.Getenv("POD_DATA_ENDPOINT"), getJSON(podData))
 	httpServer.ServeData("/backend/"+os.Getenv("ORDER_DATA_ENDPOINT"), getJSON(orderData))
