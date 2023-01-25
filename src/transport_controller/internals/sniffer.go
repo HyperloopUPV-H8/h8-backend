@@ -7,13 +7,13 @@ import (
 	"github.com/google/gopacket/pcap"
 )
 
-const etherType = 12
-const ipType = etherType + 11
-const typeIPIP = 0x04
-const typeUDP = 0x11
-const typeTCP = 0x06
-const udpOffset = 42
-const tcpOffset = 54
+const ETHER_TYPE = 12
+const IP_TYPE = ETHER_TYPE + 11
+const TYPE_IPIP = 0x04
+const TYPE_UDP = 0x11
+const TYPE_TCP = 0x06
+const UDP_OFFSET = 42
+const TCP_OFFSET = 54
 
 type Sniffer struct {
 	source *pcap.Handle
@@ -64,22 +64,22 @@ func (sniffer *Sniffer) StartReading() {
 			continue
 		}
 
-		if payload[etherType] != 0x08 || payload[etherType+1] != 0x00 {
+		if payload[ETHER_TYPE] != 0x08 || payload[ETHER_TYPE+1] != 0x00 {
 			continue
 		}
 
-		switch payload[ipType] {
-		case typeIPIP:
-			switch payload[ipType+20] {
-			case typeUDP:
-				sniffer.config.Dump <- payload[udpOffset+20:]
-			case typeTCP:
-				sniffer.config.Dump <- payload[tcpOffset+20:]
+		switch payload[IP_TYPE] {
+		case TYPE_IPIP:
+			switch payload[IP_TYPE+20] {
+			case TYPE_UDP:
+				sniffer.config.Dump <- payload[UDP_OFFSET+20:]
+			case TYPE_TCP:
+				sniffer.config.Dump <- payload[TCP_OFFSET+20:]
 			}
-		case typeUDP:
-			sniffer.config.Dump <- payload[udpOffset:]
-		case typeTCP:
-			sniffer.config.Dump <- payload[tcpOffset:]
+		case TYPE_UDP:
+			sniffer.config.Dump <- payload[UDP_OFFSET:]
+		case TYPE_TCP:
+			sniffer.config.Dump <- payload[TCP_OFFSET:]
 		}
 
 	}
