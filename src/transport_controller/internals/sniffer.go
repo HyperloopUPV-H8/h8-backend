@@ -29,6 +29,8 @@ func obtainSource(device string, live bool, config models.Config) *pcap.Handle {
 		err    error
 	)
 
+	log.Println(pcap.FindAllDevs())
+
 	if live {
 		source, err = pcap.OpenLive(device, config.Snaplen, config.Promisc, config.Timeout)
 	} else {
@@ -53,7 +55,25 @@ func (sniffer *Sniffer) StartReading() {
 		if err != nil {
 			continue
 		}
-		sniffer.config.Dump <- payload[32:]
+
+		if payload[12] != 0x08 || payload[13] != 0x00 {
+			continue
+		}
+
+		switch payload[23] {
+		case 0x04:
+			switch payload[43] {
+			case 0x11:
+				sniffer.config.Dump <- payload[62:]
+			case 0x06:
+				sniffer.config.Dump <- payload[74:]
+			}
+		case 0x11:
+			sniffer.config.Dump <- payload[42:]
+		case 0x06:
+			sniffer.config.Dump <- payload[54:]
+		}
+
 	}
 }
 
