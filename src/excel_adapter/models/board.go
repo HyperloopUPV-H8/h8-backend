@@ -2,23 +2,26 @@ package models
 
 import (
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/internals/models"
+	"golang.org/x/exp/slices"
 )
 
 type Board struct {
-	Name         string
-	IP           string
-	Descriptions map[string]Description
-	Measurements map[string]Value
-	Structures   map[string]Structure
+	Name            string
+	IP              string
+	Descriptions    map[string]Description
+	Measurements    map[string]Value
+	Structures      map[string]Structure
+	ControlSections map[string]ControlSection
 }
 
 func NewBoard(name string, ip string, sheet models.Sheet) Board {
 	return Board{
-		Name:         name,
-		IP:           ip,
-		Descriptions: getDescriptions(sheet.Tables["packets"]),
-		Measurements: getMeasurements(sheet.Tables["values"]),
-		Structures:   getStructures(sheet.Tables["structures"]),
+		Name:            name,
+		IP:              ip,
+		Descriptions:    getDescriptions(sheet.Tables["packets"]),
+		Measurements:    getMeasurements(sheet.Tables["values"]),
+		Structures:      getStructures(sheet.Tables["structures"]),
+		ControlSections: getControlSections(sheet.Tables["ControlSections"]),
 	}
 }
 
@@ -72,6 +75,23 @@ func getStructures(table models.Table) map[string]Structure {
 	return structures
 }
 
+func getControlSections(table models.Table) map[string]ControlSection {
+	controlSections := make(map[string]ControlSection)
+	for colIndex := 0; colIndex < len(table.Rows[0]); colIndex += 2 {
+		controlSection := make(ControlSection)
+		sectionTitle := table.Rows[0][colIndex]
+		for rowIndex := 1; rowIndex < len(table.Rows); rowIndex++ {
+			if table.Rows[rowIndex][colIndex] != "" {
+				controlSection[table.Rows[rowIndex][colIndex]] = table.Rows[rowIndex][colIndex+1]
+			} else {
+				break
+			}
+		}
+		controlSections[sectionTitle] = controlSection
+	}
+	return controlSections
+}
+
 func getColumns(table models.Table) [][]string {
 	columns := make([][]string, len(table.Rows[0]))
 	for i := 0; i < len(table.Rows[0]); i++ {
@@ -88,4 +108,16 @@ func getColumn(i int, table models.Table) []string {
 	}
 
 	return column
+}
+
+func (board *Board) FindContainingPacket(valueName string) string {
+	for _, structure := range board.Structures {
+		if slices.IndexFunc(structure.Measurements, func(name string) bool {
+			return name == valueName
+		}) != -1 {
+			return structure.PacketName
+		}
+	}
+
+	panic("Searched valueName that doesn't exist")
 }

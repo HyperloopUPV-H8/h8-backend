@@ -27,6 +27,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/transport_controller"
 	transportControllerModels "github.com/HyperloopUPV-H8/Backend-H8/transport_controller/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/google/gopacket/pcap"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -46,12 +47,13 @@ func main() {
 
 	podData := dataTransferModels.PodData{Boards: make(map[string]dataTransferModels.Board)}
 	orderData := orderTransferModels.OrderData{}
-
+	controlSections := excel_adapter.GetControlSections(document)
+	spew.Dump(controlSections)
 	idToType := IDtoType{}
 	idToIP := IDtoIP{}
 	ipToBoard := IPtoBoard{}
 
-	excel_adapter.Compile(document, &podConverter, &displayConverter, &packetParser, &podData, &orderData, &idToType, &idToIP, &ipToBoard)
+	excel_adapter.AddExpandedPackets(document, &podConverter, &displayConverter, &packetParser, &podData, &orderData, &idToType, &idToIP, &ipToBoard)
 
 	laddr, err := net.ResolveTCPAddr("tcp", os.Getenv("LOCAL_ADDRESS"))
 	if err != nil {
@@ -137,6 +139,7 @@ func main() {
 
 	httpServer.ServeData("/backend/"+os.Getenv("POD_DATA_ENDPOINT"), getJSON(podData))
 	httpServer.ServeData("/backend/"+os.Getenv("ORDER_DATA_ENDPOINT"), getJSON(orderData))
+	httpServer.ServeData("/backend/"+os.Getenv("CONTROL_SECTIONS_ENDPOINT"), getJSON(controlSections))
 
 	httpServer.WebsocketHandler("/backend/"+os.Getenv("DATA_ENDPOINT"), dataTransfer)
 	httpServer.WebsocketHandler("/backend/"+os.Getenv("MESSAGE_ENDPOINT"), messageTransfer)

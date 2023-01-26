@@ -42,7 +42,7 @@ func getIP(sheet string, document internalModels.Document) string {
 	panic(fmt.Sprintf("excel adapter: getIP: Missing board %s IP\n", sheet))
 }
 
-func Compile(document internalModels.Document, objects ...models.FromBoards) {
+func AddExpandedPackets(document internalModels.Document, objects ...models.FromBoards) {
 	for _, board := range getBoards(document) {
 		for _, packet := range board.GetPackets() {
 			for _, object := range objects {
@@ -50,4 +50,39 @@ func Compile(document internalModels.Document, objects ...models.FromBoards) {
 			}
 		}
 	}
+}
+
+func GetControlSections(document internalModels.Document) map[string]models.ControlSection {
+	expandedControlSections := make(map[string]models.ControlSection)
+	for _, board := range getBoards(document) {
+		for sectionName, section := range board.ControlSections {
+			expandedControlSections[sectionName] = getExpandedSection(section, board)
+		}
+	}
+	return expandedControlSections
+}
+
+func getExpandedSection(section models.ControlSection, board models.Board) models.ControlSection {
+	expandedSection := make(map[string]interface{})
+	for guiName, valueNameInterface := range section {
+		valueName := valueNameInterface.(string)
+		packetName := board.FindContainingPacket(valueName)
+		allIds := internals.GetAllIds(board.Descriptions[packetName].ID)
+
+		if len(allIds) == 1 {
+			expandedSection[guiName] = valueName
+		} else {
+			expandedSection[guiName] = getNamesWithSufix(valueName, len(allIds))
+		}
+
+	}
+	return expandedSection
+}
+
+func getNamesWithSufix(name string, length int) []string {
+	namesWithSufix := make([]string, length)
+	for i := 0; i < length; i++ {
+		namesWithSufix[i] = fmt.Sprintf("%s_%d", name, i)
+	}
+	return namesWithSufix
 }
