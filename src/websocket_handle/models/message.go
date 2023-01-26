@@ -1,7 +1,7 @@
 package models
 
 type Message struct {
-	Kind string `json:"type"`
+	Type string `json:"type"`
 	Msg  any    `json:"msg"`
 }
 

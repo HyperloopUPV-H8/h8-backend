@@ -104,9 +104,11 @@ func main() {
 
 	packetUpdateChannel := make(chan models.MessageTarget)
 	podDataChannel := make(chan models.MessageTarget)
+	controlSectionsChannel := make(chan models.MessageTarget)
 	handler := websocket_handle.RunWSHandle(router, "backend", map[string]chan models.MessageTarget{
-		"podData":      podDataChannel,
-		"packetUpdate": packetUpdateChannel,
+		"podData":         podDataChannel,
+		"packetUpdate":    packetUpdateChannel,
+		"controlSections": controlSectionsChannel,
 	})
 
 	go func(channel chan models.MessageTarget) {
@@ -120,7 +122,7 @@ func main() {
 				channel <- models.MessageTarget{
 					Target: handler.GetClients(),
 					Msg: models.Message{
-						Kind: "podData/update",
+						Type: "podData/update",
 						Msg:  []dataTransferModels.PacketUpdate{packet},
 					},
 				}
@@ -133,12 +135,24 @@ func main() {
 			channel <- models.MessageTarget{
 				Target: msg.Target,
 				Msg: models.Message{
-					Kind: "podData/structure",
+					Type: "podData/structure",
 					Msg:  podData,
 				},
 			}
 		}
 	}(podDataChannel)
+
+	go func(channel chan models.MessageTarget) {
+		for msg := range channel {
+			channel <- models.MessageTarget{
+				Target: msg.Target,
+				Msg: models.Message{
+					Type: "controlSections/structure",
+					Msg:  controlSections,
+				},
+			}
+		}
+	}(controlSectionsChannel)
 
 	router.PathPrefix("/").HandlerFunc(http.FileServer(http.Dir(path.Join(".", "static"))).ServeHTTP)
 
