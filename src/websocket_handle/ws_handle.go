@@ -58,6 +58,18 @@ func (handle *WSHandle) distribute(msg models.MessageTarget) {
 	}
 }
 
+func (handle *WSHandle) GetClients() []string {
+	handle.clientsMx.Lock()
+	defer handle.clientsMx.Unlock()
+
+	clientList := make([]string, 0, len(handle.clients))
+	for client := range handle.clients {
+		clientList = append(clientList, client)
+	}
+
+	return clientList
+}
+
 func (handle *WSHandle) runSend() {
 	for {
 		for _, messages := range handle.handles {
