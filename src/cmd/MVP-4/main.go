@@ -26,6 +26,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter"
 	"github.com/HyperloopUPV-H8/Backend-H8/websocket_handle"
 	"github.com/HyperloopUPV-H8/Backend-H8/websocket_handle/models"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/google/gopacket/pcap"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -45,12 +46,13 @@ func main() {
 
 	podData := dataTransferModels.PodData{Boards: make(map[string]dataTransferModels.Board)}
 	orderData := orderTransferModels.OrderData{}
-
+	controlSections := excel_adapter.GetControlSections(document)
+	spew.Dump(controlSections)
 	idToType := IDtoType{}
 	idToIP := IDtoIP{}
 	ipToBoard := IPtoBoard{}
 
-	excel_adapter.Compile(document, &podConverter, &displayConverter, &packetParser, &podData, &orderData, &idToType, &idToIP, &ipToBoard)
+	excel_adapter.AddExpandedPackets(document, &podConverter, &displayConverter, &packetParser, &podData, &orderData, &idToType, &idToIP, &ipToBoard)
 
 	laddr, err := net.ResolveTCPAddr("tcp", os.Getenv("LOCAL_ADDRESS"))
 	if err != nil {
