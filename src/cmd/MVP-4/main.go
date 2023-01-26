@@ -96,8 +96,6 @@ func main() {
 
 	packetFactory := data_transfer.NewFactory()
 
-	httpServer := server.Server{Router: mux.NewRouter()}
-
 	transportControllerConfig := transportControllerModels.Config{
 		Dump:    make(chan []byte),
 		Snaplen: 2000,
@@ -147,12 +145,13 @@ func main() {
 		}
 	}()
 
+	httpServer := server.Server{Router: mux.NewRouter()}
 	httpServer.HandleFunc("/backend/"+os.Getenv("LOGGER_ENDPOINT"), logger.HandleRequest)
 	httpServer.ServeData("/backend/"+os.Getenv("POD_DATA_ENDPOINT"), podDataRaw)
 	httpServer.ServeData("/backend/"+os.Getenv("CONTROL_SECTIONS_ENDPOINT"), controlSectionsRaw)
 	httpServer.ServeData("/backend/"+os.Getenv("ORDER_DATA_ENDPOINT"), orderDataRaw)
 
-	handle := websocket_handle.RunWSHandle(httpServer.Router, "backend", map[string]chan models.MessageTarget{
+	handle := websocket_handle.RunWSHandle(httpServer.Router, "/backend", map[string]chan models.MessageTarget{
 		"podData/update":    dataTransferChannel,
 		"message/update":    messageChannel,
 		"order/update":      ordChannel,
