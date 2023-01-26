@@ -68,7 +68,6 @@ func (handle *WSHandle) distribute(msg models.MessageTarget) {
 
 func (handle *WSHandle) runSend() {
 	for {
-
 		for _, messages := range handle.handles {
 			select {
 			case msg := <-messages:

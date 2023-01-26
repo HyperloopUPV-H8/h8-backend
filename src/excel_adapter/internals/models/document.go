@@ -1,5 +1,6 @@
 package models
 
 type Document struct {
-	Sheets map[string]Sheet
+	Info        Sheet
+	BoardSheets map[string]Sheet
 }
