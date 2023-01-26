@@ -40,6 +40,7 @@ func (handle *WSHandle) multiplex(source string, msg models.Message) {
 
 func (handle *WSHandle) runRecv() {
 	for {
+		handle.clientsMx.Lock()
 		for client, messages := range handle.clients {
 			select {
 			case msg := <-messages:
@@ -47,6 +48,7 @@ func (handle *WSHandle) runRecv() {
 			default:
 			}
 		}
+		handle.clientsMx.Unlock()
 	}
 }
 
@@ -66,6 +68,7 @@ func (handle *WSHandle) distribute(msg models.MessageTarget) {
 
 func (handle *WSHandle) runSend() {
 	for {
+
 		for _, messages := range handle.handles {
 			select {
 			case msg := <-messages:
@@ -86,7 +89,7 @@ func (handle *WSHandle) handleConn(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("WebsocketHandler: handleConn: %s\n", err)
+		log.Printf("WebSocketHandler: handleConn: %s\n", err)
 		return
 	}
 
@@ -103,7 +106,7 @@ func handleSocket(conn *websocket.Conn) chan models.Message {
 			msg := new(models.Message)
 			err := conn.ReadJSON(&msg)
 			if err != nil {
-				log.Printf("WebsocketHandle: handleSocket: %s\n", err)
+				log.Printf("WebSocketHandle: handleSocket: %s\n", err)
 				conn.Close()
 				return
 			}
@@ -115,7 +118,7 @@ func handleSocket(conn *websocket.Conn) chan models.Message {
 		for msg := range messages {
 			err := conn.WriteJSON(msg)
 			if err != nil {
-				log.Printf("WebsocketHandle: handleSocket: %s\n", err)
+				log.Printf("WebSocketHandle: handleSocket: %s\n", err)
 				conn.Close()
 				return
 			}
