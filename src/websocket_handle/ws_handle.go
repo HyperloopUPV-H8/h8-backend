@@ -56,18 +56,12 @@ func (handle *WSHandle) distribute(msg models.MessageTarget) {
 	for _, target := range msg.Target {
 		handle.clients[target] <- msg.Msg
 	}
-}
 
-func (handle *WSHandle) GetClients() []string {
-	handle.clientsMx.Lock()
-	defer handle.clientsMx.Unlock()
-
-	clientList := make([]string, 0, len(handle.clients))
-	for client := range handle.clients {
-		clientList = append(clientList, client)
+	if len(msg.Target) == 0 {
+		for _, client := range handle.clients {
+			client <- msg.Msg
+		}
 	}
-
-	return clientList
 }
 
 func (handle *WSHandle) runSend() {

@@ -1,26 +1,30 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
-	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"path"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer"
 	dataTransferModels "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter"
 	"github.com/HyperloopUPV-H8/Backend-H8/log_handle"
 	logHandleModels "github.com/HyperloopUPV-H8/Backend-H8/log_handle/models"
+	"github.com/HyperloopUPV-H8/Backend-H8/message_transfer"
+	"github.com/HyperloopUPV-H8/Backend-H8/order_transfer"
 	orderTransferModels "github.com/HyperloopUPV-H8/Backend-H8/order_transfer/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet_parser"
+	"github.com/HyperloopUPV-H8/Backend-H8/server"
 	"github.com/HyperloopUPV-H8/Backend-H8/transport_controller"
 	transportControllerModels "github.com/HyperloopUPV-H8/Backend-H8/transport_controller/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter"
@@ -44,7 +48,16 @@ func main() {
 	packetParser := packet_parser.NewPacketParser()
 
 	podData := dataTransferModels.PodData{Boards: make(map[string]dataTransferModels.Board)}
+	podDataRaw, err := json.Marshal(podData)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	orderData := orderTransferModels.OrderData{}
+	orderDataRaw, err := json.Marshal(orderData)
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	idToType := IDtoType{}
 	idToIP := IDtoIP{}
@@ -67,10 +80,18 @@ func main() {
 		raddrs[i] = raddr
 	}
 
-	dataTransfer := data_transfer.New(time.Millisecond * 10)
-	defer dataTransfer.Close()
+	connectionTransfer, connectionChannel := connection_transfer.New()
+
+	dataTransfer, dataTransferChannel := data_transfer.New(time.Millisecond * 10)
+
+	messageTransfer, messageChannel := message_transfer.New()
+
+	orderChannel := make(chan orderTransferModels.Order, 100)
+	orderTransfer, ordChannel := order_transfer.New(orderChannel)
 
 	packetFactory := data_transfer.NewFactory()
+
+	httpServer := server.Server{Router: mux.NewRouter()}
 
 	transportControllerConfig := transportControllerModels.Config{
 		Dump:    make(chan []byte),
@@ -79,6 +100,7 @@ func main() {
 		Timeout: pcap.BlockForever,
 		BPF:     getFilter(raddrs),
 		OnConnUpdate: func(addr *net.TCPAddr, up bool) {
+			connectionTransfer.Update(ipToBoard[addr.IP.String()], up)
 		},
 	}
 
@@ -98,49 +120,43 @@ func main() {
 		Autosave: time.NewTicker(time.Minute),
 	})
 
-	router := mux.NewRouter()
-
-	packetUpdateChannel := make(chan models.MessageTarget)
-	podDataChannel := make(chan models.MessageTarget)
-	handler := websocket_handle.RunWSHandle(router, "backend", map[string]chan models.MessageTarget{
-		"podData":      podDataChannel,
-		"packetUpdate": packetUpdateChannel,
-	})
-
-	go func(channel chan models.MessageTarget) {
+	go func(msgChannel chan models.MessageTarget) {
 		for packet := range transportControllerConfig.Dump {
 			id, values := packetParser.Decode(packet)
 			values = podConverter.Convert(values)
 			values = displayConverter.Convert(values)
 			logger.Update(values)
 			if idToType[id] == "data" {
-				packet := packetFactory.NewPacket(id, packet, values)
-				channel <- models.MessageTarget{
-					Target: handler.GetClients(),
-					Msg: models.Message{
-						Kind: "podData/update",
-						Msg:  []dataTransferModels.PacketUpdate{packet},
-					},
-				}
+				dataTransfer.Update(packetFactory.NewPacket(id, packet, values))
+			} else {
+				messageTransfer.Broadcast(packetFactory.NewPacket(id, packet, values))
 			}
 		}
-	}(packetUpdateChannel)
+	}(messageChannel)
 
-	go func(channel chan models.MessageTarget) {
-		for msg := range channel {
-			channel <- models.MessageTarget{
-				Target: msg.Target,
-				Msg: models.Message{
-					Kind: "podData/structure",
-					Msg:  podData,
-				},
-			}
+	go func() {
+		for order := range orderChannel {
+			order.Values = displayConverter.Revert(order.Values)
+			order.Values = podConverter.Revert(order.Values)
+			transportController.Write(idToIP[order.ID], packetParser.Encode(order.ID, order.Values))
 		}
-	}(podDataChannel)
+	}()
 
-	router.PathPrefix("/").HandlerFunc(http.FileServer(http.Dir(path.Join(".", "static"))).ServeHTTP)
+	httpServer.HandleFunc("/backend/"+os.Getenv("LOGGER_ENDPOINT"), logger.HandleRequest)
+	httpServer.ServeData("/backend/"+os.Getenv("POD_DATA_ENDPOINT"), podDataRaw)
+	httpServer.ServeData("/backend/"+os.Getenv("ORDER_DATA_ENDPOINT"), orderDataRaw)
 
-	go log.Fatalln(http.ListenAndServe("127.0.0.1:4000", router))
+	handle := websocket_handle.RunWSHandle(httpServer.Router, "backend", map[string]chan models.MessageTarget{
+		"podData/update":    dataTransferChannel,
+		"message/update":    messageChannel,
+		"order/update":      ordChannel,
+		"connection/update": connectionChannel,
+	})
+
+	path, _ := os.Getwd()
+	httpServer.FileServer("/", filepath.Join(path, "static"))
+
+	go httpServer.ListenAndServe(os.Getenv("SERVER_ADDR"))
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
@@ -154,5 +170,6 @@ loop:
 			break loop
 		}
 	}
-	log.Println(handler)
+
+	log.Println(handle, orderTransfer)
 }
