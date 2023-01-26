@@ -32,7 +32,7 @@ func RunWSHandle(router *mux.Router, route string, handles map[string]chan model
 }
 
 func (handle *WSHandle) multiplex(source string, msg models.Message) {
-	handle.handles[msg.Kind] <- models.MessageTarget{
+	handle.handles[msg.Type] <- models.MessageTarget{
 		Target: []string{source},
 		Msg:    msg,
 	}

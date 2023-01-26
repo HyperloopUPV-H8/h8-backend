@@ -63,7 +63,7 @@ func main() {
 	idToIP := IDtoIP{}
 	ipToBoard := IPtoBoard{}
 
-	excel_adapter.Compile(document, &podConverter, &displayConverter, &packetParser, &podData, &orderData, &idToType, &idToIP, &ipToBoard)
+	excel_adapter.AddExpandedPackets(document, &podConverter, &displayConverter, &packetParser, &podData, &orderData, &idToType, &idToIP, &ipToBoard)
 
 	laddr, err := net.ResolveTCPAddr("tcp", os.Getenv("LOCAL_ADDRESS"))
 	if err != nil {
