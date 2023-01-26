@@ -41,6 +41,11 @@ func main() {
 	godotenv.Load(".env")
 
 	document := excel_adapter.FetchDocument(os.Getenv("EXCEL_ID"), os.Getenv("EXCEL_PATH"), os.Getenv("EXCEL_NAME"))
+	controlSections := excel_adapter.GetControlSections(document)
+	controlSectionsRaw, err := json.Marshal(controlSections)
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	podConverter := unit_converter.UnitConverter{Kind: "pod"}
 	displayConverter := unit_converter.UnitConverter{Kind: "display"}
@@ -144,6 +149,7 @@ func main() {
 
 	httpServer.HandleFunc("/backend/"+os.Getenv("LOGGER_ENDPOINT"), logger.HandleRequest)
 	httpServer.ServeData("/backend/"+os.Getenv("POD_DATA_ENDPOINT"), podDataRaw)
+	httpServer.ServeData("/backend/"+os.Getenv("CONTROL_SECTIONS_ENDPOINT"), controlSectionsRaw)
 	httpServer.ServeData("/backend/"+os.Getenv("ORDER_DATA_ENDPOINT"), orderDataRaw)
 
 	handle := websocket_handle.RunWSHandle(httpServer.Router, "backend", map[string]chan models.MessageTarget{
