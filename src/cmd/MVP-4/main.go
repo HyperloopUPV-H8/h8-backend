@@ -117,7 +117,7 @@ func main() {
 	transportController := transport_controller.Open(laddr, raddrs, os.Getenv("SNIFFER_DEV"), live, transportControllerConfig)
 	defer transportController.Close()
 
-	logger := log_handle.NewLogger(logHandleModels.Config{
+	logger, loggerChannel := log_handle.NewLogger(logHandleModels.Config{
 		DumpSize: 7000,
 		RowSize:  20,
 		BasePath: os.Getenv("LOG_PATH"),
@@ -147,7 +147,6 @@ func main() {
 		}
 	}()
 
-	httpServer.HandleFunc("/backend/"+os.Getenv("LOGGER_ENDPOINT"), logger.HandleRequest)
 	httpServer.ServeData("/backend/"+os.Getenv("POD_DATA_ENDPOINT"), podDataRaw)
 	httpServer.ServeData("/backend/"+os.Getenv("CONTROL_SECTIONS_ENDPOINT"), controlSectionsRaw)
 	httpServer.ServeData("/backend/"+os.Getenv("ORDER_DATA_ENDPOINT"), orderDataRaw)
@@ -157,6 +156,7 @@ func main() {
 		"message/update":    messageChannel,
 		"order/update":      ordChannel,
 		"connection/update": connectionChannel,
+		"logger/enable":     loggerChannel,
 	})
 
 	path, _ := os.Getwd()
