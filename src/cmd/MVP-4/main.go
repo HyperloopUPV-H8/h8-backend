@@ -53,13 +53,11 @@ func main() {
 	packetParser := packet_parser.NewPacketParser()
 
 	podData := dataTransferModels.PodData{Boards: make(map[string]dataTransferModels.Board)}
-	podDataRaw, err := json.Marshal(podData)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	orderData := orderTransferModels.OrderData{}
-	orderDataRaw, err := json.Marshal(orderData)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -69,6 +67,17 @@ func main() {
 	ipToBoard := IPtoBoard{}
 
 	excel_adapter.AddExpandedPackets(document, &podConverter, &displayConverter, &packetParser, &podData, &orderData, &idToType, &idToIP, &ipToBoard)
+	podDataRaw, err := json.Marshal(podData)
+
+	if err != nil {
+		log.Fatal("Error marshaling podData")
+	}
+
+	orderDataRaw, err := json.Marshal(orderData)
+
+	if err != nil {
+		log.Fatal("Error marshaling orders")
+	}
 
 	laddr, err := net.ResolveTCPAddr("tcp", os.Getenv("LOCAL_ADDRESS"))
 	if err != nil {
