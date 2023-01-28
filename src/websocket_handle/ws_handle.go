@@ -11,67 +11,45 @@ import (
 )
 
 type WSHandle struct {
-	handles   map[string]chan models.MessageTarget
-	clients   map[string]chan models.Message
-	clientsMx sync.Mutex
+	handles map[string]chan models.MessageTarget
+	conns   map[string]*websocket.Conn
+	connsMx sync.Mutex
 }
 
 func RunWSHandle(router *mux.Router, route string, handles map[string]chan models.MessageTarget) *WSHandle {
 	handle := &WSHandle{
-		handles:   handles,
-		clients:   make(map[string]chan models.Message),
-		clientsMx: sync.Mutex{},
+		handles: handles,
+		conns:   make(map[string]*websocket.Conn),
+		connsMx: sync.Mutex{},
 	}
 
 	router.HandleFunc(route, handle.handleConn)
 
-	go handle.runRecv()
-	go handle.runSend()
+	go handle.handleTx()
 
 	return handle
 }
 
-func (handle *WSHandle) multiplex(source string, msg models.Message) {
-	handle.handles[msg.Kind] <- models.MessageTarget{
-		Target: []string{source},
-		Msg:    msg,
-	}
-}
-
-func (handle *WSHandle) runRecv() {
+func (handle *WSHandle) handleTx() {
 	for {
-		handle.clientsMx.Lock()
-		for client, messages := range handle.clients {
+		for _, output := range handle.handles {
 			select {
-			case msg := <-messages:
-				handle.multiplex(client, msg)
-			default:
-			}
-		}
-		handle.clientsMx.Unlock()
-	}
-}
-
-func (handle *WSHandle) distribute(msg models.MessageTarget) {
-	handle.clientsMx.Lock()
-	defer handle.clientsMx.Unlock()
-	for _, target := range msg.Target {
-		handle.clients[target] <- msg.Msg
-	}
-
-	if len(msg.Target) == 0 {
-		for _, client := range handle.clients {
-			client <- msg.Msg
-		}
-	}
-}
-
-func (handle *WSHandle) runSend() {
-	for {
-		for _, messages := range handle.handles {
-			select {
-			case msg := <-messages:
-				handle.distribute(msg)
+			case msg := <-output:
+				if len(msg.Target) == 0 {
+					for _, conn := range handle.conns {
+						err := conn.WriteJSON(msg.Msg)
+						if err != nil {
+							handle.Close(conn)
+						}
+					}
+				} else {
+					for _, target := range msg.Target {
+						err := handle.conns[target].WriteJSON(msg.Msg)
+						if err != nil {
+							handle.Close(handle.conns[target])
+						}
+					}
+				}
 			default:
 			}
 		}
@@ -92,50 +70,29 @@ func (handle *WSHandle) handleConn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	handle.clientsMx.Lock()
-	defer handle.clientsMx.Unlock()
-	handle.clients[conn.RemoteAddr().String()] = handle.handleSocket(conn)
+	go handle.handleSocket(conn)
+	handle.conns[conn.RemoteAddr().String()] = conn
 }
 
-func (handle *WSHandle) handleSocket(conn *websocket.Conn) chan models.Message {
-	messages := make(chan models.Message)
-
-	go func(conn *websocket.Conn, messages chan<- models.Message) {
-		defer func(conn *websocket.Conn, messages chan<- models.Message) {
-			close(messages)
-			handle.clientsMx.Lock()
-			defer handle.clientsMx.Unlock()
-			delete(handle.clients, conn.RemoteAddr().String())
-			conn.Close()
-		}(conn, messages)
-
-		for {
-			msg := new(models.Message)
-			err := conn.ReadJSON(&msg)
-			if err != nil {
-				log.Printf("WebSocketHandle: handleSocket: %s\n", err)
-				return
-			}
-			messages <- *msg
+func (handle *WSHandle) handleSocket(conn *websocket.Conn) {
+	defer handle.Close(conn)
+	for {
+		var msg models.Message
+		err := conn.ReadJSON(&msg)
+		if err != nil {
+			return
 		}
-	}(conn, messages)
-
-	go func(conn *websocket.Conn, messages <-chan models.Message) {
-		func(conn *websocket.Conn) {
-			handle.clientsMx.Lock()
-			defer handle.clientsMx.Unlock()
-			delete(handle.clients, conn.RemoteAddr().String())
-			conn.Close()
-		}(conn)
-
-		for msg := range messages {
-			err := conn.WriteJSON(msg)
-			if err != nil {
-				log.Printf("WebSocketHandle: handleSocket: %s\n", err)
-				return
-			}
+		handle.handles[msg.Kind] <- models.MessageTarget{
+			Target: []string{conn.RemoteAddr().String()},
+			Msg:    msg,
 		}
-	}(conn, messages)
+	}
 
-	return messages
+}
+
+func (handle *WSHandle) Close(conn *websocket.Conn) {
+	handle.connsMx.Lock()
+	defer handle.connsMx.Unlock()
+	delete(handle.conns, conn.RemoteAddr().String())
+	conn.Close()
 }
