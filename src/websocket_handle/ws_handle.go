@@ -94,19 +94,24 @@ func (handle *WSHandle) handleConn(w http.ResponseWriter, r *http.Request) {
 
 	handle.clientsMx.Lock()
 	defer handle.clientsMx.Unlock()
-	handle.clients[conn.RemoteAddr().String()] = handleSocket(conn)
+	handle.clients[conn.RemoteAddr().String()] = handle.handleSocket(conn)
 }
 
-func handleSocket(conn *websocket.Conn) chan models.Message {
+func (handle *WSHandle) handleSocket(conn *websocket.Conn) chan models.Message {
 	messages := make(chan models.Message)
 
 	go func(conn *websocket.Conn, messages chan<- models.Message) {
+		defer func(conn *websocket.Conn, messages chan<- models.Message) {
+			close(messages)
+			delete(handle.clients, conn.RemoteAddr().String())
+			conn.Close()
+		}(conn, messages)
+
 		for {
 			msg := new(models.Message)
 			err := conn.ReadJSON(&msg)
 			if err != nil {
 				log.Printf("WebSocketHandle: handleSocket: %s\n", err)
-				conn.Close()
 				return
 			}
 			messages <- *msg
@@ -114,11 +119,15 @@ func handleSocket(conn *websocket.Conn) chan models.Message {
 	}(conn, messages)
 
 	go func(conn *websocket.Conn, messages <-chan models.Message) {
+		func(conn *websocket.Conn) {
+			delete(handle.clients, conn.RemoteAddr().String())
+			conn.Close()
+		}(conn)
+
 		for msg := range messages {
 			err := conn.WriteJSON(msg)
 			if err != nil {
 				log.Printf("WebSocketHandle: handleSocket: %s\n", err)
-				conn.Close()
 				return
 			}
 		}
