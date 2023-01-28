@@ -103,6 +103,8 @@ func (handle *WSHandle) handleSocket(conn *websocket.Conn) chan models.Message {
 	go func(conn *websocket.Conn, messages chan<- models.Message) {
 		defer func(conn *websocket.Conn, messages chan<- models.Message) {
 			close(messages)
+			handle.clientsMx.Lock()
+			defer handle.clientsMx.Unlock()
 			delete(handle.clients, conn.RemoteAddr().String())
 			conn.Close()
 		}(conn, messages)
@@ -120,6 +122,8 @@ func (handle *WSHandle) handleSocket(conn *websocket.Conn) chan models.Message {
 
 	go func(conn *websocket.Conn, messages <-chan models.Message) {
 		func(conn *websocket.Conn) {
+			handle.clientsMx.Lock()
+			defer handle.clientsMx.Unlock()
 			delete(handle.clients, conn.RemoteAddr().String())
 			conn.Close()
 		}(conn)
