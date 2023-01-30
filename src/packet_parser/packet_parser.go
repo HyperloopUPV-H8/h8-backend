@@ -23,18 +23,22 @@ func (parser *PacketParser) AddPacket(board string, ip string, desc excelAdapter
 		log.Fatalf("packet parser: AddPacket: %s\n", err)
 	}
 
-	valueDescriptors := make([]models.ValueDescriptor, len(values))
-	for i, value := range values {
+	valueDescriptors := make([]models.ValueDescriptor, 0, len(values))
+	for _, value := range values {
+		if value.Name == "" {
+			continue
+		}
+
 		kind := value.Type
 		if strings.HasPrefix(kind, "ENUM") {
 			kind = "enum"
 			parser.enums[value.Name] = models.GetEnum(value.Type)
 		}
 
-		valueDescriptors[i] = models.ValueDescriptor{
+		valueDescriptors = append(valueDescriptors, models.ValueDescriptor{
 			Name: value.Name,
 			Type: kind,
-		}
+		})
 	}
 
 	parser.descriptors[uint16(id)] = valueDescriptors

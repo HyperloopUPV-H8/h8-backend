@@ -11,8 +11,8 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-const GlobalSheet = "Info"
-const AddressesTable = "addresses"
+const GLOBAL_SHEET_NAME = "Info"
+const ADDRESSES_TABLE_NAME = "Addresses"
 
 func FetchDocument(id string, path string, name string) internalModels.Document {
 	internals.DownloadFile(id, path, name)
@@ -24,17 +24,15 @@ func FetchDocument(id string, path string, name string) internalModels.Document 
 }
 
 func getBoards(document internalModels.Document) map[string]models.Board {
-	boards := make(map[string]models.Board, len(document.Sheets)-1)
-	for name, sheet := range document.Sheets {
-		if name != GlobalSheet {
-			boards[name] = models.NewBoard(name, getIP(name, document), sheet)
-		}
+	boards := make(map[string]models.Board, len(document.BoardSheets)-1)
+	for name, sheet := range document.BoardSheets {
+		boards[name] = models.NewBoard(name, getIP(name, document), sheet)
 	}
 	return boards
 }
 
 func getIP(sheet string, document internalModels.Document) string {
-	for _, row := range document.Sheets[GlobalSheet].Tables[AddressesTable].Rows {
+	for _, row := range document.Info.Tables[ADDRESSES_TABLE_NAME].Rows {
 		if row[0] == sheet {
 			return row[1]
 		}
@@ -51,6 +49,8 @@ func AddExpandedPackets(document internalModels.Document, objects ...models.From
 		}
 	}
 }
+
+// TODO: Put Control Sections logic in separate module
 
 func GetControlSections(document internalModels.Document) map[string]models.ControlSection {
 	expandedControlSections := make(map[string]models.ControlSection)

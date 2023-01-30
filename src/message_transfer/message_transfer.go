@@ -1,40 +1,29 @@
 package message_transfer
 
 import (
+	"log"
+
 	dataTransferModels "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/message_transfer/models"
-	"github.com/gorilla/websocket"
-	"github.com/kjk/betterguid"
+	ws_models "github.com/HyperloopUPV-H8/Backend-H8/websocket_handle/models"
 )
 
 type MessageTransfer struct {
-	sockets map[string]*websocket.Conn
+	channel chan ws_models.MessageTarget
 }
 
-func New() *MessageTransfer {
-	return &MessageTransfer{
-		sockets: make(map[string]*websocket.Conn),
-	}
-}
-
-func (messageTransfer *MessageTransfer) HandleConn(socket *websocket.Conn) {
-	messageTransfer.sockets[betterguid.New()] = socket
+func New() (*MessageTransfer, chan ws_models.MessageTarget) {
+	channel := make(chan ws_models.MessageTarget)
+	return &MessageTransfer{channel}, channel
 }
 
 func (messageTransfer *MessageTransfer) Broadcast(update dataTransferModels.PacketUpdate) {
-	message := getMessage(update)
-	for id, socket := range messageTransfer.sockets {
-		if err := socket.WriteJSON(message); err != nil {
-			socket.Close()
-			delete(messageTransfer.sockets, id)
-		}
+	message, err := ws_models.NewMessageTarget([]string{}, "message/update", getMessage(update))
+	if err != nil {
+		log.Printf("messageTransfer: Broadcast: %s\n", err)
+		return
 	}
-}
-
-func (messageTransfer *MessageTransfer) Close() {
-	for _, socket := range messageTransfer.sockets {
-		socket.Close()
-	}
+	messageTransfer.channel <- message
 }
 
 func getMessage(update dataTransferModels.PacketUpdate) models.Message {

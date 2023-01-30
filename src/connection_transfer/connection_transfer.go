@@ -1,31 +1,35 @@
 package connection_transfer
 
 import (
-	"encoding/json"
 	"log"
 	"sync"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer/models"
-	"github.com/gorilla/websocket"
-	"github.com/kjk/betterguid"
+	ws_models "github.com/HyperloopUPV-H8/Backend-H8/websocket_handle/models"
 )
 
 type ConnectionTransfer struct {
 	writeMx     sync.Mutex
 	boardStatus map[string]models.Connection
-	sockets     map[string]*websocket.Conn
+	channel     chan ws_models.MessageTarget
 }
 
-func New() *ConnectionTransfer {
-	return &ConnectionTransfer{
+func New() (*ConnectionTransfer, chan ws_models.MessageTarget) {
+	connectionTransfer := &ConnectionTransfer{
 		writeMx:     sync.Mutex{},
 		boardStatus: make(map[string]models.Connection),
-		sockets:     make(map[string]*websocket.Conn),
+		channel:     make(chan ws_models.MessageTarget),
 	}
+
+	go connectionTransfer.run()
+
+	return connectionTransfer, connectionTransfer.channel
 }
 
-func (connectionTransfer *ConnectionTransfer) HandleConn(socket *websocket.Conn) {
-	connectionTransfer.sockets[betterguid.New()] = socket
+func (connectionTransfer *ConnectionTransfer) run() {
+	for range connectionTransfer.channel {
+		connectionTransfer.send()
+	}
 }
 
 func (connectionTransfer *ConnectionTransfer) Update(name string, up bool) {
@@ -36,23 +40,16 @@ func (connectionTransfer *ConnectionTransfer) Update(name string, up bool) {
 		IsConnected: up,
 	}
 
-	message, err := json.Marshal(mapToArray(connectionTransfer.boardStatus))
-	if err != nil {
-		log.Fatalf("connection transfer: Update: %s\n", err)
-	}
-
-	for id, socket := range connectionTransfer.sockets {
-		if err := socket.WriteMessage(websocket.TextMessage, message); err != nil {
-			socket.Close()
-			delete(connectionTransfer.sockets, id)
-		}
-	}
+	connectionTransfer.send()
 }
 
-func (ConnectionTransfer *ConnectionTransfer) Close() {
-	for _, socket := range ConnectionTransfer.sockets {
-		socket.Close()
+func (connectionTransfer *ConnectionTransfer) send() {
+	msg, err := ws_models.NewMessageTarget([]string{}, "connection/update", mapToArray(connectionTransfer.boardStatus))
+	if err != nil {
+		log.Printf("connectionTransfer: send: %s\n", err)
+		return
 	}
+	connectionTransfer.channel <- msg
 }
 
 func mapToArray(input map[string]models.Connection) []models.Connection {

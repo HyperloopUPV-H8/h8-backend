@@ -1,8 +1,17 @@
 package models
 
 import (
+	"fmt"
+
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/internals/models"
 	"golang.org/x/exp/slices"
+)
+
+const (
+	PACKET_TABLE_NAME          = "Packets"
+	MEASUREMENT_TABLE_NAME     = "Measurements"
+	STRUCTURES_TABLE_NAME      = "Structures"
+	CONTROL_SECTION_TABLE_NAME = "ControlSections"
 )
 
 type Board struct {
@@ -18,10 +27,10 @@ func NewBoard(name string, ip string, sheet models.Sheet) Board {
 	return Board{
 		Name:            name,
 		IP:              ip,
-		Descriptions:    getDescriptions(sheet.Tables["packets"]),
-		Measurements:    getMeasurements(sheet.Tables["values"]),
-		Structures:      getStructures(sheet.Tables["structures"]),
-		ControlSections: getControlSections(sheet.Tables["ControlSections"]),
+		Descriptions:    getDescriptions(sheet.Tables[PACKET_TABLE_NAME]),
+		Measurements:    getMeasurements(sheet.Tables[MEASUREMENT_TABLE_NAME]),
+		Structures:      getStructures(sheet.Tables[STRUCTURES_TABLE_NAME]),
+		ControlSections: getControlSections(sheet.Tables[CONTROL_SECTION_TABLE_NAME]),
 	}
 }
 
@@ -119,5 +128,5 @@ func (board *Board) FindContainingPacket(valueName string) string {
 		}
 	}
 
-	panic("Searched valueName that doesn't exist")
+	panic(fmt.Sprintf("valueName %s doesn't exist", valueName))
 }

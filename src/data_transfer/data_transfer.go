@@ -7,28 +7,27 @@ import (
 	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/models"
-	"github.com/gorilla/websocket"
-	"github.com/kjk/betterguid"
+	ws_models "github.com/HyperloopUPV-H8/Backend-H8/websocket_handle/models"
 )
 
 type DataTransfer struct {
 	bufMx     sync.Mutex
 	packetBuf map[uint16]models.PacketUpdate
 	ticker    *time.Ticker
-	sockets   map[string]*websocket.Conn
+	channel   chan ws_models.MessageTarget
 }
 
-func New(rate time.Duration) *DataTransfer {
+func New(rate time.Duration) (*DataTransfer, chan ws_models.MessageTarget) {
 	dataTransfer := &DataTransfer{
 		bufMx:     sync.Mutex{},
 		packetBuf: make(map[uint16]models.PacketUpdate),
 		ticker:    time.NewTicker(rate),
-		sockets:   make(map[string]*websocket.Conn),
+		channel:   make(chan ws_models.MessageTarget),
 	}
 
 	go dataTransfer.run()
 
-	return dataTransfer
+	return dataTransfer, dataTransfer.channel
 }
 
 func (dataTransfer *DataTransfer) run() {
@@ -37,19 +36,7 @@ func (dataTransfer *DataTransfer) run() {
 		if len(dataTransfer.packetBuf) == 0 {
 			continue
 		}
-		data := dataTransfer.getJSON()
-		for id, socket := range dataTransfer.sockets {
-			if err := socket.WriteMessage(websocket.TextMessage, data); err != nil {
-				socket.Close()
-				delete(dataTransfer.sockets, id)
-			}
-		}
-	}
-}
-
-func (dataTransfer *DataTransfer) Close() {
-	for _, socket := range dataTransfer.sockets {
-		socket.Close()
+		dataTransfer.channel <- ws_models.NewMessageTargetRaw([]string{}, "podData/update", dataTransfer.getJSON())
 	}
 }
 
@@ -62,10 +49,6 @@ func (dataTransfer *DataTransfer) getJSON() []byte {
 	}
 	dataTransfer.packetBuf = make(map[uint16]models.PacketUpdate, len(dataTransfer.packetBuf))
 	return data
-}
-
-func (dataTransfer *DataTransfer) HandleConn(socket *websocket.Conn) {
-	dataTransfer.sockets[betterguid.New()] = socket
 }
 
 func (dataTransfer *DataTransfer) Update(update models.PacketUpdate) {

@@ -8,40 +8,36 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-const sheetPrefix = "BOARD_ "
-const tablePrefix = "[TABLE] "
+const BOARD_SHEET_PREFIX = "BOARD "
+const TABLE_PREFIX = "[TABLE] "
 
 func GetDocument(file *excelize.File) models.Document {
-	sheets := parseSheets(file)
+	infoSheet, boardSheets := parseSheets(file)
 	document := models.Document{
-		Sheets: sheets,
+		Info:        infoSheet,
+		BoardSheets: boardSheets,
 	}
 	return document
 }
 
-func parseSheets(file *excelize.File) map[string]models.Sheet {
-	sheets := make(map[string]models.Sheet)
-	boards := sheetsFilter(file.GetSheetMap())
-	for _, name := range boards {
-		cols := getCols(file, name)
-		sheets[strings.TrimPrefix(name, sheetPrefix)] = parseSheet(name, cols)
-	}
-	return sheets
-
-}
-
-func sheetsFilter(sheets map[int]string) map[int]string {
-	boards := make(map[int]string)
-	for key, name := range sheets {
-		if strings.HasPrefix(name, sheetPrefix) {
-			boards[key] = name
+func parseSheets(file *excelize.File) (models.Sheet, map[string]models.Sheet) {
+	infoSheet := models.Sheet{}
+	boardSheets := make(map[string]models.Sheet)
+	sheetMap := file.GetSheetMap()
+	for _, name := range sheetMap {
+		cols := getSheetCols(file, name)
+		if strings.HasPrefix(name, BOARD_SHEET_PREFIX) {
+			boardSheets[strings.TrimPrefix(name, BOARD_SHEET_PREFIX)] = parseSheet(name, cols)
+		} else {
+			infoSheet = parseSheet(name, cols)
 		}
 	}
-	return boards
+
+	return infoSheet, boardSheets
 }
 
-func getCols(file *excelize.File, nameSheet string) [][]string {
-	cols, err := file.GetCols(nameSheet)
+func getSheetCols(file *excelize.File, sheetName string) [][]string {
+	cols, err := file.GetCols(sheetName)
 	if err != nil {
 		log.Fatalf("error gettings columns: %s\n", err)
 	}
@@ -52,7 +48,6 @@ func parseSheet(name string, cols [][]string) models.Sheet {
 	tables := make(map[string]models.Table)
 
 	for name, bound := range findTables(cols) {
-		println(name)
 		tables[name] = parseTable(cols, bound)
 	}
 
@@ -65,9 +60,9 @@ func findTables(cols [][]string) map[string][4]int {
 	tables := make(map[string][4]int)
 	for i, col := range cols {
 		for j, cell := range col {
-			if strings.HasPrefix(cell, tablePrefix) {
+			if strings.HasPrefix(cell, TABLE_PREFIX) {
 				end := findTableEnd(cols, i, j)
-				tables[strings.TrimPrefix(cell, tablePrefix)] = [4]int{i, j, i + end[0], j + end[1] + 2}
+				tables[strings.TrimPrefix(cell, TABLE_PREFIX)] = [4]int{i, j, i + end[0], j + end[1] + 2}
 			}
 		}
 	}
@@ -75,10 +70,10 @@ func findTables(cols [][]string) map[string][4]int {
 }
 
 func findTableEnd(cols [][]string, firstCol int, firstRow int) (bound [2]int) {
-	widht := findTableWidth(cols, firstCol, firstRow)
-	bound[0] = widht
+	width := findTableWidth(cols, firstCol, firstRow)
+	bound[0] = width
 
-	height := findTableHeight(cols, firstCol, firstRow, widht)
+	height := findTableHeight(cols, firstCol, firstRow, width)
 	bound[1] = height
 	return
 }
@@ -118,7 +113,6 @@ func findTableHeight(cols [][]string, firstCol int, firstRow int, width int) int
 }
 
 func parseTable(cols [][]string, bound [4]int) models.Table {
-
 	rows := make([]models.Row, bound[3]-bound[1]-2)
 	for j := 0; j < len(rows); j++ {
 		rows[j] = parseRow(cols, j+bound[1]+2, bound[0], bound[2])
