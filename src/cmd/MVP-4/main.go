@@ -27,7 +27,6 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/transport_controller"
 	transportControllerModels "github.com/HyperloopUPV-H8/Backend-H8/transport_controller/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/google/gopacket/pcap"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -48,7 +47,6 @@ func main() {
 	podData := dataTransferModels.PodData{Boards: make(map[string]dataTransferModels.Board)}
 	orderData := orderTransferModels.OrderData{}
 	controlSections := excel_adapter.GetControlSections(document)
-	spew.Dump(controlSections)
 	idToType := IDtoType{}
 	idToIP := IDtoIP{}
 	ipToBoard := IPtoBoard{}
