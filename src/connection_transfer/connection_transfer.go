@@ -1,7 +1,6 @@
 package connection_transfer
 
 import (
-	"encoding/json"
 	"log"
 	"sync"
 
@@ -45,18 +44,12 @@ func (connectionTransfer *ConnectionTransfer) Update(name string, up bool) {
 }
 
 func (connectionTransfer *ConnectionTransfer) send() {
-	msg, err := json.Marshal(mapToArray(connectionTransfer.boardStatus))
+	msg, err := ws_models.NewMessageTarget([]string{}, "connection/update", mapToArray(connectionTransfer.boardStatus))
 	if err != nil {
 		log.Printf("connectionTransfer: send: %s\n", err)
 		return
 	}
-	connectionTransfer.channel <- ws_models.MessageTarget{
-		Target: []string{},
-		Msg: ws_models.Message{
-			Kind: "connection/update",
-			Msg:  msg,
-		},
-	}
+	connectionTransfer.channel <- msg
 }
 
 func mapToArray(input map[string]models.Connection) []models.Connection {

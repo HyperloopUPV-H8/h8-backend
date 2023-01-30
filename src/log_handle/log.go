@@ -139,13 +139,7 @@ func (logger *LogHandle) listenWS() {
 				logger.logSession = ""
 			}
 
-			logger.channel <- ws_models.MessageTarget{
-				Target: []string{},
-				Msg: ws_models.Message{
-					Kind: "logger/state",
-					Msg:  msg.Msg.Msg,
-				},
-			}
+			logger.channel <- ws_models.NewMessageTargetRaw([]string{}, "logger/state", msg.Msg.Msg)
 		}
 	}
 }

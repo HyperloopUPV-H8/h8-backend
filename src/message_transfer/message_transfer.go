@@ -1,7 +1,6 @@
 package message_transfer
 
 import (
-	"encoding/json"
 	"log"
 
 	dataTransferModels "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/models"
@@ -19,18 +18,12 @@ func New() (*MessageTransfer, chan ws_models.MessageTarget) {
 }
 
 func (messageTransfer *MessageTransfer) Broadcast(update dataTransferModels.PacketUpdate) {
-	message, err := json.Marshal(getMessage(update))
+	message, err := ws_models.NewMessageTarget([]string{}, "message/update", getMessage(update))
 	if err != nil {
 		log.Printf("messageTransfer: Broadcast: %s\n", err)
 		return
 	}
-	messageTransfer.channel <- ws_models.MessageTarget{
-		Target: []string{},
-		Msg: ws_models.Message{
-			Kind: "message/update",
-			Msg:  message,
-		},
-	}
+	messageTransfer.channel <- message
 }
 
 func getMessage(update dataTransferModels.PacketUpdate) models.Message {

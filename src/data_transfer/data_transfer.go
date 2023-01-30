@@ -36,14 +36,7 @@ func (dataTransfer *DataTransfer) run() {
 		if len(dataTransfer.packetBuf) == 0 {
 			continue
 		}
-		data := dataTransfer.getJSON()
-		dataTransfer.channel <- ws_models.MessageTarget{
-			Target: []string{},
-			Msg: ws_models.Message{
-				Kind: "podData/update",
-				Msg:  data,
-			},
-		}
+		dataTransfer.channel <- ws_models.NewMessageTargetRaw([]string{}, "podData/update", dataTransfer.getJSON())
 	}
 }
 

@@ -82,7 +82,7 @@ func (handle *WSHandle) handleSocket(conn *websocket.Conn) {
 		if err != nil {
 			return
 		}
-		handle.handles[msg.Kind] <- models.MessageTarget{
+		handle.handles[msg.Topic] <- models.MessageTarget{
 			Target: []string{conn.RemoteAddr().String()},
 			Msg:    msg,
 		}

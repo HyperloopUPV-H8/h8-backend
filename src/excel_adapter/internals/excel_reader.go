@@ -1,7 +1,6 @@
 package internals
 
 import (
-	"fmt"
 	"log"
 	"strings"
 
@@ -49,7 +48,6 @@ func parseSheet(name string, cols [][]string) models.Sheet {
 	tables := make(map[string]models.Table)
 
 	for name, bound := range findTables(cols) {
-		fmt.Println(name)
 		tables[name] = parseTable(cols, bound)
 	}
 
