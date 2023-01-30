@@ -7,6 +7,14 @@ import (
 	"github.com/google/gopacket/pcap"
 )
 
+const ETHER_TYPE = 12
+const IP_TYPE = ETHER_TYPE + 11
+const TYPE_IPIP = 0x04
+const TYPE_UDP = 0x11
+const TYPE_TCP = 0x06
+const UDP_OFFSET = 42
+const TCP_OFFSET = 54
+
 type Sniffer struct {
 	source *pcap.Handle
 	config models.Config
@@ -28,6 +36,8 @@ func obtainSource(device string, live bool, config models.Config) *pcap.Handle {
 		source *pcap.Handle
 		err    error
 	)
+
+	log.Println(pcap.FindAllDevs())
 
 	if live {
 		source, err = pcap.OpenLive(device, config.Snaplen, config.Promisc, config.Timeout)
@@ -53,7 +63,25 @@ func (sniffer *Sniffer) StartReading() {
 		if err != nil {
 			continue
 		}
-		sniffer.config.Dump <- payload[32:]
+
+		if payload[ETHER_TYPE] != 0x08 || payload[ETHER_TYPE+1] != 0x00 {
+			continue
+		}
+
+		switch payload[IP_TYPE] {
+		case TYPE_IPIP:
+			switch payload[IP_TYPE+20] {
+			case TYPE_UDP:
+				sniffer.config.Dump <- payload[UDP_OFFSET+20:]
+			case TYPE_TCP:
+				sniffer.config.Dump <- payload[TCP_OFFSET+20:]
+			}
+		case TYPE_UDP:
+			sniffer.config.Dump <- payload[UDP_OFFSET:]
+		case TYPE_TCP:
+			sniffer.config.Dump <- payload[TCP_OFFSET:]
+		}
+
 	}
 }
 
