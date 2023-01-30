@@ -10,7 +10,6 @@ import (
 	excelAdapterModels "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet_parser/internals"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet_parser/models"
-	"github.com/davecgh/go-spew/spew"
 )
 
 type PacketParser struct {
@@ -76,12 +75,10 @@ func (parser PacketParser) decodeValue(value models.ValueDescriptor, reader io.R
 func (parser PacketParser) Encode(id uint16, values models.PacketValues) []byte {
 	writer := bytes.NewBuffer([]byte{})
 	internals.EncodeID(writer, id)
-	spew.Dump(values)
 
 	for _, valueDescriptor := range parser.descriptors[id] {
 		parser.encodeValue(valueDescriptor, values[valueDescriptor.Name], writer)
 	}
-	spew.Dump(writer.Bytes())
 	return writer.Bytes()
 }
 

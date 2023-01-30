@@ -19,7 +19,6 @@ func (server *Server) ServeData(route string, data []byte) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusOK)
 		w.Write(data)
-
 	})
 }
 
