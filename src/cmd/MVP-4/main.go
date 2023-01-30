@@ -58,9 +58,6 @@ func main() {
 	}
 
 	orderData := orderTransferModels.OrderData{}
-	if err != nil {
-		log.Fatalln(err)
-	}
 
 	idToType := IDtoType{}
 	idToIP := IDtoIP{}

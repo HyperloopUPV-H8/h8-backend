@@ -48,11 +48,16 @@ func (table *IDtoType) AddPacket(board string, ip string, desc excelAdapterModel
 }
 
 func getFilter(raddrs []*net.TCPAddr) string {
-	filter := "udp && ("
+	hosts := "("
 	for _, addr := range raddrs {
-		filter += fmt.Sprintf("src host %s || ", addr.IP)
+		hosts += fmt.Sprintf("src host %s || ", addr.IP)
 	}
-	return strings.TrimSuffix(filter, " || ") + ")"
+	hosts = strings.TrimSuffix(hosts, " || ") + ") && ("
+	for _, addr := range raddrs {
+		hosts += fmt.Sprintf("dst host %s || ", addr.IP)
+	}
+	hosts = strings.TrimSuffix(hosts, " || ") + ")"
+	return "(udp && (" + hosts + ")) || (((tcp[tcpflags] & tcp-push) > 0) && (" + hosts + "))"
 }
 
 func getJSON(data any) []byte {
