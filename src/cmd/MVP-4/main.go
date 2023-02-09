@@ -169,6 +169,12 @@ func main() {
 
 	go httpServer.ListenAndServe(os.Getenv("SERVER_ADDR"))
 
+	//Test with clients "staticClient"
+	httpServerClient := server.Server{Router: mux.NewRouter()}
+	httpServerClient.FileServer("/", filepath.Join(path, "staticClient"))
+
+	go httpServerClient.ListenAndServe(os.Getenv("SERVER_CLIENT_ADDR"))
+
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
