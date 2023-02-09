@@ -51,8 +51,10 @@ func getMeasurements(values []excelAdapterModels.Value) map[string]Measurement {
 	measurements := make(map[string]Measurement, len(values))
 	for _, value := range values {
 		measurements[value.Name] = Measurement{
-			Name:         value.Name,
-			Type:         value.Type,
+			Name: value.Name,
+			Type: value.Type,
+			//TODO: make sure added property (Value) doesn't break stuff
+			Value:        getDefaultValue(value.Type),
 			Units:        value.DisplayUnits,
 			SafeRange:    parseRange(value.SafeRange),
 			WarningRange: parseRange(value.WarningRange),
@@ -83,6 +85,17 @@ func parseRange(literal string) [2]float64 {
 	return [2]float64{left, right}
 }
 
+func getDefaultValue(valueType string) string {
+	switch valueType {
+	case "uint8", "uint16", "uint32", "uint64", "int8", "int16", "int32", "int64", "float32", "float64":
+		return "0"
+	case "bool":
+		return "false"
+	default:
+		return "Default"
+	}
+}
+
 type Board struct {
 	Name    string            `json:"name"`
 	Packets map[uint16]Packet `json:"packets"`
@@ -100,6 +113,7 @@ type Packet struct {
 type Measurement struct {
 	Name         string     `json:"name"`
 	Type         string     `json:"type"`
+	Value        string     `json:"value"`
 	Units        string     `json:"units"`
 	SafeRange    [2]float64 `json:"safeRange"`
 	WarningRange [2]float64 `json:"warningRange"`

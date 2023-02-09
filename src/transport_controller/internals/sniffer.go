@@ -2,6 +2,7 @@ package internals
 
 import (
 	"log"
+	"os"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/transport_controller/models"
 	"github.com/google/gopacket/pcap"
@@ -60,26 +61,31 @@ func obtainSource(device string, live bool, config models.Config) *pcap.Handle {
 func (sniffer *Sniffer) StartReading() {
 	for {
 		payload, _, err := sniffer.source.ReadPacketData()
+
 		if err != nil {
 			continue
 		}
 
-		if payload[ETHER_TYPE] != 0x08 || payload[ETHER_TYPE+1] != 0x00 {
-			continue
-		}
-
-		switch payload[IP_TYPE] {
-		case TYPE_IPIP:
-			switch payload[IP_TYPE+20] {
-			case TYPE_UDP:
-				sniffer.config.Dump <- payload[UDP_OFFSET+20:]
-			case TYPE_TCP:
-				sniffer.config.Dump <- payload[TCP_OFFSET+20:]
+		if os.Getenv("SNIFFER_DEV") == "\\Device\\NPF_Loopback" {
+			sniffer.config.Dump <- payload[32:]
+		} else {
+			if payload[ETHER_TYPE] != 0x08 || payload[ETHER_TYPE+1] != 0x00 {
+				continue
 			}
-		case TYPE_UDP:
-			sniffer.config.Dump <- payload[UDP_OFFSET:]
-		case TYPE_TCP:
-			sniffer.config.Dump <- payload[TCP_OFFSET:]
+
+			switch payload[IP_TYPE] {
+			case TYPE_IPIP:
+				switch payload[IP_TYPE+20] {
+				case TYPE_UDP:
+					sniffer.config.Dump <- payload[UDP_OFFSET+20:]
+				case TYPE_TCP:
+					sniffer.config.Dump <- payload[TCP_OFFSET+20:]
+				}
+			case TYPE_UDP:
+				sniffer.config.Dump <- payload[UDP_OFFSET:]
+			case TYPE_TCP:
+				sniffer.config.Dump <- payload[TCP_OFFSET:]
+			}
 		}
 
 	}
