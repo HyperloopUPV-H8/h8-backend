@@ -32,6 +32,7 @@ func RunWSHandle(router *mux.Router, route string, handles map[string]chan model
 
 func (handle *WSHandle) handleTx() {
 	for {
+		delete := make([]*websocket.Conn, 0, len(handle.handles))
 		handle.connsMx.Lock()
 		for _, output := range handle.handles {
 			select {
@@ -40,14 +41,14 @@ func (handle *WSHandle) handleTx() {
 					for _, conn := range handle.conns {
 						err := conn.WriteJSON(msg.Msg)
 						if err != nil {
-							handle.Close(conn)
+							delete = append(delete, conn)
 						}
 					}
 				} else {
 					for _, target := range msg.Target {
 						err := handle.conns[target].WriteJSON(msg.Msg)
 						if err != nil {
-							handle.Close(handle.conns[target])
+							delete = append(delete, handle.conns[target])
 						}
 					}
 				}
@@ -55,6 +56,9 @@ func (handle *WSHandle) handleTx() {
 			}
 		}
 		handle.connsMx.Unlock()
+		for _, conn := range delete {
+			handle.Close(conn)
+		}
 	}
 }
 
