@@ -32,6 +32,7 @@ func RunWSHandle(router *mux.Router, route string, handles map[string]chan model
 
 func (handle *WSHandle) handleTx() {
 	for {
+		handle.connsMx.Lock()
 		for _, output := range handle.handles {
 			select {
 			case msg := <-output:
@@ -53,6 +54,7 @@ func (handle *WSHandle) handleTx() {
 			default:
 			}
 		}
+		handle.connsMx.Unlock()
 	}
 }
 
@@ -71,7 +73,9 @@ func (handle *WSHandle) handleConn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	go handle.handleSocket(conn)
+	handle.connsMx.Lock()
 	handle.conns[conn.RemoteAddr().String()] = conn
+	handle.connsMx.Unlock()
 }
 
 func (handle *WSHandle) handleSocket(conn *websocket.Conn) {
@@ -82,10 +86,12 @@ func (handle *WSHandle) handleSocket(conn *websocket.Conn) {
 		if err != nil {
 			return
 		}
+		handle.connsMx.Lock()
 		handle.handles[msg.Topic] <- models.MessageTarget{
 			Target: []string{conn.RemoteAddr().String()},
 			Msg:    msg,
 		}
+		handle.connsMx.Unlock()
 	}
 
 }
@@ -93,6 +99,8 @@ func (handle *WSHandle) handleSocket(conn *websocket.Conn) {
 func (handle *WSHandle) Close(conn *websocket.Conn) {
 	handle.connsMx.Lock()
 	defer handle.connsMx.Unlock()
+	log.Printf("closed %s\n", conn.RemoteAddr().String())
 	delete(handle.conns, conn.RemoteAddr().String())
+	delete(handle.handles, conn.RemoteAddr().String())
 	conn.Close()
 }
