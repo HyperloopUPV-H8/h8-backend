@@ -32,25 +32,15 @@ func RunWSHandle(router *mux.Router, route string, handles map[string]chan model
 
 func (handle *WSHandle) handleTx() {
 	for {
-		delete := make([]*websocket.Conn, 0, len(handle.handles))
+		var delete []*websocket.Conn
 		handle.connsMx.Lock()
 		for _, output := range handle.handles {
 			select {
 			case msg := <-output:
 				if len(msg.Target) == 0 {
-					for _, conn := range handle.conns {
-						err := conn.WriteJSON(msg.Msg)
-						if err != nil {
-							delete = append(delete, conn)
-						}
-					}
+					delete = handle.broadcast(msg)
 				} else {
-					for _, target := range msg.Target {
-						err := handle.conns[target].WriteJSON(msg.Msg)
-						if err != nil {
-							delete = append(delete, handle.conns[target])
-						}
-					}
+					delete = handle.unicast(msg)
 				}
 			default:
 			}
@@ -60,6 +50,28 @@ func (handle *WSHandle) handleTx() {
 			handle.Close(conn)
 		}
 	}
+}
+
+func (handle *WSHandle) broadcast(msg models.MessageTarget) []*websocket.Conn {
+	delete := make([]*websocket.Conn, 0, len(handle.handles))
+	for _, conn := range handle.conns {
+		err := conn.WriteJSON(msg.Msg)
+		if err != nil {
+			delete = append(delete, conn)
+		}
+	}
+	return delete
+}
+
+func (handle *WSHandle) unicast(msg models.MessageTarget) []*websocket.Conn {
+	delete := make([]*websocket.Conn, 0, len(handle.handles))
+	for _, target := range msg.Target {
+		err := handle.conns[target].WriteJSON(msg.Msg)
+		if err != nil {
+			delete = append(delete, handle.conns[target])
+		}
+	}
+	return delete
 }
 
 var upgrader = websocket.Upgrader{
