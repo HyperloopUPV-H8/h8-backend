@@ -1,5 +1,5 @@
 package models
 
 type FromBoards interface {
-	AddPacket(board string, ip string, desc Description, values []Value)
+	AddPacket(globalInfo GlobalInfo, board string, ip string, desc Description, values []Value)
 }

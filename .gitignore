@@ -1,4 +1,4 @@
 
-src/cmd
+src/cmd/**
 
 !src/cmd/MVP-4

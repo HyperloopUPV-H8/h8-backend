@@ -17,7 +17,7 @@ type PacketParser struct {
 	enums       map[string]models.Enum
 }
 
-func (parser *PacketParser) AddPacket(board string, ip string, desc excelAdapterModels.Description, values []excelAdapterModels.Value) {
+func (parser *PacketParser) AddPacket(globalInfo excelAdapterModels.GlobalInfo, board string, ip string, desc excelAdapterModels.Description, values []excelAdapterModels.Value) {
 	id, err := strconv.ParseUint(desc.ID, 10, 16)
 	if err != nil {
 		log.Fatalf("packet parser: AddPacket: %s\n", err)

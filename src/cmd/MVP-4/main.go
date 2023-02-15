@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -41,21 +40,15 @@ func main() {
 	godotenv.Load(".env")
 
 	document := excel_adapter.FetchDocument(os.Getenv("EXCEL_ID"), os.Getenv("EXCEL_PATH"), os.Getenv("EXCEL_NAME"))
-	controlSections := excel_adapter.GetControlSections(document)
-	controlSectionsRaw, err := json.Marshal(controlSections)
-	if err != nil {
-		log.Fatalln(err)
-	}
 
-	podConverter := unit_converter.UnitConverter{Kind: "pod"}
-	displayConverter := unit_converter.UnitConverter{Kind: "display"}
+	// unitToOperations := document.GetUnitToOperations()
+
+	podConverter := unit_converter.NewUnitConverter("pod")
+	displayConverter := unit_converter.NewUnitConverter("display")
 
 	packetParser := packet_parser.NewPacketParser()
 
 	podData := dataTransferModels.PodData{Boards: make(map[string]dataTransferModels.Board)}
-	if err != nil {
-		log.Fatalln(err)
-	}
 
 	orderData := orderTransferModels.OrderData{}
 
@@ -63,18 +56,9 @@ func main() {
 	idToIP := IDtoIP{}
 	ipToBoard := IPtoBoard{}
 
-	excel_adapter.AddExpandedPackets(document, &podConverter, &displayConverter, &packetParser, &podData, &orderData, &idToType, &idToIP, &ipToBoard)
-	podDataRaw, err := json.Marshal(podData)
+	additionalMeasurements := dataTransferModels.AdditionalMeasurements{}
 
-	if err != nil {
-		log.Fatal("Error marshaling podData")
-	}
-
-	orderDataRaw, err := json.Marshal(orderData)
-
-	if err != nil {
-		log.Fatal("Error marshaling orders")
-	}
+	excel_adapter.AddExpandedPackets(document, &podConverter, &displayConverter, &packetParser, &podData, &orderData, &idToType, &idToIP, &ipToBoard, &additionalMeasurements)
 
 	laddr, err := net.ResolveTCPAddr("tcp", os.Getenv("LOCAL_ADDRESS"))
 	if err != nil {
@@ -152,9 +136,9 @@ func main() {
 	}()
 
 	httpServer := server.Server{Router: mux.NewRouter()}
-	httpServer.ServeData("/backend/"+os.Getenv("POD_DATA_ENDPOINT"), podDataRaw)
-	httpServer.ServeData("/backend/"+os.Getenv("CONTROL_SECTIONS_ENDPOINT"), controlSectionsRaw)
-	httpServer.ServeData("/backend/"+os.Getenv("ORDER_DATA_ENDPOINT"), orderDataRaw)
+	httpServer.ServeData(os.Getenv("POD_DATA_ENDPOINT"), podData)
+	httpServer.ServeData(os.Getenv("ORDER_DATA_ENDPOINT"), orderData)
+	httpServer.ServeData(os.Getenv("ADDITIONAL_MEASUREMENTS_ENDPOINT"), additionalMeasurements)
 
 	handle := websocket_handle.RunWSHandle(httpServer.Router, "/backend", map[string]chan models.MessageTarget{
 		"podData/update":    dataTransferChannel,

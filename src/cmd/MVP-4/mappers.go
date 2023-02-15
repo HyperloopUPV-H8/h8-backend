@@ -15,7 +15,7 @@ type IPtoBoard map[string]string
 type IDtoIP map[uint16]string
 type IDtoType map[uint16]string
 
-func (table *IPtoBoard) AddPacket(board string, ip string, desc excelAdapterModels.Description, values []excelAdapterModels.Value) {
+func (table *IPtoBoard) AddPacket(globalInfo excelAdapterModels.GlobalInfo, board string, ip string, desc excelAdapterModels.Description, values []excelAdapterModels.Value) {
 	if table == nil {
 		*table = make(IPtoBoard)
 	}
@@ -23,7 +23,7 @@ func (table *IPtoBoard) AddPacket(board string, ip string, desc excelAdapterMode
 	(*table)[ip] = board
 }
 
-func (table *IDtoIP) AddPacket(board string, ip string, desc excelAdapterModels.Description, values []excelAdapterModels.Value) {
+func (table *IDtoIP) AddPacket(globalInfo excelAdapterModels.GlobalInfo, board string, ip string, desc excelAdapterModels.Description, values []excelAdapterModels.Value) {
 	if table == nil {
 		*table = make(IDtoIP)
 	}
@@ -35,7 +35,7 @@ func (table *IDtoIP) AddPacket(board string, ip string, desc excelAdapterModels.
 	(*table)[uint16(id)] = ip
 }
 
-func (table *IDtoType) AddPacket(board string, ip string, desc excelAdapterModels.Description, values []excelAdapterModels.Value) {
+func (table *IDtoType) AddPacket(globalInfo excelAdapterModels.GlobalInfo, board string, ip string, desc excelAdapterModels.Description, values []excelAdapterModels.Value) {
 	if table == nil {
 		*table = make(IDtoType)
 	}
