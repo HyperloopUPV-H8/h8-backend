@@ -41,25 +41,15 @@ func getIP(sheet string, document internalModels.Document) string {
 }
 
 func AddExpandedPackets(document internalModels.Document, objects ...models.FromBoards) {
+	globalInfo := models.GlobalInfo{BoardToIP: getBoardToIPs(document), UnitToOperations: make(map[string]string)}
+
 	for _, board := range getBoards(document) {
 		for _, packet := range board.GetPackets() {
 			for _, object := range objects {
-				object.AddPacket(board.Name, board.IP, packet.Description, packet.Values)
+				object.AddPacket(globalInfo, board.Name, board.IP, packet.Description, packet.Values)
 			}
 		}
 	}
-}
-
-// TODO: Put Control Sections logic in separate module
-
-func GetControlSections(document internalModels.Document) map[string]models.ControlSection {
-	expandedControlSections := make(map[string]models.ControlSection)
-	for _, board := range getBoards(document) {
-		for sectionName, section := range board.ControlSections {
-			expandedControlSections[sectionName] = getExpandedSection(section, board)
-		}
-	}
-	return expandedControlSections
 }
 
 func getExpandedSection(section models.ControlSection, board models.Board) models.ControlSection {
@@ -85,4 +75,14 @@ func getNamesWithSufix(name string, length int) []string {
 		namesWithSufix[i] = fmt.Sprintf("%s_%d", name, i)
 	}
 	return namesWithSufix
+}
+
+func getBoardToIPs(document internalModels.Document) map[string]string {
+	boardToIPs := make(map[string]string)
+
+	for _, row := range document.Info.Tables[ADDRESSES_TABLE_NAME].Rows {
+		boardToIPs[row[0]] = row[1]
+	}
+
+	return boardToIPs
 }

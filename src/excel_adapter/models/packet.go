@@ -29,6 +29,6 @@ func expandPacket(description Description, measurements []Value) []Packet {
 func packetWithSufix(packet Packet, sufix string) Packet {
 	return Packet{
 		Description: descriptionWithName(packet.Description, packet.Description.Name+sufix),
-		Values:      valueWithSuffix(packet.Values, sufix),
+		Values:      valuesWithSuffix(packet.Values, sufix),
 	}
 }

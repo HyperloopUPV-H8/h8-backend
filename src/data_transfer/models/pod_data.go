@@ -18,7 +18,7 @@ func NewPodData() PodData {
 	}
 }
 
-func (podData *PodData) AddPacket(board string, ip string, desc excelAdapterModels.Description, values []excelAdapterModels.Value) {
+func (podData *PodData) AddPacket(globalInfo excelAdapterModels.GlobalInfo, board string, ip string, desc excelAdapterModels.Description, values []excelAdapterModels.Value) {
 	if desc.Type != "data" {
 		return
 	}
@@ -58,31 +58,23 @@ func getMeasurements(values []excelAdapterModels.Value) map[string]Measurement {
 			Units:        value.DisplayUnits,
 			SafeRange:    parseRange(value.SafeRange),
 			WarningRange: parseRange(value.WarningRange),
+			DisplayName:  value.DisplayName,
 		}
 	}
 	return measurements
 }
 
-func parseRange(literal string) [2]float64 {
+func parseRange(literal string) [2]string {
 	if literal == "" {
-		return [2]float64{0, 0}
+		return [2]string{"", ""}
 	}
 
 	split := strings.Split(strings.TrimSuffix(strings.TrimPrefix(literal, "["), "]"), ",")
 	if len(split) != 2 {
 		log.Fatalf("pod data: parseRange: invalid range %s\n", literal)
 	}
-	left, err := strconv.ParseFloat(split[0], 64)
-	if err != nil {
-		log.Fatalf("pod data: parseRange: %s\n", err)
-	}
 
-	right, err := strconv.ParseFloat(split[1], 64)
-	if err != nil {
-		log.Fatalf("pod data: parseRange: %s\n", err)
-	}
-
-	return [2]float64{left, right}
+	return [2]string{split[0], split[1]}
 }
 
 func getDefaultValue(valueType string) string {
@@ -111,10 +103,11 @@ type Packet struct {
 }
 
 type Measurement struct {
-	Name         string     `json:"name"`
-	Type         string     `json:"type"`
-	Value        string     `json:"value"`
-	Units        string     `json:"units"`
-	SafeRange    [2]float64 `json:"safeRange"`
-	WarningRange [2]float64 `json:"warningRange"`
+	Name         string    `json:"name"`
+	Type         string    `json:"type"`
+	Value        string    `json:"value"`
+	Units        string    `json:"units"`
+	SafeRange    [2]string `json:"safeRange"`
+	WarningRange [2]string `json:"warningRange"`
+	DisplayName  string    `json:"displayName"`
 }

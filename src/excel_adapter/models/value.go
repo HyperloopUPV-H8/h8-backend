@@ -6,11 +6,12 @@ type Value struct {
 	Name         string
 	Type         string
 	PodUnits     string
-	PodOps       string
 	DisplayUnits string
-	DisplayOps   string
 	SafeRange    string
 	WarningRange string
+	DisplayName  string
+	Section      string
+	UsedInFront  bool
 }
 
 func newValue(row models.Row) Value {
@@ -18,29 +19,20 @@ func newValue(row models.Row) Value {
 		Name:         row[0],
 		Type:         row[1],
 		PodUnits:     row[2],
-		PodOps:       row[3],
-		DisplayUnits: row[4],
-		DisplayOps:   row[5],
-		SafeRange:    row[6],
-		WarningRange: row[7],
+		DisplayUnits: row[3],
+		SafeRange:    row[4],
+		WarningRange: row[5],
+		DisplayName:  row[6],
+		Section:      row[7],
+		UsedInFront:  row[8] == "TRUE",
 	}
 }
 
-func valueWithSuffix(measurements []Value, sufix string) []Value {
-	withSufix := make([]Value, len(measurements))
-	for i, measurement := range measurements {
-		withSufix[i] = valueWithName(measurement, measurement.Name+sufix)
+func valuesWithSuffix(values []Value, sufix string) []Value {
+	valuesWithSufix := make([]Value, len(values))
+	for i, value := range values {
+		value.Name = value.Name + sufix
+		valuesWithSufix[i] = value
 	}
-	return withSufix
-}
-
-func valueWithName(measurement Value, name string) Value {
-	return Value{
-		Name:         name,
-		Type:         measurement.Type,
-		PodUnits:     measurement.PodUnits,
-		DisplayUnits: measurement.DisplayUnits,
-		SafeRange:    measurement.SafeRange,
-		WarningRange: measurement.WarningRange,
-	}
+	return valuesWithSufix
 }

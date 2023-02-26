@@ -8,29 +8,26 @@ import (
 )
 
 const (
-	PACKET_TABLE_NAME          = "Packets"
-	MEASUREMENT_TABLE_NAME     = "Measurements"
-	STRUCTURES_TABLE_NAME      = "Structures"
-	CONTROL_SECTION_TABLE_NAME = "ControlSections"
+	PACKET_TABLE_NAME      = "Packets"
+	MEASUREMENT_TABLE_NAME = "Measurements"
+	STRUCTURES_TABLE_NAME  = "Structures"
 )
 
 type Board struct {
-	Name            string
-	IP              string
-	Descriptions    map[string]Description
-	Measurements    map[string]Value
-	Structures      map[string]Structure
-	ControlSections map[string]ControlSection
+	Name         string
+	IP           string
+	Descriptions map[string]Description
+	Measurements map[string]Value
+	Structures   map[string]Structure
 }
 
 func NewBoard(name string, ip string, sheet models.Sheet) Board {
 	return Board{
-		Name:            name,
-		IP:              ip,
-		Descriptions:    getDescriptions(sheet.Tables[PACKET_TABLE_NAME]),
-		Measurements:    getMeasurements(sheet.Tables[MEASUREMENT_TABLE_NAME]),
-		Structures:      getStructures(sheet.Tables[STRUCTURES_TABLE_NAME]),
-		ControlSections: getControlSections(sheet.Tables[CONTROL_SECTION_TABLE_NAME]),
+		Name:         name,
+		IP:           ip,
+		Descriptions: getDescriptions(sheet.Tables[PACKET_TABLE_NAME]),
+		Measurements: getMeasurements(sheet.Tables[MEASUREMENT_TABLE_NAME]),
+		Structures:   getStructures(sheet.Tables[STRUCTURES_TABLE_NAME]),
 	}
 }
 
@@ -82,23 +79,6 @@ func getStructures(table models.Table) map[string]Structure {
 	}
 
 	return structures
-}
-
-func getControlSections(table models.Table) map[string]ControlSection {
-	controlSections := make(map[string]ControlSection)
-	for colIndex := 0; colIndex < len(table.Rows[0]); colIndex += 2 {
-		controlSection := make(ControlSection)
-		sectionTitle := table.Rows[0][colIndex]
-		for rowIndex := 1; rowIndex < len(table.Rows); rowIndex++ {
-			if table.Rows[rowIndex][colIndex] != "" {
-				controlSection[table.Rows[rowIndex][colIndex]] = table.Rows[rowIndex][colIndex+1]
-			} else {
-				break
-			}
-		}
-		controlSections[sectionTitle] = controlSection
-	}
-	return controlSections
 }
 
 func getColumns(table models.Table) [][]string {

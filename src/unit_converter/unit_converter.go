@@ -2,36 +2,50 @@ package unit_converter
 
 import (
 	"log"
+	"strings"
 
 	excelAdapterModels "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter/models"
 )
 
 type UnitConverter struct {
-	operations map[string]models.Operations
 	Kind       string
+	operations map[string]models.Operations
 }
 
-func (converter *UnitConverter) AddPacket(board string, ip string, desc excelAdapterModels.Description, values []excelAdapterModels.Value) {
-	if converter.operations == nil {
-		converter.operations = make(map[string]models.Operations)
+func NewUnitConverter(kind string) UnitConverter {
+	return UnitConverter{
+		Kind:       kind,
+		operations: make(map[string]models.Operations),
 	}
+}
 
+func (converter *UnitConverter) AddPacket(globalInfo excelAdapterModels.GlobalInfo, board string, ip string, desc excelAdapterModels.Description, values []excelAdapterModels.Value) {
 	for _, val := range values {
 		if converter.Kind == "pod" {
-			if val.PodOps == "" {
-				continue
-			}
-			converter.operations[val.Name] = models.NewOperations(val.PodOps)
+			converter.operations[val.Name] = models.NewOperations(getCustomOrGlobalOperations(val.PodUnits, globalInfo.UnitToOperations))
 		} else if converter.Kind == "display" {
-			if val.DisplayOps == "" {
-				continue
-			}
-			converter.operations[val.Name] = models.NewOperations(val.DisplayOps)
+			converter.operations[val.Name] = models.NewOperations(getCustomOrGlobalOperations(val.DisplayUnits, globalInfo.UnitToOperations))
 		} else {
 			log.Fatalf("unit converter: AddValue: invalid UnitConverter kind %s\n", converter.Kind)
 		}
 	}
+}
+
+func getCustomOrGlobalOperations(nameOrCustomOperations string, unitToOperations map[string]string) string {
+	var operationsStr string
+
+	if strings.Contains(nameOrCustomOperations, "#") {
+		operationsStr = getCustomOperations(nameOrCustomOperations)
+	} else {
+		operationsStr = unitToOperations[nameOrCustomOperations]
+	}
+
+	return operationsStr
+}
+
+func getCustomOperations(operationsStr string) string {
+	return strings.Split(operationsStr, "#")[1]
 }
 
 func (converter *UnitConverter) Convert(values map[string]any) map[string]any {

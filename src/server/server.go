@@ -1,6 +1,8 @@
 package server
 
 import (
+	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -11,12 +13,17 @@ type Server struct {
 	Router *mux.Router
 }
 
-func (server *Server) ServeData(route string, data []byte) {
+func (server *Server) ServeData(route string, data any) {
 	server.Router.HandleFunc(route, func(w http.ResponseWriter, r *http.Request) {
 		r.Body.Close()
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusOK)
-		w.Write(data)
+		marshaledData, err := json.Marshal(data)
+		if err != nil {
+			log.Fatal("Error marshaling data at ServeData")
+		}
+
+		w.Write(marshaledData)
 	})
 }
 
