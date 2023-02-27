@@ -25,18 +25,18 @@ func (parser *PacketParser) AddPacket(globalInfo excelAdapterModels.GlobalInfo, 
 
 	valueDescriptors := make([]models.ValueDescriptor, 0, len(values))
 	for _, value := range values {
-		if value.Name == "" {
+		if value.ID == "" {
 			continue
 		}
 
 		kind := value.Type
 		if strings.HasPrefix(kind, "ENUM") {
 			kind = "enum"
-			parser.enums[value.Name] = models.GetEnum(value.Type)
+			parser.enums[value.ID] = models.GetEnum(value.Type)
 		}
 
 		valueDescriptors = append(valueDescriptors, models.ValueDescriptor{
-			Name: value.Name,
+			ID:   value.ID,
 			Type: kind,
 		})
 	}
@@ -57,7 +57,7 @@ func (parser PacketParser) Decode(raw []byte) (id uint16, values models.PacketVa
 
 	values = make(models.PacketValues, len(parser.descriptors[id]))
 	for _, value := range parser.descriptors[id] {
-		values[value.Name] = parser.decodeValue(value, reader)
+		values[value.ID] = parser.decodeValue(value, reader)
 	}
 
 	return id, values
@@ -66,7 +66,7 @@ func (parser PacketParser) Decode(raw []byte) (id uint16, values models.PacketVa
 func (parser PacketParser) decodeValue(value models.ValueDescriptor, reader io.Reader) any {
 	switch value.Type {
 	case "enum":
-		return internals.DecodeEnum(reader, parser.enums[value.Name])
+		return internals.DecodeEnum(reader, parser.enums[value.ID])
 	case "bool":
 		return internals.DecodeBool(reader)
 	case "string":
@@ -81,7 +81,7 @@ func (parser PacketParser) Encode(id uint16, values models.PacketValues) []byte 
 	internals.EncodeID(writer, id)
 
 	for _, valueDescriptor := range parser.descriptors[id] {
-		parser.encodeValue(valueDescriptor, values[valueDescriptor.Name], writer)
+		parser.encodeValue(valueDescriptor, values[valueDescriptor.ID], writer)
 	}
 	return writer.Bytes()
 }
@@ -89,7 +89,7 @@ func (parser PacketParser) Encode(id uint16, values models.PacketValues) []byte 
 func (parser PacketParser) encodeValue(desc models.ValueDescriptor, value any, writer io.Writer) {
 	switch desc.Type {
 	case "enum":
-		internals.EncodeEnum(writer, parser.enums[desc.Name], value.(string))
+		internals.EncodeEnum(writer, parser.enums[desc.ID], value.(string))
 	case "bool":
 		internals.EncodeBool(writer, value.(bool))
 	case "string":

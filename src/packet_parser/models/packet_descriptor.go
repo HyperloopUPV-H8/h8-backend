@@ -3,7 +3,7 @@ package models
 type PacketDescriptor []ValueDescriptor
 
 type ValueDescriptor struct {
-	Name string
+	ID   string
 	Type string
 }
 

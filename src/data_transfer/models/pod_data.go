@@ -50,7 +50,8 @@ func (podData *PodData) AddPacket(globalInfo excelAdapterModels.GlobalInfo, boar
 func getMeasurements(values []excelAdapterModels.Value) map[string]Measurement {
 	measurements := make(map[string]Measurement, len(values))
 	for _, value := range values {
-		measurements[value.Name] = Measurement{
+		measurements[value.ID] = Measurement{
+			ID:   value.ID,
 			Name: value.Name,
 			Type: value.Type,
 			//TODO: make sure added property (Value) doesn't break stuff
@@ -58,7 +59,6 @@ func getMeasurements(values []excelAdapterModels.Value) map[string]Measurement {
 			Units:        value.DisplayUnits,
 			SafeRange:    parseRange(value.SafeRange),
 			WarningRange: parseRange(value.WarningRange),
-			DisplayName:  value.DisplayName,
 		}
 	}
 	return measurements
@@ -77,12 +77,12 @@ func parseRange(literal string) [2]string {
 	return [2]string{split[0], split[1]}
 }
 
-func getDefaultValue(valueType string) string {
+func getDefaultValue(valueType string) any {
 	switch valueType {
 	case "uint8", "uint16", "uint32", "uint64", "int8", "int16", "int32", "int64", "float32", "float64":
-		return "0"
+		return 0
 	case "bool":
-		return "false"
+		return false
 	default:
 		return "Default"
 	}
@@ -103,11 +103,11 @@ type Packet struct {
 }
 
 type Measurement struct {
+	ID           string    `json:"id"`
 	Name         string    `json:"name"`
 	Type         string    `json:"type"`
-	Value        string    `json:"value"`
+	Value        any       `json:"value"`
 	Units        string    `json:"units"`
 	SafeRange    [2]string `json:"safeRange"`
 	WarningRange [2]string `json:"warningRange"`
-	DisplayName  string    `json:"displayName"`
 }

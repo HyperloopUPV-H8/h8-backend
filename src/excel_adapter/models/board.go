@@ -44,8 +44,8 @@ func (board Board) GetPackets() []Packet {
 func (board Board) getPacketMeasurements(description Description) []Value {
 	wantedMeasurements := board.Structures[description.Name].Measurements
 	measurements := make([]Value, len(wantedMeasurements))
-	for index, name := range wantedMeasurements {
-		measurements[index] = board.Measurements[name]
+	for index, id := range wantedMeasurements {
+		measurements[index] = board.Measurements[id]
 	}
 
 	return measurements
@@ -65,7 +65,7 @@ func getMeasurements(table models.Table) map[string]Value {
 	measurements := make(map[string]Value, len(table.Rows))
 	for _, row := range table.Rows {
 		adapter := newValue(row)
-		measurements[adapter.Name] = adapter
+		measurements[adapter.ID] = adapter
 	}
 
 	return measurements

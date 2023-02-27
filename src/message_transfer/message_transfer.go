@@ -31,13 +31,13 @@ func getMessage(update dataTransferModels.PacketUpdate) models.Message {
 	if msg, ok := update.Values["warning"]; ok {
 		message = models.Message{
 			ID:          update.ID,
-			Description: msg,
+			Description: msg.(string),
 			Type:        "warning",
 		}
 	} else if msg, ok = update.Values["fault"]; ok {
 		message = models.Message{
 			ID:          update.ID,
-			Description: msg,
+			Description: msg.(string),
 			Type:        "fault",
 		}
 	}
