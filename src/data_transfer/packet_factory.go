@@ -30,14 +30,6 @@ func (factory PacketFactory) NewPacketUpdate(id uint16, hexValue []byte, values 
 	}
 }
 
-// func formatValues(values map[string]any) map[string]string {
-// 	mapped := make(map[string]string, len(values))
-// 	for name, val := range values {
-// 		mapped[name] = fmt.Sprintf("%v", val)
-// 	}
-// 	return mapped
-// }
-
 func (factory PacketFactory) getNext(id uint16) (count uint64, cycleTime uint64) {
 	timestamp := uint64(time.Now().UnixMicro())
 	cycleTime = timestamp - factory.timestamp[id]
