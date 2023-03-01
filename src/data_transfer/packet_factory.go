@@ -19,23 +19,15 @@ func NewFactory() PacketFactory {
 	}
 }
 
-func (factory PacketFactory) NewPacket(id uint16, raw []byte, values map[string]any) models.PacketUpdate {
+func (factory PacketFactory) NewPacketUpdate(id uint16, hexValue []byte, values map[string]any) models.PacketUpdate {
 	count, cycleTime := factory.getNext(id)
 	return models.PacketUpdate{
 		ID:        id,
-		HexValue:  fmt.Sprintf("%x", raw),
-		Values:    formatValues(values),
+		HexValue:  fmt.Sprintf("%x", hexValue),
+		Values:    values,
 		Count:     count,
 		CycleTime: cycleTime,
 	}
-}
-
-func formatValues(values map[string]any) map[string]string {
-	mapped := make(map[string]string, len(values))
-	for name, val := range values {
-		mapped[name] = fmt.Sprintf("%v", val)
-	}
-	return mapped
 }
 
 func (factory PacketFactory) getNext(id uint16) (count uint64, cycleTime uint64) {

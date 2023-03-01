@@ -41,8 +41,6 @@ func main() {
 
 	document := excel_adapter.FetchDocument(os.Getenv("EXCEL_ID"), os.Getenv("EXCEL_PATH"), os.Getenv("EXCEL_NAME"))
 
-	// unitToOperations := document.GetUnitToOperations()
-
 	podConverter := unit_converter.NewUnitConverter("pod")
 	displayConverter := unit_converter.NewUnitConverter("display")
 
@@ -56,9 +54,7 @@ func main() {
 	idToIP := IDtoIP{}
 	ipToBoard := IPtoBoard{}
 
-	additionalMeasurements := dataTransferModels.AdditionalMeasurements{}
-
-	excel_adapter.AddExpandedPackets(document, &podConverter, &displayConverter, &packetParser, &podData, &orderData, &idToType, &idToIP, &ipToBoard, &additionalMeasurements)
+	excel_adapter.AddExpandedPackets(document, &podConverter, &displayConverter, &packetParser, &podData, &orderData, &idToType, &idToIP, &ipToBoard)
 
 	laddr, err := net.ResolveTCPAddr("tcp", os.Getenv("LOCAL_ADDRESS"))
 	if err != nil {
@@ -120,9 +116,9 @@ func main() {
 			values = displayConverter.Convert(values)
 			logger.Update(values)
 			if idToType[id] == "data" {
-				dataTransfer.Update(packetFactory.NewPacket(id, packet, values))
+				dataTransfer.Update(packetFactory.NewPacketUpdate(id, packet, values))
 			} else {
-				messageTransfer.Broadcast(packetFactory.NewPacket(id, packet, values))
+				messageTransfer.Broadcast(packetFactory.NewPacketUpdate(id, packet, values))
 			}
 		}
 	}(messageChannel)
@@ -138,7 +134,6 @@ func main() {
 	httpServer := server.Server{Router: mux.NewRouter()}
 	httpServer.ServeData(os.Getenv("POD_DATA_ENDPOINT"), podData)
 	httpServer.ServeData(os.Getenv("ORDER_DATA_ENDPOINT"), orderData)
-	httpServer.ServeData(os.Getenv("ADDITIONAL_MEASUREMENTS_ENDPOINT"), additionalMeasurements)
 
 	handle := websocket_handle.RunWSHandle(httpServer.Router, "/backend", map[string]chan models.MessageTarget{
 		"podData/update":    dataTransferChannel,
