@@ -15,7 +15,10 @@ const GLOBAL_SHEET_NAME = "Info"
 const ADDRESSES_TABLE_NAME = "Addresses"
 
 func FetchDocument(id string, path string, name string) internalModels.Document {
-	internals.DownloadFile(id, path, name)
+	errDownloading := internals.DownloadFile(id, path, name)
+	if errDownloading != nil {
+		log.Println("USING LOCAL FILE")
+	}
 	file, err := excelize.OpenFile(filepath.Join(path, name))
 	if err != nil {
 		log.Fatalf("excel adapter: FetchDocument: %s\n", err)
