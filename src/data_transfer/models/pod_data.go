@@ -64,17 +64,40 @@ func getMeasurements(values []excelAdapterModels.Value) map[string]Measurement {
 	return measurements
 }
 
-func parseRange(literal string) [2]string {
+func parseRange(literal string) []float64 {
 	if literal == "" {
-		return [2]string{"", ""}
+		return make([]float64, 0)
 	}
 
-	split := strings.Split(strings.TrimSuffix(strings.TrimPrefix(literal, "["), "]"), ",")
-	if len(split) != 2 {
+	strRange := strings.Split(strings.TrimSuffix(strings.TrimPrefix(strings.Replace(literal, " ", "", -1), "["), "]"), ",")
+
+	if len(strRange) != 2 {
 		log.Fatalf("pod data: parseRange: invalid range %s\n", literal)
 	}
 
-	return [2]string{split[0], split[1]}
+	numRange := make([]float64, 0)
+
+	if strRange[0] != "" {
+		lowerBound, errLowerBound := strconv.ParseFloat(strRange[0], 64)
+
+		if errLowerBound != nil {
+			log.Fatal("error parsing lower bound")
+		}
+
+		numRange = append(numRange, lowerBound)
+	}
+
+	if strRange[1] != "" {
+		upperBound, errUpperBound := strconv.ParseFloat(strRange[1], 64)
+
+		if errUpperBound != nil {
+			log.Fatal("error parsing lower bound")
+		}
+
+		numRange = append(numRange, upperBound)
+	}
+
+	return numRange
 }
 
 func getDefaultValue(valueType string) any {
@@ -108,6 +131,6 @@ type Measurement struct {
 	Type         string    `json:"type"`
 	Value        any       `json:"value"`
 	Units        string    `json:"units"`
-	SafeRange    [2]string `json:"safeRange"`
-	WarningRange [2]string `json:"warningRange"`
+	SafeRange    []float64 `json:"safeRange"`
+	WarningRange []float64 `json:"warningRange"`
 }

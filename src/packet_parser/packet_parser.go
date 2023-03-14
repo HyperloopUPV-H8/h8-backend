@@ -32,7 +32,7 @@ func (parser *PacketParser) AddPacket(globalInfo excelAdapterModels.GlobalInfo, 
 		kind := value.Type
 		if strings.HasPrefix(strings.ToUpper(kind), "ENUM") {
 			kind = "enum"
-			parser.enums[value.ID] = models.GetEnum(value.Type)
+			parser.enums[value.ID] = models.GetEnum(strings.ToUpper(value.Type))
 		}
 
 		valueDescriptors = append(valueDescriptors, models.ValueDescriptor{

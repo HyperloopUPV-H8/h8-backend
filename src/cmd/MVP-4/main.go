@@ -73,7 +73,7 @@ func main() {
 
 	connectionTransfer, connectionChannel := connection_transfer.New()
 
-	dataTransfer, dataTransferChannel := data_transfer.New(time.Millisecond * 10)
+	dataTransfer, dataTransferChannel := data_transfer.New(time.Millisecond * 1000 / 30)
 
 	messageTransfer, messageChannel := message_transfer.New()
 
