@@ -132,8 +132,9 @@ func main() {
 	}()
 
 	httpServer := server.Server{Router: mux.NewRouter()}
-	httpServer.ServeData(os.Getenv("POD_DATA_ENDPOINT"), podData)
-	httpServer.ServeData(os.Getenv("ORDER_DATA_ENDPOINT"), orderData)
+
+	httpServer.ServeData("/backend/"+os.Getenv("POD_DATA_ENDPOINT"), podData)
+	httpServer.ServeData("/backend/"+os.Getenv("ORDER_DATA_ENDPOINT"), orderData)
 
 	handle := websocket_handle.RunWSHandle(httpServer.Router, "/backend", map[string]chan models.MessageTarget{
 		"podData/update":    dataTransferChannel,
@@ -147,12 +148,6 @@ func main() {
 	httpServer.FileServer("/", filepath.Join(path, "static"))
 
 	go httpServer.ListenAndServe(os.Getenv("SERVER_ADDR"))
-
-	//Test with clients "staticClient"
-	httpServerClient := server.Server{Router: mux.NewRouter()}
-	httpServerClient.FileServer("/", filepath.Join(path, "staticClient"))
-
-	go httpServerClient.ListenAndServe(os.Getenv("SERVER_CLIENT_ADDR"))
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
