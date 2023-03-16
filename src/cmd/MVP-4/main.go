@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/HyperloopUPV-H8/Backend-H8/bootloader_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer"
 	dataTransferModels "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/models"
@@ -80,6 +81,12 @@ func main() {
 	orderChannel := make(chan orderTransferModels.Order, 100)
 	orderTransfer, ordChannel := order_transfer.New(orderChannel)
 
+	bootloaderTransfer, bootloaderChannel, err := bootloader_transfer.NewBootloaderTransfer(os.Getenv("BOOTLOADER_ADDRESS"), orderChannel)
+	if err != nil {
+		log.Printf("failed to initialize bootloader: %s\n", err)
+		return
+	}
+
 	packetFactory := data_transfer.NewFactory()
 
 	transportControllerConfig := transportControllerModels.Config{
@@ -142,6 +149,7 @@ func main() {
 		"order/update":      ordChannel,
 		"connection/update": connectionChannel,
 		"logger/enable":     loggerChannel,
+		"bootloader/upload": bootloaderChannel,
 	})
 
 	path, _ := os.Getwd()
@@ -162,5 +170,5 @@ loop:
 		}
 	}
 
-	log.Println(handle, orderTransfer)
+	log.Println(handle, orderTransfer, bootloaderTransfer)
 }
