@@ -7,4 +7,4 @@ type ValueDescriptor struct {
 	Type string
 }
 
-type PacketValues map[string]any
+type PacketValues = map[string]any

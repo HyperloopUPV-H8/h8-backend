@@ -1,7 +1,6 @@
 package unit_converter
 
 import (
-	"log"
 	"strings"
 
 	excelAdapterModels "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
@@ -9,25 +8,28 @@ import (
 )
 
 type UnitConverter struct {
-	Kind       string
-	operations map[string]models.Operations
+	Kind           string
+	operations     map[string]models.Operations
+	unitOperations map[string]string
 }
 
-func NewUnitConverter(kind string) UnitConverter {
-	return UnitConverter{
+func NewUnitConverter(kind string) *UnitConverter {
+	return &UnitConverter{
 		Kind:       kind,
 		operations: make(map[string]models.Operations),
 	}
 }
 
-func (converter *UnitConverter) AddPacket(globalInfo excelAdapterModels.GlobalInfo, board string, ip string, desc excelAdapterModels.Description, values []excelAdapterModels.Value) {
-	for _, val := range values {
-		if converter.Kind == "pod" {
-			converter.operations[val.Name] = models.NewOperations(getCustomOrGlobalOperations(val.PodUnits, globalInfo.UnitToOperations))
-		} else if converter.Kind == "display" {
-			converter.operations[val.Name] = models.NewOperations(getCustomOrGlobalOperations(val.DisplayUnits, globalInfo.UnitToOperations))
-		} else {
-			log.Fatalf("unit converter: AddValue: invalid UnitConverter kind %s\n", converter.Kind)
+func (converter *UnitConverter) AddGlobal(global excelAdapterModels.GlobalInfo) {
+	converter.unitOperations = global.UnitToOperations
+}
+
+func (converter *UnitConverter) AddPacket(boardName string, packet excelAdapterModels.Packet) {
+	for _, val := range packet.Values {
+		if converter.Kind == "pod" && val.PodUnits != "" {
+			converter.operations[val.ID] = models.NewOperations(getCustomOrGlobalOperations(val.PodUnits, converter.unitOperations))
+		} else if converter.Kind == "display" && val.DisplayUnits != "" {
+			converter.operations[val.ID] = models.NewOperations(getCustomOrGlobalOperations(val.DisplayUnits, converter.unitOperations))
 		}
 	}
 }

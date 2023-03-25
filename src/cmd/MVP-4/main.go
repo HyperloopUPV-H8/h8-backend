@@ -3,34 +3,26 @@ package main
 import (
 	"fmt"
 	"log"
-	"net"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"runtime"
-	"strconv"
-	"strings"
 	"time"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/bootloader_transfer"
+	"github.com/HyperloopUPV-H8/Backend-H8/board"
 	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer"
-	dataTransferModels "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter"
 	"github.com/HyperloopUPV-H8/Backend-H8/log_handle"
-	logHandleModels "github.com/HyperloopUPV-H8/Backend-H8/log_handle/models"
+	log_handle_models "github.com/HyperloopUPV-H8/Backend-H8/log_handle/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/message_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/order_transfer"
-	orderTransferModels "github.com/HyperloopUPV-H8/Backend-H8/order_transfer/models"
-	"github.com/HyperloopUPV-H8/Backend-H8/packet_parser"
 	"github.com/HyperloopUPV-H8/Backend-H8/server"
-	"github.com/HyperloopUPV-H8/Backend-H8/transport_controller"
-	transportControllerModels "github.com/HyperloopUPV-H8/Backend-H8/transport_controller/models"
-	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter"
+	"github.com/HyperloopUPV-H8/Backend-H8/vehicle"
+	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/websocket_handle"
 	"github.com/HyperloopUPV-H8/Backend-H8/websocket_handle/models"
-	"github.com/google/gopacket/pcap"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
@@ -42,73 +34,52 @@ func main() {
 
 	document := excel_adapter.FetchDocument(os.Getenv("EXCEL_ID"), os.Getenv("EXCEL_PATH"), os.Getenv("EXCEL_NAME"))
 
-	podConverter := unit_converter.NewUnitConverter("pod")
-	displayConverter := unit_converter.NewUnitConverter("display")
+	vehicleBuilder := vehicle.NewBuilder()
+	podData := vehicle_models.NewPodData()
+	orderData := vehicle_models.NewOrderData()
 
-	packetParser := packet_parser.NewPacketParser()
+	excel_adapter.Update(document, vehicleBuilder, podData, orderData)
 
-	podData := dataTransferModels.PodData{Boards: make(map[string]dataTransferModels.Board)}
+	vehicle := vehicleBuilder.Build()
 
-	orderData := orderTransferModels.OrderData{}
+	vehicleOutput := make(chan vehicle_models.Update)
+	go vehicle.Listen(vehicleOutput)
 
-	idToType := IDtoType{}
-	idToIP := IDtoIP{}
-	ipToBoard := IPtoBoard{}
+	boardMux := board.NewMux(board.WithInput(vehicleOutput), board.WithOutput(vehicle.SendOrder))
+	log.Println("New Mux")
 
-	excel_adapter.AddExpandedPackets(document, &podConverter, &displayConverter, &packetParser, &podData, &orderData, &idToType, &idToIP, &ipToBoard)
+	updateChan := make(chan vehicle_models.Update)
+	go boardMux.Listen(updateChan)
+	log.Println("Mux Listen")
 
-	laddr, err := net.ResolveTCPAddr("tcp", os.Getenv("LOCAL_ADDRESS"))
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	rawRAddrs := strings.Split(os.Getenv("REMOTE_ADDRESSES"), ",")
-	raddrs := make([]*net.TCPAddr, len(rawRAddrs))
-	for i, rawRAddr := range rawRAddrs {
-		raddr, err := net.ResolveTCPAddr("tcp", rawRAddr)
-		if err != nil {
-			log.Fatalln(err)
+	idToType := make(map[uint16]string)
+	for _, brd := range podData.Boards {
+		for _, pkt := range brd.Packets {
+			idToType[pkt.ID] = "data"
+		measurements_loop:
+			for msr := range pkt.Measurements {
+				if msr == "warning" {
+					idToType[pkt.ID] = "warning"
+					break measurements_loop
+				} else if msr == "fault" {
+					idToType[pkt.ID] = "fault"
+					break measurements_loop
+				}
+			}
 		}
-		raddrs[i] = raddr
 	}
 
 	connectionTransfer, connectionChannel := connection_transfer.New()
+	vehicle.OnConnectionChange(connectionTransfer.Update)
 
 	dataTransfer, dataTransferChannel := data_transfer.New(time.Millisecond * 1000 / 30)
 
 	messageTransfer, messageChannel := message_transfer.New()
 
-	orderChannel := make(chan orderTransferModels.Order, 100)
-	orderTransfer, ordChannel := order_transfer.New(orderChannel)
+	orderChannel := make(chan vehicle_models.Order, 100)
+	_, ordChannel := order_transfer.New(orderChannel)
 
-	bootloaderTransfer, bootloaderChannel, err := bootloader_transfer.NewBootloaderTransfer(os.Getenv("BOOTLOADER_ADDRESS"), orderChannel)
-	if err != nil {
-		log.Printf("failed to initialize bootloader: %s\n", err)
-		return
-	}
-
-	packetFactory := data_transfer.NewFactory()
-
-	transportControllerConfig := transportControllerModels.Config{
-		Dump:    make(chan []byte),
-		Snaplen: 2000,
-		Promisc: true,
-		Timeout: pcap.BlockForever,
-		BPF:     getFilter(raddrs),
-		OnConnUpdate: func(addr *net.TCPAddr, up bool) {
-			connectionTransfer.Update(ipToBoard[addr.IP.String()], up)
-		},
-	}
-
-	live, err := strconv.ParseBool(os.Getenv("SNIFFER_LIVE"))
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	transportController := transport_controller.Open(laddr, raddrs, os.Getenv("SNIFFER_DEV"), live, transportControllerConfig)
-	defer transportController.Close()
-
-	logger, loggerChannel := log_handle.NewLogger(logHandleModels.Config{
+	logger, loggerChannel := log_handle.NewLogger(log_handle_models.Config{
 		DumpSize: 7000,
 		RowSize:  20,
 		BasePath: os.Getenv("LOG_PATH"),
@@ -117,24 +88,22 @@ func main() {
 	})
 
 	go func(msgChannel chan models.MessageTarget) {
-		for packet := range transportControllerConfig.Dump {
-			id, values := packetParser.Decode(packet)
-			values = podConverter.Convert(values)
-			values = displayConverter.Convert(values)
-			logger.Update(values)
-			if idToType[id] == "data" {
-				dataTransfer.Update(packetFactory.NewPacketUpdate(id, packet, values))
+		for update := range updateChan {
+			logger.Update(update.Fields)
+			if idToType[update.ID] == "data" {
+				dataTransfer.Update(update)
 			} else {
-				messageTransfer.Broadcast(packetFactory.NewPacketUpdate(id, packet, values))
+				messageTransfer.Broadcast(update)
 			}
 		}
 	}(messageChannel)
 
 	go func() {
 		for order := range orderChannel {
-			order.Values = displayConverter.Revert(order.Values)
-			order.Values = podConverter.Revert(order.Values)
-			transportController.Write(idToIP[order.ID], packetParser.Encode(order.ID, order.Values))
+			log.Println(order)
+			if err := boardMux.Request(order); err != nil {
+				log.Printf("request failed: %s\n", err)
+			}
 		}
 	}()
 
@@ -143,13 +112,12 @@ func main() {
 	httpServer.ServeData("/backend/"+os.Getenv("POD_DATA_ENDPOINT"), podData)
 	httpServer.ServeData("/backend/"+os.Getenv("ORDER_DATA_ENDPOINT"), orderData)
 
-	handle := websocket_handle.RunWSHandle(httpServer.Router, "/backend", map[string]chan models.MessageTarget{
+	websocket_handle.RunWSHandle(httpServer.Router, "/backend", map[string]chan models.MessageTarget{
 		"podData/update":    dataTransferChannel,
 		"message/update":    messageChannel,
-		"order/update":      ordChannel,
+		"order/send":        ordChannel,
 		"connection/update": connectionChannel,
-		"logger/enable":     loggerChannel,
-		"bootloader/upload": bootloaderChannel,
+		"logger":            loggerChannel,
 	})
 
 	path, _ := os.Getwd()
@@ -160,15 +128,14 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
+	log.Println("backend running!")
 loop:
 	for {
 		select {
 		case <-time.After(time.Second * 10):
-			fmt.Println(transportController.Stats())
+			fmt.Println(vehicle.Stats())
 		case <-interrupt:
 			break loop
 		}
 	}
-
-	log.Println(handle, orderTransfer, bootloaderTransfer)
 }

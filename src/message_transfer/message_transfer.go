@@ -3,8 +3,8 @@ package message_transfer
 import (
 	"log"
 
-	dataTransferModels "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/message_transfer/models"
+	board_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	ws_models "github.com/HyperloopUPV-H8/Backend-H8/websocket_handle/models"
 )
 
@@ -17,7 +17,7 @@ func New() (*MessageTransfer, chan ws_models.MessageTarget) {
 	return &MessageTransfer{channel}, channel
 }
 
-func (messageTransfer *MessageTransfer) Broadcast(update dataTransferModels.PacketUpdate) {
+func (messageTransfer *MessageTransfer) Broadcast(update board_models.Update) {
 	message, err := ws_models.NewMessageTarget([]string{}, "message/update", getMessage(update))
 	if err != nil {
 		log.Printf("messageTransfer: Broadcast: %s\n", err)
@@ -26,15 +26,15 @@ func (messageTransfer *MessageTransfer) Broadcast(update dataTransferModels.Pack
 	messageTransfer.channel <- message
 }
 
-func getMessage(update dataTransferModels.PacketUpdate) models.Message {
+func getMessage(update board_models.Update) models.Message {
 	var message models.Message
-	if msg, ok := update.Values["warning"]; ok {
+	if msg, ok := update.Fields["warning"]; ok {
 		message = models.Message{
 			ID:          update.ID,
 			Description: msg.(string),
 			Type:        "warning",
 		}
-	} else if msg, ok = update.Values["fault"]; ok {
+	} else if msg, ok = update.Fields["fault"]; ok {
 		message = models.Message{
 			ID:          update.ID,
 			Description: msg.(string),

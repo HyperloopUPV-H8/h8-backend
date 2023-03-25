@@ -11,8 +11,11 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-const GLOBAL_SHEET_NAME = "Info"
-const ADDRESSES_TABLE_NAME = "Addresses"
+const GLOBAL_SHEET_NAME = "INFO"
+const ADDRESSES_TABLE_NAME = "addresses"
+const UNITS_TABLE_NAME = "units"
+const PORTS_TABLE_NAME = "ports"
+const IDS_TABLE_NAME = "ids"
 
 func FetchDocument(id string, path string, name string) internalModels.Document {
 	errDownloading := internals.DownloadFile(id, path, name)
@@ -43,15 +46,27 @@ func getIP(sheet string, document internalModels.Document) string {
 	panic(fmt.Sprintf("excel adapter: getIP: Missing board %s IP\n", sheet))
 }
 
-func AddExpandedPackets(document internalModels.Document, objects ...models.FromBoards) {
-	globalInfo := models.GlobalInfo{BoardToIP: getBoardToIPs(document), UnitToOperations: make(map[string]string)}
+func Update(document internalModels.Document, objects ...models.FromDocument) {
+	globalInfo := getGlobalInfo(document)
+	for _, object := range objects {
+		object.AddGlobal(globalInfo)
+	}
 
 	for _, board := range getBoards(document) {
 		for _, packet := range board.GetPackets() {
 			for _, object := range objects {
-				object.AddPacket(globalInfo, board.Name, board.IP, packet.Description, packet.Values)
+				object.AddPacket(board.Name, packet)
 			}
 		}
+	}
+}
+
+func getGlobalInfo(document internalModels.Document) models.GlobalInfo {
+	return models.GlobalInfo{
+		BoardToIP:        getInfoTableToMap(ADDRESSES_TABLE_NAME, document),
+		UnitToOperations: getInfoTableToMap(UNITS_TABLE_NAME, document),
+		ProtocolToPort:   getInfoTableToMap(PORTS_TABLE_NAME, document),
+		BoardToID:        getInfoTableToMap(IDS_TABLE_NAME, document),
 	}
 }
 
@@ -80,12 +95,14 @@ func getNamesWithSufix(name string, length int) []string {
 	return namesWithSufix
 }
 
-func getBoardToIPs(document internalModels.Document) map[string]string {
-	boardToIPs := make(map[string]string)
-
-	for _, row := range document.Info.Tables[ADDRESSES_TABLE_NAME].Rows {
-		boardToIPs[row[0]] = row[1]
+func getInfoTableToMap(tableName string, document internalModels.Document) map[string]string {
+	mapping := make(map[string]string)
+	table, found := document.Info.Tables[tableName]
+	if !found {
+		log.Fatalf("excel adapter: getInfoTableToMap: table %s not found\n", tableName)
 	}
-
-	return boardToIPs
+	for _, row := range table.Rows {
+		mapping[row[0]] = row[1]
+	}
+	return mapping
 }
