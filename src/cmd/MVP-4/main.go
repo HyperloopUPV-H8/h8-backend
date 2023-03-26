@@ -52,27 +52,12 @@ func main() {
 	go boardMux.Listen(updateChan)
 	log.Println("Mux Listen")
 
-	idToType := make(map[uint16]string)
-	for _, brd := range podData.Boards {
-		for _, pkt := range brd.Packets {
-			idToType[pkt.ID] = "data"
-		measurements_loop:
-			for msr := range pkt.Measurements {
-				if msr == "warning" {
-					idToType[pkt.ID] = "warning"
-					break measurements_loop
-				} else if msr == "fault" {
-					idToType[pkt.ID] = "fault"
-					break measurements_loop
-				}
-			}
-		}
-	}
+	idToType := getIdToType(podData)
 
 	connectionTransfer, connectionChannel := connection_transfer.New()
 	vehicle.OnConnectionChange(connectionTransfer.Update)
 
-	dataTransfer, dataTransferChannel := data_transfer.New(time.Millisecond * 1000 / 30)
+	dataTransfer, dataTransferChannel := data_transfer.New(getFPS(30))
 
 	messageTransfer, messageChannel := message_transfer.New()
 
@@ -138,4 +123,28 @@ loop:
 			break loop
 		}
 	}
+}
+
+func getFPS(fps int) time.Duration {
+	return time.Duration(int(time.Second) / fps)
+}
+
+func getIdToType(podData *vehicle_models.PodData) map[uint16]string {
+	idToType := make(map[uint16]string)
+	for _, brd := range podData.Boards {
+		for _, pkt := range brd.Packets {
+			idToType[pkt.ID] = "data"
+		measurements_loop:
+			for msr := range pkt.Measurements {
+				if msr == "warning" {
+					idToType[pkt.ID] = "warning"
+					break measurements_loop
+				} else if msr == "fault" {
+					idToType[pkt.ID] = "fault"
+					break measurements_loop
+				}
+			}
+		}
+	}
+	return idToType
 }

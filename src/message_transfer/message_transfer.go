@@ -40,6 +40,8 @@ func getMessage(update board_models.Update) models.Message {
 			Description: msg.(string),
 			Type:        "fault",
 		}
+	} else {
+		log.Fatalln("MessageTransfer: getMessage: get msg: update does not contain field \"fault\" or \"warning\"")
 	}
 	return message
 }
