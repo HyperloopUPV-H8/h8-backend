@@ -44,7 +44,7 @@ func getClient() (*drive.Service, error) {
 func getFile(client *drive.Service, id string, mimeType string) ([]byte, error) {
 	resp, err := client.Files.Export(id, mimeType).Download()
 	if err != nil {
-		log.Printf("excel retriever: getFile: could not download the file")
+		log.Printf("excel retriever: getFile: could not download the file: %s\n", err)
 		return nil, err
 	}
 	defer resp.Body.Close()

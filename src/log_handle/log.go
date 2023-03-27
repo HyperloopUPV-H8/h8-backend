@@ -80,11 +80,13 @@ func (logger *LogHandle) Update(values map[string]any) {
 }
 
 func (logger *LogHandle) start() {
+	log.Println("Starting logger")
 	logger.buffer = make(map[string][]models.Value)
 	go logger.run()
 }
 
 func (logger *LogHandle) stop() {
+	log.Println("Stopping logger")
 	logger.done <- struct{}{}
 	logger.flush()
 	logger.Close()
@@ -103,7 +105,10 @@ func (logger *LogHandle) writeCSV(value string, buffer []models.Value) {
 	for _, value := range buffer {
 		data += fmt.Sprintf("%d,\"%v\"\n", value.Timestamp.Nanosecond(), value.Value)
 	}
-	file.WriteString(data)
+	_, err := file.WriteString(data)
+	if err != nil {
+		log.Fatalf("LogHandle: writeCSV: %s\n", err)
+	}
 }
 
 func (logger *LogHandle) getFile(value string) *os.File {
@@ -114,8 +119,12 @@ func (logger *LogHandle) getFile(value string) *os.File {
 }
 
 func (logger *LogHandle) createFile(value string) *os.File {
-	os.MkdirAll(filepath.Join(logger.config.BasePath, value), os.ModeDir)
-	file, err := os.Create(filepath.Join(logger.config.BasePath, value, strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v.csv", time.Now()), " ", "_"), ":", "-")))
+	err := os.MkdirAll(filepath.Join(logger.config.BasePath, value), os.ModeDir)
+	if err != nil {
+		log.Fatalf("LogHandle: createFile: %s\n", err)
+	}
+	path := filepath.Join(logger.config.BasePath, value, strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v.csv", time.Now()), " ", "_"), ":", "-"))
+	file, err := os.Create(path)
 	if err != nil {
 		log.Fatalf("LogHandle: WriteCSV: %s\n", err)
 	}
@@ -124,6 +133,7 @@ func (logger *LogHandle) createFile(value string) *os.File {
 
 func (logger *LogHandle) listenWS() {
 	for msg := range logger.channel {
+		log.Println(msg)
 		if logger.logSession == "" || msg.Target[0] == logger.logSession {
 			var enable bool
 			err := json.Unmarshal(msg.Msg.Msg, &enable)
@@ -139,7 +149,7 @@ func (logger *LogHandle) listenWS() {
 				logger.logSession = ""
 			}
 
-			logger.channel <- ws_models.NewMessageTargetRaw([]string{}, "logger/state", msg.Msg.Msg)
+			logger.channel <- ws_models.NewMessageTargetRaw([]string{}, "logger", msg.Msg.Msg)
 		}
 	}
 }

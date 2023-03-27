@@ -12,38 +12,40 @@ type PodData struct {
 	Boards map[string]Board `json:"boards"`
 }
 
-func NewPodData() PodData {
-	return PodData{
+func NewPodData() *PodData {
+	return &PodData{
 		Boards: make(map[string]Board),
 	}
 }
 
-func (podData *PodData) AddPacket(globalInfo excelAdapterModels.GlobalInfo, board string, ip string, desc excelAdapterModels.Description, values []excelAdapterModels.Value) {
-	if desc.Type != "data" {
+func (podData *PodData) AddGlobal(global excelAdapterModels.GlobalInfo) {}
+
+func (podData *PodData) AddPacket(boardName string, packet excelAdapterModels.Packet) {
+	if packet.Description.Type != "data" {
 		return
 	}
 
-	id, err := strconv.ParseUint(desc.ID, 10, 16)
+	id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
 	if err != nil {
 		log.Fatalf("data transfer: AddPacket: %s\n", err)
 	}
 
-	dataBoard, ok := podData.Boards[board]
+	dataBoard, ok := podData.Boards[boardName]
 	if !ok {
-		podData.Boards[board] = Board{
-			Name:    board,
+		podData.Boards[boardName] = Board{
+			Name:    boardName,
 			Packets: make(map[uint16]Packet),
 		}
-		dataBoard = podData.Boards[board]
+		dataBoard = podData.Boards[boardName]
 	}
 
 	dataBoard.Packets[uint16(id)] = Packet{
 		ID:           uint16(id),
-		Name:         desc.Name,
+		Name:         packet.Description.Name,
 		HexValue:     "",
 		Count:        0,
 		CycleTime:    0,
-		Measurements: getMeasurements(values),
+		Measurements: getMeasurements(packet.Values),
 	}
 }
 
@@ -64,17 +66,44 @@ func getMeasurements(values []excelAdapterModels.Value) map[string]Measurement {
 	return measurements
 }
 
-func parseRange(literal string) [2]string {
+func parseRange(literal string) []*float64 {
 	if literal == "" {
-		return [2]string{"", ""}
+		return make([]*float64, 0)
 	}
 
-	split := strings.Split(strings.TrimSuffix(strings.TrimPrefix(literal, "["), "]"), ",")
-	if len(split) != 2 {
+	strRange := strings.Split(strings.TrimSuffix(strings.TrimPrefix(strings.Replace(literal, " ", "", -1), "["), "]"), ",")
+
+	if len(strRange) != 2 {
 		log.Fatalf("pod data: parseRange: invalid range %s\n", literal)
 	}
 
-	return [2]string{split[0], split[1]}
+	numRange := make([]*float64, 0)
+
+	if strRange[0] != "" {
+		lowerBound, errLowerBound := strconv.ParseFloat(strRange[0], 64)
+
+		if errLowerBound != nil {
+			log.Fatal("error parsing lower bound")
+		}
+
+		numRange = append(numRange, &lowerBound)
+	} else {
+		numRange = append(numRange, nil)
+	}
+
+	if strRange[1] != "" {
+		upperBound, errUpperBound := strconv.ParseFloat(strRange[1], 64)
+
+		if errUpperBound != nil {
+			log.Fatal("error parsing lower bound")
+		}
+
+		numRange = append(numRange, &upperBound)
+	} else {
+		numRange = append(numRange, nil)
+	}
+
+	return numRange
 }
 
 func getDefaultValue(valueType string) any {
@@ -103,11 +132,11 @@ type Packet struct {
 }
 
 type Measurement struct {
-	ID           string    `json:"id"`
-	Name         string    `json:"name"`
-	Type         string    `json:"type"`
-	Value        any       `json:"value"`
-	Units        string    `json:"units"`
-	SafeRange    [2]string `json:"safeRange"`
-	WarningRange [2]string `json:"warningRange"`
+	ID           string     `json:"id"`
+	Name         string     `json:"name"`
+	Type         string     `json:"type"`
+	Value        any        `json:"value"`
+	Units        string     `json:"units"`
+	SafeRange    []*float64 `json:"safeRange"`
+	WarningRange []*float64 `json:"warningRange"`
 }

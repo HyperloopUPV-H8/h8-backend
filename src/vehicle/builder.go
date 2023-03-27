@@ -1,0 +1,131 @@
+package vehicle
+
+import (
+	"fmt"
+	"log"
+	"os"
+	"strconv"
+	"strings"
+
+	"github.com/HyperloopUPV-H8/Backend-H8/common"
+	excel_models "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
+	"github.com/HyperloopUPV-H8/Backend-H8/packet_parser"
+	"github.com/HyperloopUPV-H8/Backend-H8/pipe"
+	"github.com/HyperloopUPV-H8/Backend-H8/sniffer"
+	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter"
+	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/internals"
+)
+
+const (
+	READ_CHAN_BUF_SIZE  = 100
+	ERROR_CHAN_BUF_SIZE = 100
+
+	TCP_CLIENT = "TCP_CLIENT"
+	TCP_SERVER = "TCP_SERVER"
+	UDP        = "UDP"
+)
+
+type Builder struct {
+	sniffer          *sniffer.Sniffer
+	parser           *packet_parser.PacketParser
+	displayConverter *unit_converter.UnitConverter
+	podConverter     *unit_converter.UnitConverter
+	pipes            map[string]*pipe.Pipe
+	idToPipe         map[uint16]string
+}
+
+func NewBuilder() *Builder {
+	return &Builder{
+		parser:           packet_parser.NewPacketParser(),
+		displayConverter: unit_converter.NewUnitConverter("display"),
+		podConverter:     unit_converter.NewUnitConverter("pod"),
+		sniffer:          nil,
+		pipes:            make(map[string]*pipe.Pipe),
+		idToPipe:         make(map[uint16]string),
+	}
+}
+
+func (builder *Builder) AddGlobal(global excel_models.GlobalInfo) {
+	var err error
+	filter := getFilter(common.Values(global.BoardToIP), global.ProtocolToPort)
+	builder.sniffer, err = sniffer.New(os.Getenv("SNIFFER_DEV"), filter)
+	if err != nil {
+		log.Fatalf("Vehicle: AddGlobal: NewSniffer: %s\n", err)
+	}
+
+	laddr := common.AddrWithPort(os.Getenv("VEHICLE_LADDR"), global.ProtocolToPort[TCP_CLIENT])
+	for board, ip := range global.BoardToIP {
+		var err error
+		builder.pipes[board], err = pipe.New(laddr, common.AddrWithPort(ip, global.ProtocolToPort[TCP_SERVER]))
+		if err != nil {
+			log.Fatalf("Vehicle: AddGlobal: NewPipe: %s\n", err)
+		}
+	}
+
+	builder.parser.AddGlobal(global)
+	builder.displayConverter.AddGlobal(global)
+	builder.podConverter.AddGlobal(global)
+}
+
+func getFilter(addrs []string, protocolToPort map[string]string) string {
+	udp := fmt.Sprintf("(udp port %s)", protocolToPort[UDP])
+	udpAddr := ""
+	for _, addr := range addrs {
+		udpAddr = fmt.Sprintf("%s or (src host %s)", udpAddr, addr)
+	}
+	udpAddr = strings.TrimPrefix(udpAddr, " or ")
+	udp = fmt.Sprintf("%s and (%s)", udp, udpAddr)
+
+	tcp := fmt.Sprintf("(tcp port %s or tcp port %s) and (tcp[tcpflags] & (tcp-fin | tcp-syn | tcp-ack) == 0)", protocolToPort[TCP_CLIENT], protocolToPort[TCP_SERVER])
+	tcpAddrSrc := ""
+	tcpAddrDst := ""
+	for _, addr := range addrs {
+		tcpAddrSrc = fmt.Sprintf("%s or (src host %s)", tcpAddrSrc, addr)
+		tcpAddrDst = fmt.Sprintf("%s or (dst host %s)", tcpAddrDst, addr)
+	}
+	tcpAddrSrc = strings.TrimPrefix(tcpAddrSrc, " or ")
+	tcpAddrDst = strings.TrimPrefix(tcpAddrDst, " or ")
+	tcp = fmt.Sprintf("%s and (%s) and (%s)", tcp, tcpAddrSrc, tcpAddrDst)
+
+	return fmt.Sprintf("(%s) or (%s)", udp, tcp)
+}
+
+func (builder *Builder) AddPacket(boardName string, packet excel_models.Packet) {
+	id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
+	if err != nil {
+		log.Fatalf("Vehicle: AddPacket: ParseUint: failed to parse id from %s\n", packet.Description.ID)
+	}
+	builder.idToPipe[uint16(id)] = boardName
+
+	builder.parser.AddPacket(boardName, packet)
+	builder.displayConverter.AddPacket(boardName, packet)
+	builder.podConverter.AddPacket(boardName, packet)
+}
+
+func (builder *Builder) Build() *Vehicle {
+	vehicle := &Vehicle{
+		sniffer:          builder.sniffer,
+		parser:           builder.parser,
+		displayConverter: builder.displayConverter,
+		podConverter:     builder.podConverter,
+		pipes:            builder.pipes,
+
+		packetFactory: internals.NewFactory(),
+
+		idToPipe: builder.idToPipe,
+		readChan: make(chan []byte, READ_CHAN_BUF_SIZE),
+		stats:    newStats(),
+	}
+
+	vehicle.sniffer.Listen(vehicle.readChan)
+	for name, pipe := range vehicle.pipes {
+		pipe.SetOutput(vehicle.readChan)
+		pipe.OnConnectionChange(func(name string) func(state bool) {
+			return func(state bool) {
+				vehicle.onConnectionChange(name, state)
+			}
+		}(name))
+	}
+
+	return vehicle
+}

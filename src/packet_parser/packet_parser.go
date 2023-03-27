@@ -17,14 +17,16 @@ type PacketParser struct {
 	enums       map[string]models.Enum
 }
 
-func (parser *PacketParser) AddPacket(globalInfo excelAdapterModels.GlobalInfo, board string, ip string, desc excelAdapterModels.Description, values []excelAdapterModels.Value) {
-	id, err := strconv.ParseUint(desc.ID, 10, 16)
+func (parser *PacketParser) AddGlobal(excelAdapterModels.GlobalInfo) {}
+
+func (parser *PacketParser) AddPacket(boardName string, packet excelAdapterModels.Packet) {
+	id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
 	if err != nil {
 		log.Fatalf("packet parser: AddPacket: %s\n", err)
 	}
 
-	valueDescriptors := make([]models.ValueDescriptor, 0, len(values))
-	for _, value := range values {
+	valueDescriptors := make([]models.ValueDescriptor, 0, len(packet.Values))
+	for _, value := range packet.Values {
 		if value.ID == "" {
 			continue
 		}
@@ -32,7 +34,7 @@ func (parser *PacketParser) AddPacket(globalInfo excelAdapterModels.GlobalInfo, 
 		kind := value.Type
 		if strings.HasPrefix(strings.ToUpper(kind), "ENUM") {
 			kind = "enum"
-			parser.enums[value.ID] = models.GetEnum(value.Type)
+			parser.enums[value.ID] = models.GetEnum(strings.ToUpper(value.Type))
 		}
 
 		valueDescriptors = append(valueDescriptors, models.ValueDescriptor{
@@ -44,8 +46,8 @@ func (parser *PacketParser) AddPacket(globalInfo excelAdapterModels.GlobalInfo, 
 	parser.descriptors[uint16(id)] = valueDescriptors
 }
 
-func NewPacketParser() PacketParser {
-	return PacketParser{
+func NewPacketParser() *PacketParser {
+	return &PacketParser{
 		descriptors: make(map[uint16]models.PacketDescriptor),
 		enums:       make(map[string]models.Enum),
 	}

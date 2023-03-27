@@ -8,7 +8,7 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-const BOARD_SHEET_PREFIX = "BOARD "
+const GLOBAL_SHEET_PREFIX = "GLOBAL "
 const TABLE_PREFIX = "[TABLE] "
 
 func GetDocument(file *excelize.File) models.Document {
@@ -26,8 +26,8 @@ func parseSheets(file *excelize.File) (models.Sheet, map[string]models.Sheet) {
 	sheetMap := file.GetSheetMap()
 	for _, name := range sheetMap {
 		cols := getSheetCols(file, name)
-		if strings.HasPrefix(name, BOARD_SHEET_PREFIX) {
-			boardSheets[strings.TrimPrefix(name, BOARD_SHEET_PREFIX)] = parseSheet(name, cols)
+		if !strings.HasPrefix(name, GLOBAL_SHEET_PREFIX) {
+			boardSheets[strings.TrimPrefix(name, GLOBAL_SHEET_PREFIX)] = parseSheet(name, cols)
 		} else {
 			infoSheet = parseSheet(name, cols)
 		}
