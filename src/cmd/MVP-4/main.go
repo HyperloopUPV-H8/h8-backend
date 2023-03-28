@@ -66,12 +66,13 @@ func main() {
 
 	vehicle.OnConnectionChange(connectionTransfer.Update)
 
+	idToType := getIdToType(podData)
 	go func() {
 		for update := range updateChan {
 			logger.Update(update)
-			if msg, err := message_transfer_models.MessageFromUpdate(update); err != nil {
+			if idToType[update.ID] == "data" {
 				dataTransfer.Update(update)
-			} else {
+			} else if msg, err := message_transfer_models.MessageFromUpdate(update); err == nil {
 				messageTransfer.SendMessage(msg)
 			}
 		}
@@ -110,4 +111,24 @@ loop:
 			break loop
 		}
 	}
+}
+
+func getIdToType(podData *vehicle_models.PodData) map[uint16]string {
+	idToType := make(map[uint16]string)
+	for _, brd := range podData.Boards {
+		for _, pkt := range brd.Packets {
+			idToType[pkt.ID] = "data"
+		measurements_loop:
+			for msr := range pkt.Measurements {
+				if msr == "warning" {
+					idToType[pkt.ID] = "warning"
+					break measurements_loop
+				} else if msr == "fault" {
+					idToType[pkt.ID] = "fault"
+					break measurements_loop
+				}
+			}
+		}
+	}
+	return idToType
 }
