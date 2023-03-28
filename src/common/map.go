@@ -7,3 +7,11 @@ func Values[K comparable, V any](input map[K]V) []V {
 	}
 	return values
 }
+
+func Keys[K comparable, V any](input map[K]V) []K {
+	keys := make([]K, 0, len(input))
+	for key := range input {
+		keys = append(keys, key)
+	}
+	return keys
+}
