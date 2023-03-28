@@ -4,35 +4,49 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
-	ws_models "github.com/HyperloopUPV-H8/Backend-H8/websocket_handle/models"
+	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 )
 
+const (
+	ORDER_TRASNFER_NAME = "orderTransfer"
+	ORDER_CHAN_BUFFER   = 100
+)
+
+var (
+	orderTransfer *OrderTransfer
+	channel       <-chan vehicle_models.Order
+)
+
+func Get() (*OrderTransfer, <-chan vehicle_models.Order) {
+	if orderTransfer == nil {
+		initOrderTransfer()
+	}
+
+	return orderTransfer, channel
+}
+
+func initOrderTransfer() {
+	orderChannel := make(chan vehicle_models.Order, ORDER_CHAN_BUFFER)
+	orderTransfer = &OrderTransfer{orderChannel}
+	channel = orderChannel
+}
+
 type OrderTransfer struct {
-	orderChannel chan<- models.Order
-	channel      chan ws_models.MessageTarget
+	channel chan<- vehicle_models.Order
 }
 
-func New(channel chan<- models.Order) (*OrderTransfer, chan ws_models.MessageTarget) {
-	orderTransfer := &OrderTransfer{
-		orderChannel: channel,
-		channel:      make(chan ws_models.MessageTarget),
+func (orderTransfer *OrderTransfer) UpdateMessage(topic string, payload json.RawMessage, source string) {
+	var order vehicle_models.Order
+	if err := json.Unmarshal(payload, &order); err != nil {
+		log.Printf("OrderTransfer: UpdateMessage: Unmarshal: %s\n", err)
+		return
 	}
-
-	go orderTransfer.run()
-
-	return orderTransfer, orderTransfer.channel
+	orderTransfer.channel <- order
 }
 
-func (orderTransfer *OrderTransfer) run() {
-	for msg := range orderTransfer.channel {
-		log.Println(string(msg.Msg.Msg))
-		var order models.Order
-		err := json.Unmarshal(msg.Msg.Msg, &order)
-		if err != nil {
-			log.Printf("orderTransfer: run: %s\n", err)
-			continue
-		}
-		orderTransfer.orderChannel <- order
-	}
+func (orderTransfer *OrderTransfer) SetSendMessage(func(topic string, payload any, targets ...string) error) {
+}
+
+func (orderTransfer *OrderTransfer) HandlerName() string {
+	return ORDER_TRASNFER_NAME
 }
