@@ -2,44 +2,105 @@ package log_handle
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/log_handle/models"
-	ws_models "github.com/HyperloopUPV-H8/Backend-H8/websocket_handle/models"
+	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 )
 
-type LogHandle struct {
-	flushing   bool
-	buffer     map[string][]models.Value
-	config     models.Config
-	fileMx     sync.Mutex
-	files      map[string]*os.File
-	done       chan struct{}
-	running    bool
-	logSession string
-	channel    chan ws_models.MessageTarget
+// TODO: Remove hard-coded values
+const (
+	LOG_HANDLE_NAME      = "logHandle"
+	LOG_HANDLE_BASE_PATH = "./log"
+	DUMP_SIZE            = 7000
+	ROW_SIZE             = 20
+	AUTOSAVE_DELAY       = time.Minute
+	UPDATE_CHAN_BUF      = 100
+)
+
+var (
+	logger *LogHandle
+)
+
+func Get() *LogHandle {
+	if logger == nil {
+		initLogger()
+	}
+	return logger
 }
 
-func NewLogger(config models.Config) (*LogHandle, chan ws_models.MessageTarget) {
-	logHandle := &LogHandle{
-		flushing: false,
-		buffer:   make(map[string][]models.Value),
-		config:   config,
-		fileMx:   sync.Mutex{},
-		files:    make(map[string]*os.File),
-		done:     make(chan struct{}),
-		channel:  make(chan ws_models.MessageTarget),
+func initLogger() {
+	logger = &LogHandle{
+		buffer:      make(map[string][]models.Value),
+		autosave:    time.NewTicker(AUTOSAVE_DELAY),
+		files:       make(map[string]*os.File),
+		done:        make(chan struct{}),
+		updates:     make(chan vehicle_models.Update, UPDATE_CHAN_BUF),
+		running:     false,
+		logSession:  "",
+		sendMessage: defaultSendMessage,
+	}
+}
+
+type LogHandle struct {
+	buffer      map[string][]models.Value
+	autosave    *time.Ticker
+	files       map[string]*os.File
+	done        chan struct{}
+	updates     chan vehicle_models.Update
+	running     bool
+	logSession  string
+	sendMessage func(topic string, payload any, target ...string) error
+}
+
+func (logger *LogHandle) UpdateMessage(topic string, payload json.RawMessage, source string) {
+	if logger.logSession == "" || source == logger.logSession {
+		var enable bool
+		if err := json.Unmarshal(payload, &enable); err != nil {
+			log.Printf("LogHandle: UpdateMessage: sendMessage: %s\n", err)
+			logger.notifyState()
+			return
+		}
+
+		logger.handleEnable(enable)
+
+		// This can cause locks if the client managing the session disconnects. We should talk how this should work
+		if logger.running {
+			logger.logSession = source
+		} else {
+			logger.logSession = ""
+		}
 	}
 
-	go logHandle.listenWS()
+	logger.notifyState()
+}
 
-	return logHandle, logHandle.channel
+func (logger *LogHandle) notifyState() {
+	if err := logger.sendMessage("logger/enable", logger.running); err != nil {
+		log.Printf("LogHandle: UpdateMessage: sendMessage: %s\n", err)
+	}
+}
+
+func (logger *LogHandle) handleEnable(enable bool) {
+	if enable {
+		logger.start()
+	} else {
+		logger.stop()
+	}
+}
+
+func (logger *LogHandle) SetSendMessage(sendMessage func(topic string, payload any, target ...string) error) {
+	logger.sendMessage = sendMessage
+}
+
+func (logger *LogHandle) HandlerName() string {
+	return LOG_HANDLE_NAME
 }
 
 func (logger *LogHandle) run() {
@@ -47,8 +108,8 @@ func (logger *LogHandle) run() {
 	defer func() { logger.running = false }()
 	for {
 		select {
-		case update := <-logger.config.Updates:
-			for name, value := range update {
+		case update := <-logger.updates:
+			for name, value := range update.Fields {
 				logger.buffer[name] = append(logger.buffer[name], models.Value{
 					Value:     value,
 					Timestamp: time.Now(),
@@ -56,7 +117,7 @@ func (logger *LogHandle) run() {
 			}
 
 			logger.checkDump()
-		case <-logger.config.Autosave.C:
+		case <-logger.autosave.C:
 			logger.flush()
 		case <-logger.done:
 			return
@@ -66,16 +127,16 @@ func (logger *LogHandle) run() {
 
 func (logger *LogHandle) checkDump() {
 	for _, buf := range logger.buffer {
-		if len(buf) > int(logger.config.DumpSize/logger.config.RowSize) {
+		if len(buf) > int(DUMP_SIZE/ROW_SIZE) {
 			logger.flush()
 			break
 		}
 	}
 }
 
-func (logger *LogHandle) Update(values map[string]any) {
+func (logger *LogHandle) Update(update vehicle_models.Update) {
 	if logger.running {
-		logger.config.Updates <- values
+		logger.updates <- update
 	}
 }
 
@@ -119,11 +180,11 @@ func (logger *LogHandle) getFile(value string) *os.File {
 }
 
 func (logger *LogHandle) createFile(value string) *os.File {
-	err := os.MkdirAll(filepath.Join(logger.config.BasePath, value), os.ModeDir)
+	err := os.MkdirAll(filepath.Join(LOG_HANDLE_BASE_PATH, value), os.ModeDir)
 	if err != nil {
 		log.Fatalf("LogHandle: createFile: %s\n", err)
 	}
-	path := filepath.Join(logger.config.BasePath, value, strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v.csv", time.Now()), " ", "_"), ":", "-"))
+	path := filepath.Join(LOG_HANDLE_BASE_PATH, value, strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v.csv", time.Now()), " ", "_"), ":", "-"))
 	file, err := os.Create(path)
 	if err != nil {
 		log.Fatalf("LogHandle: WriteCSV: %s\n", err)
@@ -131,32 +192,13 @@ func (logger *LogHandle) createFile(value string) *os.File {
 	return file
 }
 
-func (logger *LogHandle) listenWS() {
-	for msg := range logger.channel {
-		log.Println(msg)
-		if logger.logSession == "" || msg.Target[0] == logger.logSession {
-			var enable bool
-			err := json.Unmarshal(msg.Msg.Msg, &enable)
-			if err != nil {
-				log.Printf("logger: listenWS: %s\n", err)
-				continue
-			}
-			if enable {
-				logger.start()
-				logger.logSession = msg.Target[0]
-			} else {
-				logger.stop()
-				logger.logSession = ""
-			}
-
-			logger.channel <- ws_models.NewMessageTargetRaw([]string{}, "logger", msg.Msg.Msg)
-		}
-	}
-}
-
 func (logger *LogHandle) Close() {
 	for _, file := range logger.files {
 		file.Close()
 	}
 	logger.files = make(map[string]*os.File, len(logger.files))
+}
+
+func defaultSendMessage(string, any, ...string) error {
+	return errors.New("logger must be registered before using")
 }
