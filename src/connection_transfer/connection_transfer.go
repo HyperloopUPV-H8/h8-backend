@@ -1,35 +1,54 @@
 package connection_transfer
 
 import (
+	"encoding/json"
+	"errors"
 	"log"
 	"sync"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer/models"
-	ws_models "github.com/HyperloopUPV-H8/Backend-H8/websocket_handle/models"
 )
 
-type ConnectionTransfer struct {
-	writeMx     sync.Mutex
-	boardStatus map[string]models.Connection
-	channel     chan ws_models.MessageTarget
+const (
+	CONNECTION_TRANSFER_HANDLER_NAME = "connectionTransfer"
+	CONNECTION_TRANSFER_TOPIC        = "connection/update"
+)
+
+var (
+	connectionTransfer *ConnectionTransfer
+)
+
+func Get() *ConnectionTransfer {
+	if connectionTransfer == nil {
+		initConnectionTransfer()
+	}
+	return connectionTransfer
 }
 
-func New() (*ConnectionTransfer, chan ws_models.MessageTarget) {
-	connectionTransfer := &ConnectionTransfer{
-		writeMx:     sync.Mutex{},
+func initConnectionTransfer() {
+	connectionTransfer = &ConnectionTransfer{
+		writeMx:     &sync.Mutex{},
 		boardStatus: make(map[string]models.Connection),
-		channel:     make(chan ws_models.MessageTarget),
+		sendMessage: defaultSendMessage,
 	}
-
-	go connectionTransfer.run()
-
-	return connectionTransfer, connectionTransfer.channel
 }
 
-func (connectionTransfer *ConnectionTransfer) run() {
-	for range connectionTransfer.channel {
-		connectionTransfer.send()
-	}
+type ConnectionTransfer struct {
+	writeMx     *sync.Mutex
+	boardStatus map[string]models.Connection
+	sendMessage func(topic string, payload any, target ...string) error
+}
+
+func (connectionTransfer *ConnectionTransfer) UpdateMessage(topic string, payload json.RawMessage, source string) {
+	connectionTransfer.send()
+}
+
+func (connectionTransfer *ConnectionTransfer) SetSendMessage(sendMessage func(topic string, payload any, target ...string) error) {
+	connectionTransfer.sendMessage = sendMessage
+}
+
+func (connectionTransfer *ConnectionTransfer) HandlerName() string {
+	return CONNECTION_TRANSFER_HANDLER_NAME
 }
 
 func (connectionTransfer *ConnectionTransfer) Update(name string, up bool) {
@@ -44,18 +63,11 @@ func (connectionTransfer *ConnectionTransfer) Update(name string, up bool) {
 }
 
 func (connectionTransfer *ConnectionTransfer) send() {
-	msg, err := ws_models.NewMessageTarget([]string{}, "connection/update", mapToArray(connectionTransfer.boardStatus))
-	if err != nil {
-		log.Printf("connectionTransfer: send: %s\n", err)
-		return
+	if err := connectionTransfer.sendMessage(CONNECTION_TRANSFER_TOPIC, connectionTransfer.boardStatus); err != nil {
+		log.Printf("ConnectionTransfer: send: sendMessage: %s\n", err)
 	}
-	connectionTransfer.channel <- msg
 }
 
-func mapToArray(input map[string]models.Connection) []models.Connection {
-	output := make([]models.Connection, 0, len(input))
-	for _, value := range input {
-		output = append(output, value)
-	}
-	return output
+func defaultSendMessage(string, any, ...string) error {
+	return errors.New("connection transfer must be registered before use")
 }

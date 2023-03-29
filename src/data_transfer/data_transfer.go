@@ -2,32 +2,57 @@ package data_transfer
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"sync"
 	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
-	ws_models "github.com/HyperloopUPV-H8/Backend-H8/websocket_handle/models"
 )
 
-type DataTransfer struct {
-	bufMx     sync.Mutex
-	packetBuf map[uint16]models.Update
-	ticker    *time.Ticker
-	channel   chan ws_models.MessageTarget
+const (
+	DATA_TRANSFER_HANDLER_NAME = "dataTransfer"
+	DATA_TRANSFER_REFRESH_RATE = time.Second / 30
+	DATA_TRANSFER_TOPIC        = "packet/update"
+)
+
+var (
+	dataTransfer *DataTransfer
+)
+
+func Get() *DataTransfer {
+	if dataTransfer == nil {
+		initDataTransfer()
+	}
+	return dataTransfer
 }
 
-func New(rate time.Duration) (*DataTransfer, chan ws_models.MessageTarget) {
-	dataTransfer := &DataTransfer{
-		bufMx:     sync.Mutex{},
-		packetBuf: make(map[uint16]models.Update),
-		ticker:    time.NewTicker(rate),
-		channel:   make(chan ws_models.MessageTarget),
+func initDataTransfer() {
+	dataTransfer = &DataTransfer{
+		bufMx:       &sync.Mutex{},
+		packetBuf:   make(map[uint16]models.Update),
+		ticker:      time.NewTicker(DATA_TRANSFER_REFRESH_RATE),
+		sendMessage: defaultSendMessage,
 	}
 
 	go dataTransfer.run()
+}
 
-	return dataTransfer, dataTransfer.channel
+type DataTransfer struct {
+	bufMx       *sync.Mutex
+	packetBuf   map[uint16]models.Update
+	ticker      *time.Ticker
+	sendMessage func(topic string, payload any, target ...string) error
+}
+
+func (dataTransfer *DataTransfer) UpdateMessage(string, json.RawMessage, string) {}
+
+func (dataTransfer *DataTransfer) SetSendMessage(sendMessage func(topic string, payload any, target ...string) error) {
+	dataTransfer.sendMessage = sendMessage
+}
+
+func (DataTransfer *DataTransfer) HandlerName() string {
+	return DATA_TRANSFER_HANDLER_NAME
 }
 
 func (dataTransfer *DataTransfer) run() {
@@ -36,23 +61,27 @@ func (dataTransfer *DataTransfer) run() {
 		if len(dataTransfer.packetBuf) == 0 {
 			continue
 		}
-		dataTransfer.channel <- ws_models.NewMessageTargetRaw([]string{}, "podData/update", dataTransfer.getJSON())
+
+		dataTransfer.sendBuf()
 	}
 }
 
-func (dataTransfer *DataTransfer) getJSON() []byte {
+func (dataTransfer *DataTransfer) sendBuf() {
 	dataTransfer.bufMx.Lock()
 	defer dataTransfer.bufMx.Unlock()
-	data, err := json.Marshal(dataTransfer.packetBuf)
-	if err != nil {
-		log.Fatalf("data transfer: getJSON: %s\n", err)
+	if err := dataTransfer.sendMessage(DATA_TRANSFER_TOPIC, dataTransfer.packetBuf); err != nil {
+		log.Printf("DataTransfer: sendBuf: sendMessage: %s\n", err)
+		return
 	}
 	dataTransfer.packetBuf = make(map[uint16]models.Update, len(dataTransfer.packetBuf))
-	return data
 }
 
 func (dataTransfer *DataTransfer) Update(update models.Update) {
 	dataTransfer.bufMx.Lock()
 	defer dataTransfer.bufMx.Unlock()
 	dataTransfer.packetBuf[update.ID] = update
+}
+
+func defaultSendMessage(string, any, ...string) error {
+	return errors.New("data transfer must be registered before use")
 }

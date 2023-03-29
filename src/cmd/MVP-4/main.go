@@ -15,14 +15,13 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter"
 	"github.com/HyperloopUPV-H8/Backend-H8/log_handle"
-	log_handle_models "github.com/HyperloopUPV-H8/Backend-H8/log_handle/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/message_transfer"
+	message_transfer_models "github.com/HyperloopUPV-H8/Backend-H8/message_transfer/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/order_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/server"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle"
 	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
-	"github.com/HyperloopUPV-H8/Backend-H8/websocket_handle"
-	"github.com/HyperloopUPV-H8/Backend-H8/websocket_handle/models"
+	"github.com/HyperloopUPV-H8/Backend-H8/websocket_broker"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
@@ -46,46 +45,41 @@ func main() {
 	go vehicle.Listen(vehicleOutput)
 
 	boardMux := board.NewMux(board.WithInput(vehicleOutput), board.WithOutput(vehicle.SendOrder))
-	log.Println("New Mux")
 
 	updateChan := make(chan vehicle_models.Update)
 	go boardMux.Listen(updateChan)
-	log.Println("Mux Listen")
 
-	idToType := getIdToType(podData)
+	// Communication with front-end
+	websocketBroker := websocket_broker.Get()
 
-	connectionTransfer, connectionChannel := connection_transfer.New()
+	connectionTransfer := connection_transfer.Get()
+	dataTransfer := data_transfer.Get()
+	logger := log_handle.Get()
+	messageTransfer := message_transfer.Get()
+	orderTransfer, orderChannel := order_transfer.Get()
+
+	websocketBroker.RegisterHandle(connectionTransfer, "connection/get")
+	websocketBroker.RegisterHandle(dataTransfer)
+	websocketBroker.RegisterHandle(logger, "logger/enable")
+	websocketBroker.RegisterHandle(messageTransfer)
+	websocketBroker.RegisterHandle(orderTransfer, "order/send")
+
 	vehicle.OnConnectionChange(connectionTransfer.Update)
 
-	dataTransfer, dataTransferChannel := data_transfer.New(getFPS(30))
-
-	messageTransfer, messageChannel := message_transfer.New()
-
-	orderChannel := make(chan vehicle_models.Order, 100)
-	_, ordChannel := order_transfer.New(orderChannel)
-
-	logger, loggerChannel := log_handle.NewLogger(log_handle_models.Config{
-		DumpSize: 7000,
-		RowSize:  20,
-		BasePath: os.Getenv("LOG_PATH"),
-		Updates:  make(chan map[string]any, 10000),
-		Autosave: time.NewTicker(time.Minute),
-	})
-
-	go func(msgChannel chan models.MessageTarget) {
+	idToType := getIdToType(podData)
+	go func() {
 		for update := range updateChan {
-			logger.Update(update.Fields)
+			logger.Update(update)
 			if idToType[update.ID] == "data" {
 				dataTransfer.Update(update)
-			} else {
-				messageTransfer.Broadcast(update)
+			} else if msg, err := message_transfer_models.MessageFromUpdate(update); err == nil {
+				messageTransfer.SendMessage(msg)
 			}
 		}
-	}(messageChannel)
+	}()
 
 	go func() {
 		for order := range orderChannel {
-			log.Println(order)
 			if err := boardMux.Request(order); err != nil {
 				log.Printf("request failed: %s\n", err)
 			}
@@ -97,13 +91,7 @@ func main() {
 	httpServer.ServeData("/backend/"+os.Getenv("POD_DATA_ENDPOINT"), podData)
 	httpServer.ServeData("/backend/"+os.Getenv("ORDER_DATA_ENDPOINT"), orderData)
 
-	websocket_handle.RunWSHandle(httpServer.Router, "/backend", map[string]chan models.MessageTarget{
-		"podData/update":    dataTransferChannel,
-		"message/update":    messageChannel,
-		"order/send":        ordChannel,
-		"connection/update": connectionChannel,
-		"logger":            loggerChannel,
-	})
+	httpServer.HandleFunc("/backend", websocketBroker.HandleConn)
 
 	path, _ := os.Getwd()
 	httpServer.FileServer("/", filepath.Join(path, "static"))
@@ -123,10 +111,6 @@ loop:
 			break loop
 		}
 	}
-}
-
-func getFPS(fps int) time.Duration {
-	return time.Duration(int(time.Second) / fps)
 }
 
 func getIdToType(podData *vehicle_models.PodData) map[uint16]string {
