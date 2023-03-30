@@ -9,7 +9,16 @@ import (
 	"github.com/rs/zerolog/pkgerrors"
 )
 
-func initTrace() *os.File {
+var traceLevelMap = map[string]zerolog.Level{
+	"fatal": zerolog.FatalLevel,
+	"error": zerolog.ErrorLevel,
+	"warn":  zerolog.WarnLevel,
+	"info":  zerolog.InfoLevel,
+	"debug": zerolog.DebugLevel,
+	"trace": zerolog.TraceLevel,
+}
+
+func initTrace(traceLevel string, traceFile string) *os.File {
 	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
 		short := file
 		for i := len(file) - 1; i > 0; i-- {
@@ -26,7 +35,7 @@ func initTrace() *os.File {
 
 	consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout}
 
-	file, err := os.Create(*traceFile)
+	file, err := os.Create(traceFile)
 	if err != nil {
 		trace.Logger = trace.Logger.Output(consoleWriter)
 		trace.Fatal().Stack().Err(err).Msg("")
@@ -38,7 +47,7 @@ func initTrace() *os.File {
 	global_logger := zerolog.New(multi).With().Timestamp().Caller().Logger()
 	trace.Logger = global_logger
 
-	if level, ok := traceLevelMap[*traceLevel]; ok {
+	if level, ok := traceLevelMap[traceLevel]; ok {
 		zerolog.SetGlobalLevel(level)
 	} else {
 		trace.Fatal().Msg("invalid log level selected")

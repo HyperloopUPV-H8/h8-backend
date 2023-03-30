@@ -23,20 +23,10 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/websocket_broker"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
-	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
 
 var traceLevel = flag.String("trace", "info", "set the trace level (\"fatal\", \"error\", \"warn\", \"info\", \"debug\", \"trace\")")
-var traceLevelMap = map[string]zerolog.Level{
-	"fatal": zerolog.FatalLevel,
-	"error": zerolog.ErrorLevel,
-	"warn":  zerolog.WarnLevel,
-	"info":  zerolog.InfoLevel,
-	"debug": zerolog.DebugLevel,
-	"trace": zerolog.TraceLevel,
-}
-
 var traceFile = flag.String("log", "trace.json", "set the trace log file")
 
 func main() {
@@ -44,7 +34,7 @@ func main() {
 	godotenv.Load(".env")
 
 	flag.Parse()
-	traceFile := initTrace()
+	traceFile := initTrace(*traceLevel, *traceFile)
 	defer traceFile.Close()
 
 	document := excel_adapter.FetchDocument(os.Getenv("EXCEL_ID"), os.Getenv("EXCEL_PATH"), os.Getenv("EXCEL_NAME"))
