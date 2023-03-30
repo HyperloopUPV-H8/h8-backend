@@ -3,14 +3,15 @@ package internals
 import (
 	"encoding/binary"
 	"io"
-	"log"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/packet_parser/models"
+	trace "github.com/rs/zerolog/log"
 )
 
 func encodeNext(writer io.Writer, value any) {
 	if err := binary.Write(writer, binary.LittleEndian, value); err != nil {
-		log.Fatalf("encoder: encodeNext: %s\n", err)
+		trace.Error().Err(err).Msg("")
+		return
 	}
 }
 

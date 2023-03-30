@@ -7,11 +7,13 @@ import (
 	"log"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/packet_parser/models"
+	trace "github.com/rs/zerolog/log"
 )
 
 func decodeNext[T any](reader io.Reader) (value T) {
 	if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
-		log.Fatalf("decoder: decodeNext: %s\n", err)
+		trace.Error().Err(err).Msg("")
+		return
 	}
 	return value
 }
