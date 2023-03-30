@@ -55,13 +55,13 @@ func (broker *WebSocketBroker) HandleConn(writter http.ResponseWriter, request *
 
 	conn, err := upgrader.Upgrade(writter, request, writter.Header())
 	if err != nil {
-		broker.trace.Error().Err(err).Msg("")
+		broker.trace.Error().Stack().Err(err).Msg("")
 		return
 	}
 
 	id, err := uuid.NewRandom()
 	if err != nil {
-		broker.trace.Error().Err(err).Msg("")
+		broker.trace.Error().Stack().Err(err).Msg("")
 		conn.Close()
 		return
 	}
@@ -78,7 +78,7 @@ func (broker *WebSocketBroker) readMessages(client string, conn *websocket.Conn)
 	for {
 		var message models.Message
 		if err := conn.ReadJSON(&message); err != nil {
-			broker.trace.Error().Str("id", client).Err(err).Msg("")
+			broker.trace.Error().Str("id", client).Stack().Err(err).Msg("")
 			broker.closeClient(client)
 			return
 		}
@@ -97,10 +97,10 @@ func (broker *WebSocketBroker) updateHandlers(topic string, payload json.RawMess
 }
 
 func (broker *WebSocketBroker) sendMessage(topic string, payload any, targets ...string) error {
-	broker.trace.Debug().Str("topic", topic).Strs("targets", targets).Msg("send message")
+	broker.trace.Trace().Str("topic", topic).Strs("targets", targets).Msg("send message")
 	message, err := models.NewMessage(topic, payload)
 	if err != nil {
-		broker.trace.Error().Err(err).Msg("")
+		broker.trace.Error().Stack().Err(err).Msg("")
 		return err
 	}
 
@@ -124,7 +124,7 @@ func (broker *WebSocketBroker) broadcastMessage(message models.Message, targets 
 		}
 
 		if writeErr := conn.WriteJSON(message); writeErr != nil {
-			broker.trace.Error().Err(writeErr).Msg("")
+			broker.trace.Error().Stack().Err(writeErr).Msg("")
 			go broker.closeClient(target)
 			err = writeErr
 		}
@@ -160,7 +160,7 @@ func (broker *WebSocketBroker) closeClient(id string) error {
 	defer broker.clientsMx.Unlock()
 	broker.trace.Info().Str("id", id).Msg("close client")
 	if err := broker.clients[id].Close(); err != nil {
-		broker.trace.Error().Err(err).Msg("")
+		broker.trace.Error().Stack().Err(err).Msg("")
 		return err
 	}
 	delete(broker.clients, id)
@@ -174,7 +174,7 @@ func (broker *WebSocketBroker) Close() error {
 	var err error
 	for client, conn := range broker.clients {
 		if closeErr := conn.Close(); closeErr != nil {
-			broker.trace.Error().Err(closeErr).Msg("")
+			broker.trace.Error().Stack().Err(closeErr).Msg("")
 			err = closeErr
 			continue
 		}

@@ -69,7 +69,7 @@ func (logger *LogHandle) UpdateMessage(topic string, payload json.RawMessage, so
 	if logger.logSession == "" || source == logger.logSession {
 		var enable bool
 		if err := json.Unmarshal(payload, &enable); err != nil {
-			logger.trace.Error().Err(err).Msg("")
+			logger.trace.Error().Stack().Err(err).Msg("")
 			logger.notifyState()
 			return
 		}
@@ -93,7 +93,7 @@ func (logger *LogHandle) UpdateMessage(topic string, payload json.RawMessage, so
 func (logger *LogHandle) notifyState() {
 	logger.trace.Trace().Bool("running", logger.running).Msg("notify state")
 	if err := logger.sendMessage("logger/enable", logger.running); err != nil {
-		logger.trace.Error().Err(err).Msg("")
+		logger.trace.Error().Stack().Err(err).Msg("")
 	}
 }
 
@@ -187,7 +187,7 @@ func (logger *LogHandle) writeCSV(valueName string, buffer []models.Value) {
 
 	_, err := file.WriteString(data)
 	if err != nil {
-		logger.trace.Fatal().Err(err).Msg("")
+		logger.trace.Fatal().Stack().Err(err).Msg("")
 		return
 	}
 }
@@ -203,14 +203,14 @@ func (logger *LogHandle) getFile(valueName string) *os.File {
 func (logger *LogHandle) createFile(valueName string) *os.File {
 	err := os.MkdirAll(filepath.Join(LOG_HANDLE_BASE_PATH, valueName), os.ModeDir)
 	if err != nil {
-		logger.trace.Fatal().Err(err).Msg("")
+		logger.trace.Fatal().Stack().Err(err).Msg("")
 		return nil
 	}
 
 	path := filepath.Join(LOG_HANDLE_BASE_PATH, valueName, strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v.csv", time.Now()), " ", "_"), ":", "-"))
 	file, err := os.Create(path)
 	if err != nil {
-		logger.trace.Fatal().Err(err).Msg("")
+		logger.trace.Fatal().Stack().Err(err).Msg("")
 		return nil
 	}
 
@@ -224,7 +224,7 @@ func (logger *LogHandle) Close() error {
 	var err error
 	for _, file := range logger.files {
 		if fileErr := file.Close(); err != nil {
-			logger.trace.Error().Err(fileErr).Msg("")
+			logger.trace.Error().Stack().Err(fileErr).Msg("")
 			err = fileErr
 		}
 	}

@@ -21,7 +21,7 @@ func New(dev string, filter string) (*Sniffer, error) {
 
 	source, err := obtainSource(dev, filter)
 	if err != nil {
-		trace.Error().Err(err).Msg("")
+		trace.Error().Stack().Err(err).Msg("")
 		return nil, err
 	}
 
@@ -59,7 +59,7 @@ func (sniffer *Sniffer) read(output chan<- []byte, errorChan chan<- error) {
 	for {
 		raw, _, err := sniffer.source.ReadPacketData()
 		if err != nil {
-			sniffer.trace.Error().Err(err).Msg("")
+			sniffer.trace.Error().Stack().Err(err).Msg("")
 			errorChan <- err
 			close(errorChan)
 			return

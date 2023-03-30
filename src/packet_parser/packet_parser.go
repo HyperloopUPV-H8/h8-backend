@@ -28,7 +28,7 @@ func (parser *PacketParser) AddPacket(boardName string, packet excelAdapterModel
 
 	id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
 	if err != nil {
-		parser.trace.Error().Err(err).Str("id", packet.Description.ID).Msg("")
+		parser.trace.Error().Stack().Err(err).Str("id", packet.Description.ID).Msg("")
 		return
 	}
 
@@ -68,12 +68,12 @@ func (parser PacketParser) Decode(raw []byte) (id uint16, values models.PacketVa
 	reader := bytes.NewReader(raw)
 	id = internals.DecodeID(reader)
 
+	parser.trace.Trace().Uint16("id", id).Msg("decode")
 	values = make(models.PacketValues, len(parser.descriptors[id]))
 	for _, value := range parser.descriptors[id] {
 		values[value.ID] = parser.decodeValue(value, reader)
 	}
 
-	parser.trace.Trace().Uint16("id", id).Msg("decode")
 	return id, values
 }
 
@@ -93,6 +93,8 @@ func (parser PacketParser) decodeValue(value models.ValueDescriptor, reader io.R
 }
 
 func (parser PacketParser) Encode(id uint16, values models.PacketValues) []byte {
+	parser.trace.Trace().Uint16("id", id).Msg("encode")
+
 	writer := bytes.NewBuffer([]byte{})
 	internals.EncodeID(writer, id)
 
@@ -100,7 +102,6 @@ func (parser PacketParser) Encode(id uint16, values models.PacketValues) []byte 
 		parser.encodeValue(valueDescriptor, values[valueDescriptor.ID], writer)
 	}
 
-	parser.trace.Trace().Uint16("id", id).Msg("encode")
 	return writer.Bytes()
 }
 

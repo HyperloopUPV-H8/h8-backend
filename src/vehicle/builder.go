@@ -56,7 +56,7 @@ func (builder *Builder) AddGlobal(global excel_models.GlobalInfo) {
 	filter := getFilter(common.Values(global.BoardToIP), global.ProtocolToPort)
 	builder.sniffer, err = sniffer.New(os.Getenv("SNIFFER_DEV"), filter)
 	if err != nil {
-		builder.trace.Fatal().Err(err).Msg("")
+		builder.trace.Fatal().Stack().Err(err).Msg("")
 		return
 	}
 
@@ -66,7 +66,7 @@ func (builder *Builder) AddGlobal(global excel_models.GlobalInfo) {
 		var err error
 		builder.pipes[board], err = pipe.New(laddr, common.AddrWithPort(ip, global.ProtocolToPort[TCP_SERVER]))
 		if err != nil {
-			builder.trace.Fatal().Err(err).Msg("")
+			builder.trace.Fatal().Stack().Err(err).Msg("")
 			return
 		}
 	}
@@ -105,7 +105,7 @@ func (builder *Builder) AddPacket(boardName string, packet excel_models.Packet) 
 	builder.trace.Debug().Str("id", packet.Description.ID).Str("name", packet.Description.Name).Str("board", boardName).Msg("add packet")
 	id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
 	if err != nil {
-		builder.trace.Error().Err(err).Msg("")
+		builder.trace.Error().Stack().Err(err).Msg("")
 		return
 	}
 	builder.idToPipe[uint16(id)] = boardName

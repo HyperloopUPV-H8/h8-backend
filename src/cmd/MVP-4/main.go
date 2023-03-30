@@ -97,7 +97,7 @@ func main() {
 	go func() {
 		for order := range orderChannel {
 			if err := boardMux.Request(order); err != nil {
-				trace.Error().Err(err).Msg("")
+				trace.Error().Stack().Err(err).Msg("")
 			}
 		}
 	}()

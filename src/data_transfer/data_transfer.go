@@ -81,7 +81,7 @@ func (dataTransfer *DataTransfer) sendBuf() {
 
 	dataTransfer.trace.Trace().Msg("send buffer")
 	if err := dataTransfer.sendMessage(DATA_TRANSFER_TOPIC, dataTransfer.packetBuf); err != nil {
-		dataTransfer.trace.Error().Err(err).Msg("")
+		dataTransfer.trace.Error().Stack().Err(err).Msg("")
 		return
 	}
 

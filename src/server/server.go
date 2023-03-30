@@ -29,7 +29,7 @@ func (server *Server) ServeData(route string, data any) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		marshaledData, err := json.Marshal(data)
 		if err != nil {
-			server.trace.Error().Err(err).Msg("")
+			server.trace.Error().Stack().Err(err).Msg("")
 			http.Error(w, "failed to serialize resource", http.StatusInternalServerError)
 			return
 		}

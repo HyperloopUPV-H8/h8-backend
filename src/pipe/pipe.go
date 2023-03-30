@@ -28,13 +28,13 @@ func New(laddr string, raddr string) (*Pipe, error) {
 	trace.Info().Str("laddr", laddr).Str("raddr", raddr).Msg("new pipe")
 	localAddr, err := net.ResolveTCPAddr("tcp", laddr)
 	if err != nil {
-		trace.Error().Str("laddr", laddr).Err(err).Msg("")
+		trace.Error().Str("laddr", laddr).Stack().Err(err).Msg("")
 		return nil, err
 	}
 
 	remoteAddr, err := net.ResolveTCPAddr("tcp", raddr)
 	if err != nil {
-		trace.Error().Str("raddr", raddr).Err(err).Msg("")
+		trace.Error().Str("raddr", raddr).Stack().Err(err).Msg("")
 		return nil, err
 	}
 
@@ -59,7 +59,7 @@ func (pipe *Pipe) connect() {
 		if conn, err := net.DialTCP("tcp", pipe.laddr, pipe.raddr); err == nil {
 			pipe.open(conn)
 		} else {
-			pipe.trace.Trace().Err(err).Msg("dial failed")
+			pipe.trace.Trace().Stack().Err(err).Msg("dial failed")
 		}
 	}
 	pipe.trace.Info().Msg("connected")
@@ -85,7 +85,7 @@ func (pipe *Pipe) listen() {
 		buffer := make([]byte, READ_BUFFER_SIZE)
 		n, err := pipe.conn.Read(buffer)
 		if err != nil {
-			pipe.trace.Error().Err(err).Msg("")
+			pipe.trace.Error().Stack().Err(err).Msg("")
 			pipe.Close(true)
 			return
 		}
@@ -103,7 +103,7 @@ func (pipe *Pipe) listen() {
 func (pipe *Pipe) Write(data []byte) (int, error) {
 	if pipe == nil || pipe.conn == nil {
 		err := errors.New("pipe is nil")
-		pipe.trace.Error().Err(err).Msg("")
+		pipe.trace.Error().Stack().Err(err).Msg("")
 		return 0, err
 	}
 

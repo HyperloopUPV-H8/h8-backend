@@ -17,19 +17,19 @@ func DownloadFile(id string, path string, name string) error {
 	trace.Trace().Str("id", id).Str("path", path).Str("name", name).Msg("download file")
 	client, errClient := getClient()
 	if errClient != nil {
-		trace.Error().Str("id", id).Str("path", path).Str("name", name).Err(errClient).Msg("")
+		trace.Error().Str("id", id).Str("path", path).Str("name", name).Stack().Err(errClient).Msg("")
 		return errClient
 	}
 
 	file, errFile := getFile(client, id, SHEETS_MIME_TYPE)
 	if errFile != nil {
-		trace.Error().Str("id", id).Str("path", path).Str("name", name).Err(errFile).Msg("")
+		trace.Error().Str("id", id).Str("path", path).Str("name", name).Stack().Err(errFile).Msg("")
 		return errFile
 	}
 
 	errSaving := saveFile(file, path, name)
 	if errSaving != nil {
-		trace.Error().Str("id", id).Str("path", path).Str("name", name).Err(errSaving).Msg("")
+		trace.Error().Str("id", id).Str("path", path).Str("name", name).Stack().Err(errSaving).Msg("")
 	}
 
 	return errSaving

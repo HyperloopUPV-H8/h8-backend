@@ -29,7 +29,7 @@ func initTrace() *os.File {
 	file, err := os.Create(*traceFile)
 	if err != nil {
 		trace.Logger = trace.Logger.Output(consoleWriter)
-		trace.Fatal().Err(err).Msg("")
+		trace.Fatal().Stack().Err(err).Msg("")
 		return nil
 	}
 

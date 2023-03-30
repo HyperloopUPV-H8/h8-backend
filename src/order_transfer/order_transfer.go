@@ -46,7 +46,7 @@ func (orderTransfer *OrderTransfer) UpdateMessage(topic string, payload json.Raw
 	orderTransfer.trace.Warn().Str("source", source).Str("topic", topic).Msg("got message")
 	var order vehicle_models.Order
 	if err := json.Unmarshal(payload, &order); err != nil {
-		orderTransfer.trace.Error().Err(err).Msg("")
+		orderTransfer.trace.Error().Stack().Err(err).Msg("")
 		return
 	}
 	orderTransfer.trace.Info().Str("source", source).Str("topic", topic).Uint16("id", order.ID).Msg("send order")

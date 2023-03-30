@@ -10,7 +10,7 @@ import (
 
 func encodeNext(writer io.Writer, value any) {
 	if err := binary.Write(writer, binary.LittleEndian, value); err != nil {
-		trace.Error().Err(err).Msg("")
+		trace.Fatal().Stack().Err(err).Msg("")
 		return
 	}
 }

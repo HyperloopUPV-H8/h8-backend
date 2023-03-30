@@ -38,7 +38,7 @@ func (vehicle *Vehicle) SendOrder(order models.Order) error {
 	pipe, ok := vehicle.pipes[vehicle.idToPipe[order.ID]]
 	if !ok {
 		err := fmt.Errorf("%s pipe for %d not found", vehicle.idToPipe[order.ID], order.ID)
-		vehicle.trace.Error().Err(err).Msg("")
+		vehicle.trace.Error().Stack().Err(err).Msg("")
 		return err
 	}
 
@@ -52,7 +52,7 @@ func (vehicle *Vehicle) SendOrder(order models.Order) error {
 	if err == nil {
 		vehicle.stats.sent++
 	} else {
-		vehicle.trace.Error().Err(err).Msg("")
+		vehicle.trace.Error().Stack().Err(err).Msg("")
 		vehicle.stats.sentFail++
 	}
 

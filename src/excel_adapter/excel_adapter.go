@@ -21,13 +21,13 @@ func FetchDocument(id string, path string, name string) internalModels.Document 
 
 	errDownloading := internals.DownloadFile(id, path, name)
 	if errDownloading != nil {
-		trace.Error().Err(errDownloading).Msg("")
+		trace.Error().Stack().Err(errDownloading).Msg("")
 		trace.Warn().Str("id", id).Str("path", path).Str("name", name).Msg("using local document")
 	}
 
 	file, err := excelize.OpenFile(filepath.Join(path, name))
 	if err != nil {
-		trace.Fatal().Err(err).Msg("")
+		trace.Fatal().Stack().Err(err).Msg("")
 	}
 
 	return internals.GetDocument(file)
