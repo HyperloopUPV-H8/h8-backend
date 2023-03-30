@@ -10,6 +10,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/internals"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
+	"github.com/rs/zerolog"
 )
 
 type Vehicle struct {
@@ -28,12 +29,17 @@ type Vehicle struct {
 	stats *Stats
 
 	onConnectionChange func(string, bool)
+
+	trace zerolog.Logger
 }
 
 func (vehicle *Vehicle) SendOrder(order models.Order) error {
+	vehicle.trace.Info().Uint16("id", order.ID).Msg("send order")
 	pipe, ok := vehicle.pipes[vehicle.idToPipe[order.ID]]
 	if !ok {
-		return fmt.Errorf("%s pipe for %d not found", vehicle.idToPipe[order.ID], order.ID)
+		err := fmt.Errorf("%s pipe for %d not found", vehicle.idToPipe[order.ID], order.ID)
+		vehicle.trace.Error().Stack().Err(err).Msg("")
+		return err
 	}
 
 	fields := order.Fields
@@ -46,6 +52,7 @@ func (vehicle *Vehicle) SendOrder(order models.Order) error {
 	if err == nil {
 		vehicle.stats.sent++
 	} else {
+		vehicle.trace.Error().Stack().Err(err).Msg("")
 		vehicle.stats.sentFail++
 	}
 
@@ -53,6 +60,7 @@ func (vehicle *Vehicle) SendOrder(order models.Order) error {
 }
 
 func (vehicle *Vehicle) Listen(output chan<- models.Update) {
+	vehicle.trace.Info().Msg("start listening")
 	for raw := range vehicle.readChan {
 		rawCopy := make([]byte, len(raw))
 		copy(rawCopy, raw)
@@ -65,10 +73,12 @@ func (vehicle *Vehicle) Listen(output chan<- models.Update) {
 
 		vehicle.stats.recv++
 
+		vehicle.trace.Trace().Msg("read")
 		output <- update
 	}
 }
 
 func (vehicle *Vehicle) OnConnectionChange(callback func(string, bool)) {
+	vehicle.trace.Debug().Msg("set on connection change")
 	vehicle.onConnectionChange = callback
 }

@@ -2,7 +2,6 @@ package vehicle
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -14,6 +13,8 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/sniffer"
 	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/internals"
+	"github.com/rs/zerolog"
+	trace "github.com/rs/zerolog/log"
 )
 
 const (
@@ -32,9 +33,11 @@ type Builder struct {
 	podConverter     *unit_converter.UnitConverter
 	pipes            map[string]*pipe.Pipe
 	idToPipe         map[uint16]string
+	trace            zerolog.Logger
 }
 
 func NewBuilder() *Builder {
+	trace.Trace().Msg("new vehicle builder")
 	return &Builder{
 		parser:           packet_parser.NewPacketParser(),
 		displayConverter: unit_converter.NewUnitConverter("display"),
@@ -42,23 +45,29 @@ func NewBuilder() *Builder {
 		sniffer:          nil,
 		pipes:            make(map[string]*pipe.Pipe),
 		idToPipe:         make(map[uint16]string),
+		trace:            trace.With().Str("component", "vehicleBuilder").Logger(),
 	}
 }
 
 func (builder *Builder) AddGlobal(global excel_models.GlobalInfo) {
+	builder.trace.Debug().Msg("add global")
+
 	var err error
 	filter := getFilter(common.Values(global.BoardToIP), global.ProtocolToPort)
 	builder.sniffer, err = sniffer.New(os.Getenv("SNIFFER_DEV"), filter)
 	if err != nil {
-		log.Fatalf("Vehicle: AddGlobal: NewSniffer: %s\n", err)
+		builder.trace.Fatal().Stack().Err(err).Msg("")
+		return
 	}
 
 	laddr := common.AddrWithPort(os.Getenv("VEHICLE_LADDR"), global.ProtocolToPort[TCP_CLIENT])
 	for board, ip := range global.BoardToIP {
+		builder.trace.Debug().Str("board", board).Str("ip", ip).Msg("add board")
 		var err error
 		builder.pipes[board], err = pipe.New(laddr, common.AddrWithPort(ip, global.ProtocolToPort[TCP_SERVER]))
 		if err != nil {
-			log.Fatalf("Vehicle: AddGlobal: NewPipe: %s\n", err)
+			builder.trace.Fatal().Stack().Err(err).Msg("")
+			return
 		}
 	}
 
@@ -87,13 +96,17 @@ func getFilter(addrs []string, protocolToPort map[string]string) string {
 	tcpAddrDst = strings.TrimPrefix(tcpAddrDst, " or ")
 	tcp = fmt.Sprintf("%s and (%s) and (%s)", tcp, tcpAddrSrc, tcpAddrDst)
 
-	return fmt.Sprintf("(%s) or (%s)", udp, tcp)
+	filter := fmt.Sprintf("(%s) or (%s)", udp, tcp)
+	trace.Trace().Strs("addrs", addrs).Str("filter", filter).Msg("new filter")
+	return filter
 }
 
 func (builder *Builder) AddPacket(boardName string, packet excel_models.Packet) {
+	builder.trace.Debug().Str("id", packet.Description.ID).Str("name", packet.Description.Name).Str("board", boardName).Msg("add packet")
 	id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
 	if err != nil {
-		log.Fatalf("Vehicle: AddPacket: ParseUint: failed to parse id from %s\n", packet.Description.ID)
+		builder.trace.Error().Stack().Err(err).Msg("")
+		return
 	}
 	builder.idToPipe[uint16(id)] = boardName
 
@@ -103,6 +116,7 @@ func (builder *Builder) AddPacket(boardName string, packet excel_models.Packet) 
 }
 
 func (builder *Builder) Build() *Vehicle {
+	builder.trace.Info().Msg("build")
 	vehicle := &Vehicle{
 		sniffer:          builder.sniffer,
 		parser:           builder.parser,
@@ -115,6 +129,8 @@ func (builder *Builder) Build() *Vehicle {
 		idToPipe: builder.idToPipe,
 		readChan: make(chan []byte, READ_CHAN_BUF_SIZE),
 		stats:    newStats(),
+
+		trace: trace.With().Str("component", "vehicle").Logger(),
 	}
 
 	vehicle.sniffer.Listen(vehicle.readChan)

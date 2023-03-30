@@ -4,14 +4,15 @@ import (
 	"bufio"
 	"encoding/binary"
 	"io"
-	"log"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/packet_parser/models"
+	trace "github.com/rs/zerolog/log"
 )
 
 func decodeNext[T any](reader io.Reader) (value T) {
 	if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
-		log.Fatalf("decoder: decodeNext: %s\n", err)
+		trace.Fatal().Stack().Err(err).Msg("")
+		return
 	}
 	return value
 }
@@ -31,7 +32,8 @@ func DecodeBool(reader io.Reader) bool {
 func DecodeString(reader io.Reader) string {
 	str, err := bufio.NewReader(reader).ReadString('\n')
 	if err != nil {
-		log.Fatalf("decoder: DecodeString: %s\n", err)
+		trace.Fatal().Stack().Err(err).Msg("")
+		return ""
 	}
 	return str
 }

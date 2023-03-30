@@ -2,46 +2,58 @@ package server
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
+	"github.com/rs/zerolog"
+	trace "github.com/rs/zerolog/log"
 )
 
 type Server struct {
-	Router *mux.Router
+	router *mux.Router
+	trace  zerolog.Logger
+}
+
+func New(router *mux.Router) *Server {
+	trace.Info().Msg("new http server")
+	return &Server{
+		router: router,
+		trace:  trace.With().Str("component", "httpServer").Logger(),
+	}
 }
 
 func (server *Server) ServeData(route string, data any) {
-	server.Router.HandleFunc(route, func(w http.ResponseWriter, r *http.Request) {
+	server.trace.Debug().Str("route", route).Msg("serve data")
+	server.router.HandleFunc(route, func(w http.ResponseWriter, r *http.Request) {
 		r.Body.Close()
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.WriteHeader(http.StatusOK)
 		marshaledData, err := json.Marshal(data)
 		if err != nil {
-			log.Fatal("Error marshaling data at ServeData")
+			server.trace.Error().Stack().Err(err).Msg("")
+			http.Error(w, "failed to serialize resource", http.StatusInternalServerError)
+			return
 		}
 
 		w.Write(marshaledData)
+		server.trace.Trace().Str("route", route).Msg("write data")
 	})
 }
 
 func (server *Server) FileServer(route string, path string) {
-	server.Router.PathPrefix(route).HandlerFunc(http.FileServer(http.Dir(path)).ServeHTTP)
-}
-
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+	server.trace.Debug().Str("route", route).Str("path", path).Msg("file server")
+	server.router.PathPrefix(route).HandlerFunc(http.FileServer(http.Dir(path)).ServeHTTP)
 }
 
 func (server *Server) HandleFunc(route string, handler func(http.ResponseWriter, *http.Request)) {
-	server.Router.HandleFunc(route, func(w http.ResponseWriter, r *http.Request) {
+	server.trace.Debug().Str("route", route).Msg("handle func")
+	server.router.HandleFunc(route, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
+		server.trace.Trace().Str("route", route).Msg("handle request")
 		handler(w, r)
 	})
 }
 
 func (server *Server) ListenAndServe(addr string) {
-	http.ListenAndServe(addr, server.Router)
+	server.trace.Info().Str("addr", addr).Msg("listen and serve")
+	http.ListenAndServe(addr, server.router)
 }
