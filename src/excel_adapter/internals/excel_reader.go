@@ -2,14 +2,12 @@ package internals
 
 import (
 	"log"
+	"os"
 	"strings"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/internals/models"
 	"github.com/xuri/excelize/v2"
 )
-
-const GLOBAL_SHEET_PREFIX = "GLOBAL "
-const TABLE_PREFIX = "[TABLE] "
 
 func GetDocument(file *excelize.File) models.Document {
 	infoSheet, boardSheets := parseSheets(file)
@@ -26,8 +24,8 @@ func parseSheets(file *excelize.File) (models.Sheet, map[string]models.Sheet) {
 	sheetMap := file.GetSheetMap()
 	for _, name := range sheetMap {
 		cols := getSheetCols(file, name)
-		if !strings.HasPrefix(name, GLOBAL_SHEET_PREFIX) {
-			boardSheets[strings.TrimPrefix(name, GLOBAL_SHEET_PREFIX)] = parseSheet(name, cols)
+		if !strings.HasPrefix(name, os.Getenv("EXCEL_ADAPTER_GLOBAL_SHEET_PREFIX")) {
+			boardSheets[strings.TrimPrefix(name, os.Getenv("EXCEL_ADAPTER_GLOBAL_SHEET_PREFIX"))] = parseSheet(name, cols)
 		} else {
 			infoSheet = parseSheet(name, cols)
 		}
@@ -60,9 +58,9 @@ func findTables(cols [][]string) map[string][4]int {
 	tables := make(map[string][4]int)
 	for i, col := range cols {
 		for j, cell := range col {
-			if strings.HasPrefix(cell, TABLE_PREFIX) {
+			if strings.HasPrefix(cell, os.Getenv("EXCEL_ADAPTER_TABLE_PREFIX")) {
 				end := findTableEnd(cols, i, j)
-				tables[strings.TrimPrefix(cell, TABLE_PREFIX)] = [4]int{i, j, i + end[0], j + end[1] + 2}
+				tables[strings.TrimPrefix(cell, os.Getenv("EXCEL_ADAPTER_TABLE_PREFIX"))] = [4]int{i, j, i + end[0], j + end[1] + 2}
 			}
 		}
 	}
