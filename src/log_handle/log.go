@@ -90,33 +90,40 @@ type LogHandle struct {
 
 func (logger *LogHandle) UpdateMessage(topic string, payload json.RawMessage, source string) {
 	logger.trace.Debug().Str("topic", topic).Str("source", source).Msg("update message")
-	if logger.session == "" || source == logger.session {
-		var enable bool
-		if err := json.Unmarshal(payload, &enable); err != nil {
-			logger.trace.Error().Stack().Err(err).Msg("")
-			logger.notifyState()
-			return
-		}
+	switch topic {
+	case os.Getenv("LOGGER_ENABLE_TOPIC"):
+		logger.handleEnableRequest(topic, payload, source)
+	}
+	logger.notifyState()
+}
 
-		logger.handleEnable(enable)
-
-		// This can cause locks if the client managing the session disconnects. We should talk how this should work
-		if logger.isRunning {
-			logger.session = source
-		} else {
-			logger.session = ""
-		}
-		logger.trace.Debug().Str("session", logger.session).Msg("set log session")
-	} else {
+func (logger *LogHandle) handleEnableRequest(topic string, payload json.RawMessage, source string) {
+	if logger.session != "" && source != logger.session {
 		logger.trace.Warn().Str("source", source).Msg("tried to change running log session")
+		return
 	}
 
-	logger.notifyState()
+	var enable bool
+	if err := json.Unmarshal(payload, &enable); err != nil {
+		logger.trace.Error().Stack().Err(err).Msg("")
+		return
+	}
+
+	logger.handleEnable(enable)
+
+	// This can cause locks if the client managing the session disconnects. We should talk how this should work
+	if logger.isRunning {
+		logger.session = source
+	} else {
+		logger.session = ""
+	}
+
+	logger.trace.Debug().Str("session", logger.session).Msg("set log session")
 }
 
 func (logger *LogHandle) notifyState() {
 	logger.trace.Trace().Bool("running", logger.isRunning).Msg("notify state")
-	if err := logger.sendMessage("logger/enable", logger.isRunning); err != nil {
+	if err := logger.sendMessage(os.Getenv("LOGGER_STATE_TOPIC"), logger.isRunning); err != nil {
 		logger.trace.Error().Stack().Err(err).Msg("")
 	}
 }

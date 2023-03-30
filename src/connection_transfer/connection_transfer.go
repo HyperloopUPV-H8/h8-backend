@@ -76,7 +76,7 @@ func (connectionTransfer *ConnectionTransfer) Update(name string, up bool) {
 
 func (connectionTransfer *ConnectionTransfer) send() {
 	connectionTransfer.trace.Debug().Msg("send connections")
-	if err := connectionTransfer.sendMessage(os.Getenv("CONNECTION_TRANSFER_SEND_TOPIC"), connectionTransfer.boardStatus); err != nil {
+	if err := connectionTransfer.sendMessage(os.Getenv("CONNECTION_TRANSFER_UPDATE_TOPIC"), connectionTransfer.boardStatus); err != nil {
 		connectionTransfer.trace.Error().Stack().Err(err).Msg("")
 		return
 	}

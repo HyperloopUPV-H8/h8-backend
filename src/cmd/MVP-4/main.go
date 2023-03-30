@@ -64,9 +64,9 @@ func main() {
 	messageTransfer := message_transfer.Get()
 	orderTransfer, orderChannel := order_transfer.Get()
 
-	websocketBroker.RegisterHandle(connectionTransfer, os.Getenv("CONNECTION_TRANSFER_LISTEN_TOPIC"))
+	websocketBroker.RegisterHandle(connectionTransfer, os.Getenv("CONNECTION_TRANSFER_UPDATE_TOPIC"))
 	websocketBroker.RegisterHandle(dataTransfer)
-	websocketBroker.RegisterHandle(logger, os.Getenv("LOGGER_ENABLE_TOPIC"))
+	websocketBroker.RegisterHandle(logger, os.Getenv("LOGGER_ENABLE_TOPIC"), os.Getenv("LOGGER_STATE_TOPIC"))
 	websocketBroker.RegisterHandle(messageTransfer)
 	websocketBroker.RegisterHandle(orderTransfer, os.Getenv("ORDER_TRANSFER_SEND_TOPIC"))
 
