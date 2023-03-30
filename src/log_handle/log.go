@@ -16,7 +16,6 @@ import (
 	trace "github.com/rs/zerolog/log"
 )
 
-// TODO: Remove hard-coded values
 const (
 	LOG_HANDLE_HANDLER_NAME = "logHandle"
 	UPDATE_CHAN_BUF         = 100
