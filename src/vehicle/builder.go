@@ -20,10 +20,6 @@ import (
 const (
 	READ_CHAN_BUF_SIZE  = 100
 	ERROR_CHAN_BUF_SIZE = 100
-
-	TCP_CLIENT = "TCP_CLIENT"
-	TCP_SERVER = "TCP_SERVER"
-	UDP        = "UDP"
 )
 
 type Builder struct {
@@ -60,11 +56,11 @@ func (builder *Builder) AddGlobal(global excel_models.GlobalInfo) {
 		return
 	}
 
-	laddr := common.AddrWithPort(os.Getenv("VEHICLE_LADDR"), global.ProtocolToPort[TCP_CLIENT])
+	laddr := common.AddrWithPort(os.Getenv("VEHICLE_LADDR"), global.ProtocolToPort[os.Getenv("VEHICLE_BUILDER_TCP_CLIENT_TAG")])
 	for board, ip := range global.BoardToIP {
 		builder.trace.Debug().Str("board", board).Str("ip", ip).Msg("add board")
 		var err error
-		builder.pipes[board], err = pipe.New(laddr, common.AddrWithPort(ip, global.ProtocolToPort[TCP_SERVER]))
+		builder.pipes[board], err = pipe.New(laddr, common.AddrWithPort(ip, global.ProtocolToPort[os.Getenv("VEHICLE_BUILDER_TCP_SERVER_TAG")]))
 		if err != nil {
 			builder.trace.Fatal().Stack().Err(err).Msg("")
 			return
@@ -77,7 +73,7 @@ func (builder *Builder) AddGlobal(global excel_models.GlobalInfo) {
 }
 
 func getFilter(addrs []string, protocolToPort map[string]string) string {
-	udp := fmt.Sprintf("(udp port %s)", protocolToPort[UDP])
+	udp := fmt.Sprintf("(udp port %s)", protocolToPort[os.Getenv("VEHICLE_BUILDER_UDP_TAG")])
 	udpAddr := ""
 	for _, addr := range addrs {
 		udpAddr = fmt.Sprintf("%s or (src host %s)", udpAddr, addr)
@@ -85,7 +81,7 @@ func getFilter(addrs []string, protocolToPort map[string]string) string {
 	udpAddr = strings.TrimPrefix(udpAddr, " or ")
 	udp = fmt.Sprintf("%s and (%s)", udp, udpAddr)
 
-	tcp := fmt.Sprintf("(tcp port %s or tcp port %s) and (tcp[tcpflags] & (tcp-fin | tcp-syn | tcp-ack) == 0)", protocolToPort[TCP_CLIENT], protocolToPort[TCP_SERVER])
+	tcp := fmt.Sprintf("(tcp port %s or tcp port %s) and (tcp[tcpflags] & (tcp-fin | tcp-syn | tcp-ack) == 0)", protocolToPort[os.Getenv("VEHICLE_BUILDER_TCP_CLIENT_TAG")], protocolToPort[os.Getenv("VEHICLE_BUILDER_TCP_SERVER_TAG")])
 	tcpAddrSrc := ""
 	tcpAddrDst := ""
 	for _, addr := range addrs {
