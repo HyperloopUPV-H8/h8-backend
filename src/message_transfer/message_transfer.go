@@ -41,7 +41,7 @@ type MessageTransfer struct {
 
 func (messageTransfer *MessageTransfer) SendMessage(message models.Message) error {
 	messageTransfer.trace.Warn().Uint16("id", message.ID).Str("type", message.Type).Str("desc", message.Description).Msg("send message")
-	return messageTransfer.sendMessage(os.Getenv("MESSAGE_TRANSFER_TOPIC"), message)
+	return messageTransfer.sendMessage(os.Getenv("MESSAGE_TRANSFER_SEND_TOPIC"), message)
 }
 
 func (messageTransfer *MessageTransfer) UpdateMessage(topic string, payload json.RawMessage, source string) {

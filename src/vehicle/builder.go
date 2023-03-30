@@ -50,7 +50,7 @@ func (builder *Builder) AddGlobal(global excel_models.GlobalInfo) {
 
 	var err error
 	filter := getFilter(common.Values(global.BoardToIP), global.ProtocolToPort)
-	builder.sniffer, err = sniffer.New(os.Getenv("SNIFFER_DEV"), filter)
+	builder.sniffer, err = sniffer.New(os.Getenv("SNIFFER_INTERFACE"), filter)
 	if err != nil {
 		builder.trace.Fatal().Stack().Err(err).Msg("")
 		return

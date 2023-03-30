@@ -37,7 +37,7 @@ func main() {
 	traceFile := initTrace(*traceLevel, *traceFile)
 	defer traceFile.Close()
 
-	document := excel_adapter.FetchDocument(os.Getenv("EXCEL_ID"), os.Getenv("EXCEL_PATH"), os.Getenv("EXCEL_NAME"))
+	document := excel_adapter.FetchDocument(os.Getenv("EXCEL_ADAPTER_ID"), os.Getenv("EXCEL_ADAPTER_PATH"), os.Getenv("EXCEL_ADAPTER_NAME"))
 
 	vehicleBuilder := vehicle.NewBuilder()
 	podData := vehicle_models.NewPodData()
@@ -64,11 +64,11 @@ func main() {
 	messageTransfer := message_transfer.Get()
 	orderTransfer, orderChannel := order_transfer.Get()
 
-	websocketBroker.RegisterHandle(connectionTransfer, "connection/get")
+	websocketBroker.RegisterHandle(connectionTransfer, os.Getenv("CONNECTION_TRANSFER_LISTEN_TOPIC"))
 	websocketBroker.RegisterHandle(dataTransfer)
-	websocketBroker.RegisterHandle(logger, "logger/enable")
+	websocketBroker.RegisterHandle(logger, os.Getenv("LOGGER_ENABLE_TOPIC"))
 	websocketBroker.RegisterHandle(messageTransfer)
-	websocketBroker.RegisterHandle(orderTransfer, "order/send")
+	websocketBroker.RegisterHandle(orderTransfer, os.Getenv("ORDER_TRANSFER_SEND_TOPIC"))
 
 	vehicle.OnConnectionChange(connectionTransfer.Update)
 
@@ -94,15 +94,15 @@ func main() {
 
 	httpServer := server.New(mux.NewRouter())
 
-	httpServer.ServeData("/backend/"+os.Getenv("POD_DATA_ENDPOINT"), podData)
-	httpServer.ServeData("/backend/"+os.Getenv("ORDER_DATA_ENDPOINT"), orderData)
+	httpServer.ServeData("/backend/"+os.Getenv("SERVER_POD_DATA_ENDPOINT"), podData)
+	httpServer.ServeData("/backend/"+os.Getenv("SERVER_ORDER_DATA_ENDPOINT"), orderData)
 
-	httpServer.HandleFunc("/backend", websocketBroker.HandleConn)
+	httpServer.HandleFunc("/backend/"+os.Getenv("SERVER_WEB_SOCKET_ENDPOINT"), websocketBroker.HandleConn)
 
 	path, _ := os.Getwd()
-	httpServer.FileServer("/", filepath.Join(path, "static"))
+	httpServer.FileServer(os.Getenv("SERVER_FILE_SERVER_ENDPOINT"), filepath.Join(path, os.Getenv("SERVER_FILE_SERVER_PATH")))
 
-	go httpServer.ListenAndServe(os.Getenv("SERVER_ADDR"))
+	go httpServer.ListenAndServe(os.Getenv("SERVER_ADDRESS"))
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
