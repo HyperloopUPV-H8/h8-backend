@@ -1,6 +1,9 @@
 package sniffer
 
 import (
+	"os"
+	"strconv"
+
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
@@ -34,7 +37,13 @@ func New(dev string, filter string) (*Sniffer, error) {
 
 func obtainSource(dev string, filter string) (*pcap.Handle, error) {
 	trace.Debug().Str("dev", dev).Str("filter", filter).Msg("obtain source")
-	source, err := pcap.OpenLive(dev, SNAPLEN, true, pcap.BlockForever)
+	snaplen, err := strconv.ParseInt(os.Getenv("INTERFACE_MTU"), 10, 32)
+	if err != nil {
+		trace.Fatal().Stack().Err(err).Str("INTERFACE_MTU", os.Getenv("INTERFACE_MTU")).Msg("")
+		return nil, err
+	}
+
+	source, err := pcap.OpenLive(dev, int32(snaplen), true, pcap.BlockForever)
 	if err != nil {
 		return nil, err
 	}
