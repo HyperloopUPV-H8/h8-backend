@@ -2,8 +2,10 @@ package pipe
 
 import (
 	"errors"
-	"log"
 	"net"
+
+	"github.com/rs/zerolog"
+	trace "github.com/rs/zerolog/log"
 )
 
 const READ_BUFFER_SIZE = 1500
@@ -18,23 +20,31 @@ type Pipe struct {
 
 	output             chan<- []byte
 	onConnectionChange func(bool)
+
+	trace zerolog.Logger
 }
 
 func New(laddr string, raddr string) (*Pipe, error) {
+	trace.Info().Str("laddr", laddr).Str("raddr", raddr).Msg("new pipe")
 	localAddr, err := net.ResolveTCPAddr("tcp", laddr)
 	if err != nil {
+		trace.Error().Str("laddr", laddr).Err(err).Msg("")
 		return nil, err
 	}
 
 	remoteAddr, err := net.ResolveTCPAddr("tcp", raddr)
 	if err != nil {
+		trace.Error().Str("raddr", raddr).Err(err).Msg("")
 		return nil, err
 	}
 
 	pipe := &Pipe{
-		laddr:    localAddr,
-		raddr:    remoteAddr,
+		laddr: localAddr,
+		raddr: remoteAddr,
+
 		isClosed: true,
+
+		trace: trace.With().Str("component", "pipe").IPAddr("addr", remoteAddr.IP).Logger(),
 	}
 
 	go pipe.connect()
@@ -43,51 +53,67 @@ func New(laddr string, raddr string) (*Pipe, error) {
 }
 
 func (pipe *Pipe) connect() {
+	pipe.trace.Debug().Msg("connecting")
 	for pipe.isClosed {
+		pipe.trace.Trace().Msg("dial")
 		if conn, err := net.DialTCP("tcp", pipe.laddr, pipe.raddr); err == nil {
 			pipe.open(conn)
+		} else {
+			pipe.trace.Trace().Err(err).Msg("dial failed")
 		}
 	}
+	pipe.trace.Info().Msg("connected")
 
 	go pipe.listen()
 }
 
 func (pipe *Pipe) open(conn *net.TCPConn) {
-	log.Println("pipe open")
+	pipe.trace.Debug().Msg("open")
 	pipe.conn = conn
 	pipe.isClosed = false
 	pipe.onConnectionChange(!pipe.isClosed)
 }
 
 func (pipe *Pipe) SetOutput(output chan<- []byte) {
+	pipe.trace.Debug().Msg("set output")
 	pipe.output = output
 }
 
 func (pipe *Pipe) listen() {
+	pipe.trace.Info().Msg("start listening")
 	for {
 		buffer := make([]byte, READ_BUFFER_SIZE)
 		n, err := pipe.conn.Read(buffer)
 		if err != nil {
+			pipe.trace.Error().Err(err).Msg("")
 			pipe.Close(true)
 			return
 		}
 
 		if pipe.output == nil {
+			pipe.trace.Debug().Msg("no output configured")
 			continue
 		}
+
+		pipe.trace.Trace().Msg("new message")
 		pipe.output <- buffer[:n]
 	}
 }
 
 func (pipe *Pipe) Write(data []byte) (int, error) {
 	if pipe == nil || pipe.conn == nil {
-		return 0, errors.New("pipe is nil")
+		err := errors.New("pipe is nil")
+		pipe.trace.Error().Err(err).Msg("")
+		return 0, err
 	}
+
+	pipe.trace.Trace().Msg("write")
 	return pipe.conn.Write(data)
 }
 
 func (pipe *Pipe) Close(reconnect bool) error {
-	log.Println("pipe close")
+	pipe.trace.Warn().Bool("reconnect", reconnect).Msg("close")
+
 	err := pipe.conn.Close()
 	pipe.isClosed = err == nil
 	pipe.onConnectionChange(!pipe.isClosed)
@@ -99,5 +125,6 @@ func (pipe *Pipe) Close(reconnect bool) error {
 }
 
 func (pipe *Pipe) OnConnectionChange(callback func(bool)) {
+	pipe.trace.Debug().Msg("set on connection change")
 	pipe.onConnectionChange = callback
 }
