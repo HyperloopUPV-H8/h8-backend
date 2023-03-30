@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,12 +18,8 @@ import (
 
 // TODO: Remove hard-coded values
 const (
-	LOG_HANDLE_NAME      = "logHandle"
-	LOG_HANDLE_BASE_PATH = "./log"
-	DUMP_SIZE            = 7000
-	ROW_SIZE             = 20
-	AUTOSAVE_DELAY       = time.Minute
-	UPDATE_CHAN_BUF      = 100
+	LOG_HANDLE_HANDLER_NAME = "logHandle"
+	UPDATE_CHAN_BUF         = 100
 )
 
 var (
@@ -39,34 +36,62 @@ func Get() *LogHandle {
 
 func initLogger() {
 	trace.Info().Msg("init log handle")
+
+	dumpSize, err := strconv.ParseInt(os.Getenv("LOGGER_DUMP_SIZE"), 10, 32)
+	if err != nil {
+		trace.Fatal().Stack().Err(err).Str("LOGGER_DUMP_SIZE", os.Getenv("LOGGER_DUMP_SIZE")).Msg("")
+		return
+	}
+
+	rowSize, err := strconv.ParseInt(os.Getenv("LOGGER_ROW_SIZE"), 10, 32)
+	if err != nil {
+		trace.Fatal().Stack().Err(err).Str("LOGGER_ROW_SIZE", os.Getenv("LOGGER_ROW_SIZE")).Msg("")
+		return
+	}
+
+	autosaveDelay, err := time.ParseDuration(os.Getenv("LOGGER_AUTOSAVE_DELAY"))
+	if err != nil {
+		trace.Fatal().Stack().Err(err).Str("LOGGER_AUTOSAVE_DELAY", os.Getenv("LOGGER_AUTOSAVE_DELAY")).Msg("")
+	}
+
 	logger = &LogHandle{
-		buffer:      make(map[string][]models.Value),
-		autosave:    time.NewTicker(AUTOSAVE_DELAY),
-		files:       make(map[string]*os.File),
-		done:        make(chan struct{}),
-		updates:     make(chan vehicle_models.Update, UPDATE_CHAN_BUF),
-		running:     false,
-		logSession:  "",
-		sendMessage: defaultSendMessage,
-		trace:       trace.With().Str("component", LOG_HANDLE_NAME).Logger(),
+		files:    make(map[string]*os.File),
+		buffer:   make(map[string][]models.Value),
+		autosave: time.NewTicker(autosaveDelay),
+
+		done:    make(chan struct{}),
+		updates: make(chan vehicle_models.Update, UPDATE_CHAN_BUF),
+
+		isRunning: false,
+		session:   "",
+
+		sendMessage:   defaultSendMessage,
+		dumpThreshold: int(dumpSize / rowSize),
+
+		trace: trace.With().Str("component", LOG_HANDLE_HANDLER_NAME).Logger(),
 	}
 }
 
 type LogHandle struct {
-	buffer      map[string][]models.Value
-	autosave    *time.Ticker
-	files       map[string]*os.File
-	done        chan struct{}
-	updates     chan vehicle_models.Update
-	running     bool
-	logSession  string
-	sendMessage func(topic string, payload any, target ...string) error
-	trace       zerolog.Logger
+	files    map[string]*os.File
+	buffer   map[string][]models.Value
+	autosave *time.Ticker
+
+	done    chan struct{}
+	updates chan vehicle_models.Update
+
+	isRunning bool
+	session   string
+
+	sendMessage   func(topic string, payload any, target ...string) error
+	dumpThreshold int
+
+	trace zerolog.Logger
 }
 
 func (logger *LogHandle) UpdateMessage(topic string, payload json.RawMessage, source string) {
 	logger.trace.Debug().Str("topic", topic).Str("source", source).Msg("update message")
-	if logger.logSession == "" || source == logger.logSession {
+	if logger.session == "" || source == logger.session {
 		var enable bool
 		if err := json.Unmarshal(payload, &enable); err != nil {
 			logger.trace.Error().Stack().Err(err).Msg("")
@@ -77,12 +102,12 @@ func (logger *LogHandle) UpdateMessage(topic string, payload json.RawMessage, so
 		logger.handleEnable(enable)
 
 		// This can cause locks if the client managing the session disconnects. We should talk how this should work
-		if logger.running {
-			logger.logSession = source
+		if logger.isRunning {
+			logger.session = source
 		} else {
-			logger.logSession = ""
+			logger.session = ""
 		}
-		logger.trace.Debug().Str("session", logger.logSession).Msg("set log session")
+		logger.trace.Debug().Str("session", logger.session).Msg("set log session")
 	} else {
 		logger.trace.Warn().Str("source", source).Msg("tried to change running log session")
 	}
@@ -91,8 +116,8 @@ func (logger *LogHandle) UpdateMessage(topic string, payload json.RawMessage, so
 }
 
 func (logger *LogHandle) notifyState() {
-	logger.trace.Trace().Bool("running", logger.running).Msg("notify state")
-	if err := logger.sendMessage("logger/enable", logger.running); err != nil {
+	logger.trace.Trace().Bool("running", logger.isRunning).Msg("notify state")
+	if err := logger.sendMessage("logger/enable", logger.isRunning); err != nil {
 		logger.trace.Error().Stack().Err(err).Msg("")
 	}
 }
@@ -112,12 +137,12 @@ func (logger *LogHandle) SetSendMessage(sendMessage func(topic string, payload a
 }
 
 func (logger *LogHandle) HandlerName() string {
-	return LOG_HANDLE_NAME
+	return LOG_HANDLE_HANDLER_NAME
 }
 
 func (logger *LogHandle) run() {
-	logger.running = true
-	defer func() { logger.running = false }()
+	logger.isRunning = true
+	defer func() { logger.isRunning = false }()
 	logger.trace.Info().Msg("run")
 	for {
 		select {
@@ -142,7 +167,7 @@ func (logger *LogHandle) run() {
 func (logger *LogHandle) checkDump() {
 	logger.trace.Trace().Msg("check dump")
 	for _, buf := range logger.buffer {
-		if len(buf) > int(DUMP_SIZE/ROW_SIZE) {
+		if len(buf) > logger.dumpThreshold {
 			logger.flush()
 			break
 		}
@@ -150,7 +175,7 @@ func (logger *LogHandle) checkDump() {
 }
 
 func (logger *LogHandle) Update(update vehicle_models.Update) {
-	if logger.running {
+	if logger.isRunning {
 		logger.trace.Trace().Uint16("id", update.ID).Msg("update")
 		logger.updates <- update
 	}
@@ -201,13 +226,14 @@ func (logger *LogHandle) getFile(valueName string) *os.File {
 }
 
 func (logger *LogHandle) createFile(valueName string) *os.File {
-	err := os.MkdirAll(filepath.Join(LOG_HANDLE_BASE_PATH, valueName), os.ModeDir)
+	basePath := os.Getenv("LOGGER_BASE_PATH")
+	err := os.MkdirAll(filepath.Join(basePath, valueName), os.ModeDir)
 	if err != nil {
 		logger.trace.Fatal().Stack().Err(err).Msg("")
 		return nil
 	}
 
-	path := filepath.Join(LOG_HANDLE_BASE_PATH, valueName, strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v.csv", time.Now()), " ", "_"), ":", "-"))
+	path := filepath.Join(basePath, valueName, strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v.csv", time.Now()), " ", "_"), ":", "-"))
 	file, err := os.Create(path)
 	if err != nil {
 		logger.trace.Fatal().Stack().Err(err).Msg("")
