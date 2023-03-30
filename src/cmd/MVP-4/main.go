@@ -1,8 +1,7 @@
 package main
 
 import (
-	"fmt"
-	"log"
+	"flag"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -24,12 +23,29 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/websocket_broker"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+	"github.com/rs/zerolog"
+	trace "github.com/rs/zerolog/log"
 )
+
+var traceLevel = flag.String("trace", "info", "set the trace level (\"fatal\", \"error\", \"warn\", \"info\", \"debug\", \"trace\")")
+var traceLevelMap = map[string]zerolog.Level{
+	"fatal": zerolog.FatalLevel,
+	"error": zerolog.ErrorLevel,
+	"warn":  zerolog.WarnLevel,
+	"info":  zerolog.InfoLevel,
+	"debug": zerolog.DebugLevel,
+	"trace": zerolog.TraceLevel,
+}
+
+var traceFile = flag.String("log", "trace.json", "set the trace log file")
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-
 	godotenv.Load(".env")
+
+	flag.Parse()
+	traceFile := initTrace()
+	defer traceFile.Close()
 
 	document := excel_adapter.FetchDocument(os.Getenv("EXCEL_ID"), os.Getenv("EXCEL_PATH"), os.Getenv("EXCEL_NAME"))
 
@@ -81,12 +97,12 @@ func main() {
 	go func() {
 		for order := range orderChannel {
 			if err := boardMux.Request(order); err != nil {
-				log.Printf("request failed: %s\n", err)
+				trace.Error().Err(err).Msg("")
 			}
 		}
 	}()
 
-	httpServer := server.Server{Router: mux.NewRouter()}
+	httpServer := server.New(mux.NewRouter())
 
 	httpServer.ServeData("/backend/"+os.Getenv("POD_DATA_ENDPOINT"), podData)
 	httpServer.ServeData("/backend/"+os.Getenv("ORDER_DATA_ENDPOINT"), orderData)
@@ -101,12 +117,11 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	log.Println("backend running!")
 loop:
 	for {
 		select {
 		case <-time.After(time.Second * 10):
-			fmt.Println(vehicle.Stats())
+			trace.Trace().Any("stats", vehicle.Stats()).Msg("stats")
 		case <-interrupt:
 			break loop
 		}
