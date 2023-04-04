@@ -39,7 +39,7 @@ func getClient() (*drive.Service, error) {
 	trace.Trace().Msg("get client")
 	ctx := context.Background()
 
-	client, err := drive.NewService(ctx, option.WithCredentialsFile(os.Getenv("CREDENTIALS")))
+	client, err := drive.NewService(ctx, option.WithCredentialsFile(os.Getenv("EXCEL_ADAPTER_CREDENTIALS")))
 	if err != nil {
 		return nil, err
 	}

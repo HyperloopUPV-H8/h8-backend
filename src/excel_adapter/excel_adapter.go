@@ -1,6 +1,7 @@
 package excel_adapter
 
 import (
+	"os"
 	"path/filepath"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/internals"
@@ -9,12 +10,6 @@ import (
 	trace "github.com/rs/zerolog/log"
 	"github.com/xuri/excelize/v2"
 )
-
-const GLOBAL_SHEET_NAME = "INFO"
-const ADDRESSES_TABLE_NAME = "addresses"
-const UNITS_TABLE_NAME = "units"
-const PORTS_TABLE_NAME = "ports"
-const IDS_TABLE_NAME = "ids"
 
 func FetchDocument(id string, path string, name string) internalModels.Document {
 	trace.Info().Str("id", id).Str("path", path).Str("name", name).Msg("fetch document")
@@ -44,7 +39,7 @@ func getBoards(document internalModels.Document) map[string]models.Board {
 }
 
 func getIP(board string, document internalModels.Document) string {
-	for _, row := range document.Info.Tables[ADDRESSES_TABLE_NAME].Rows {
+	for _, row := range document.Info.Tables[os.Getenv("EXCEL_ADAPTER_ADDRESS_TABLE_NAME")].Rows {
 		if row[0] == board {
 			trace.Trace().Str("board", board).Str("addr", row[1]).Msg("get board ip")
 			return row[1]
@@ -78,10 +73,10 @@ func Update(document internalModels.Document, objects ...models.FromDocument) {
 func getGlobalInfo(document internalModels.Document) models.GlobalInfo {
 	trace.Trace().Msg("get global info")
 	return models.GlobalInfo{
-		BoardToIP:        getInfoTableToMap(ADDRESSES_TABLE_NAME, document),
-		UnitToOperations: getInfoTableToMap(UNITS_TABLE_NAME, document),
-		ProtocolToPort:   getInfoTableToMap(PORTS_TABLE_NAME, document),
-		BoardToID:        getInfoTableToMap(IDS_TABLE_NAME, document),
+		BoardToIP:        getInfoTableToMap(os.Getenv("EXCEL_ADAPTER_ADDRESS_TABLE_NAME"), document),
+		UnitToOperations: getInfoTableToMap(os.Getenv("EXCEL_ADAPTER_UNITS_TABLE_NAME"), document),
+		ProtocolToPort:   getInfoTableToMap(os.Getenv("EXCEL_ADAPTER_PORTS_TABLE_NAME"), document),
+		BoardToID:        getInfoTableToMap(os.Getenv("EXCEL_ADAPTER_IDS_TABLE_NAME"), document),
 	}
 }
 

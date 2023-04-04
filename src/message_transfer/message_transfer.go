@@ -3,6 +3,7 @@ package message_transfer
 import (
 	"encoding/json"
 	"errors"
+	"os"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/message_transfer/models"
 	"github.com/rs/zerolog"
@@ -11,7 +12,6 @@ import (
 
 const (
 	MESSAGE_TRANSFER_HANDLER_NAME = "messageTransfer"
-	MESSAGE_TRANSFER_TOPIC        = "message/update"
 )
 
 var (
@@ -41,7 +41,7 @@ type MessageTransfer struct {
 
 func (messageTransfer *MessageTransfer) SendMessage(message models.Message) error {
 	messageTransfer.trace.Warn().Uint16("id", message.ID).Str("type", message.Type).Str("desc", message.Description).Msg("send message")
-	return messageTransfer.sendMessage(MESSAGE_TRANSFER_TOPIC, message)
+	return messageTransfer.sendMessage(os.Getenv("MESSAGE_TRANSFER_SEND_TOPIC"), message)
 }
 
 func (messageTransfer *MessageTransfer) UpdateMessage(topic string, payload json.RawMessage, source string) {

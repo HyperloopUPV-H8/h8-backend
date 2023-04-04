@@ -3,12 +3,12 @@ package pipe
 import (
 	"errors"
 	"net"
+	"os"
+	"strconv"
 
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
-
-const READ_BUFFER_SIZE = 1500
 
 type Pipe struct {
 	conn *net.TCPConn
@@ -17,6 +17,7 @@ type Pipe struct {
 	raddr *net.TCPAddr
 
 	isClosed bool
+	mtu      int
 
 	output             chan<- []byte
 	onConnectionChange func(bool)
@@ -38,11 +39,18 @@ func New(laddr string, raddr string) (*Pipe, error) {
 		return nil, err
 	}
 
+	mtu, err := strconv.ParseInt(os.Getenv("INTERFACE_MTU"), 10, 32)
+	if err != nil {
+		trace.Fatal().Stack().Err(err).Str("INTERFACE_MTU", os.Getenv("INTERFACE_MTU")).Msg("")
+		return nil, err
+	}
+
 	pipe := &Pipe{
 		laddr: localAddr,
 		raddr: remoteAddr,
 
 		isClosed: true,
+		mtu:      int(mtu),
 
 		trace: trace.With().Str("component", "pipe").IPAddr("addr", remoteAddr.IP).Logger(),
 	}
@@ -82,7 +90,7 @@ func (pipe *Pipe) SetOutput(output chan<- []byte) {
 func (pipe *Pipe) listen() {
 	pipe.trace.Info().Msg("start listening")
 	for {
-		buffer := make([]byte, READ_BUFFER_SIZE)
+		buffer := make([]byte, pipe.mtu)
 		n, err := pipe.conn.Read(buffer)
 		if err != nil {
 			pipe.trace.Error().Stack().Err(err).Msg("")

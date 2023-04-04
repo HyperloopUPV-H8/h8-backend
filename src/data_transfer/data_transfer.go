@@ -3,6 +3,8 @@ package data_transfer
 import (
 	"encoding/json"
 	"errors"
+	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -13,8 +15,6 @@ import (
 
 const (
 	DATA_TRANSFER_HANDLER_NAME = "dataTransfer"
-	DATA_TRANSFER_REFRESH_RATE = time.Second / 30
-	DATA_TRANSFER_TOPIC        = "packet/update"
 )
 
 var (
@@ -31,10 +31,16 @@ func Get() *DataTransfer {
 
 func initDataTransfer() {
 	trace.Info().Msg("init data transfer")
+
+	refreshRate, err := strconv.ParseInt(os.Getenv("DATA_TRANSFER_FPS"), 10, 32)
+	if err != nil {
+		trace.Fatal().Stack().Err(err).Str("DATA_TRANSFER_FPS", os.Getenv("DATA_TRANSFER_FPS")).Msg("")
+	}
+
 	dataTransfer = &DataTransfer{
 		bufMx:       &sync.Mutex{},
 		packetBuf:   make(map[uint16]models.Update),
-		ticker:      time.NewTicker(DATA_TRANSFER_REFRESH_RATE),
+		ticker:      time.NewTicker(time.Second / time.Duration(refreshRate)),
 		sendMessage: defaultSendMessage,
 		trace:       trace.With().Str("component", DATA_TRANSFER_HANDLER_NAME).Logger(),
 	}
@@ -80,7 +86,7 @@ func (dataTransfer *DataTransfer) sendBuf() {
 	defer dataTransfer.bufMx.Unlock()
 
 	dataTransfer.trace.Trace().Msg("send buffer")
-	if err := dataTransfer.sendMessage(DATA_TRANSFER_TOPIC, dataTransfer.packetBuf); err != nil {
+	if err := dataTransfer.sendMessage(os.Getenv("DATA_TRANSFER_TOPIC"), dataTransfer.packetBuf); err != nil {
 		dataTransfer.trace.Error().Stack().Err(err).Msg("")
 		return
 	}
