@@ -1,0 +1,86 @@
+package blcu
+
+import (
+	"bytes"
+	"encoding/json"
+	"io"
+	"os"
+	"time"
+
+	"github.com/HyperloopUPV-H8/Backend-H8/common"
+	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
+	"github.com/pin/tftp/v3"
+)
+
+func (blcu *BLCU) handleDownload(payload json.RawMessage) ([]byte, error) {
+	var board string
+	if err := json.Unmarshal(payload, &board); err != nil {
+		return nil, err
+	}
+
+	if err := blcu.requestDownload(board); err != nil {
+		return nil, err
+	}
+
+	buffer := bytes.NewBuffer(nil)
+	if err := blcu.ReadTFTP(buffer); err != nil {
+		return nil, err
+	}
+
+	return buffer.Bytes(), nil
+}
+
+func (blcu *BLCU) requestDownload(board string) error {
+	downloadOrder := getDownloadOrder(board)
+	if err := blcu.Request(downloadOrder); err != nil {
+		return err
+	}
+
+	// TODO: remove hardcoded timeout
+	if _, err := common.ReadTimeout(blcu.ackChannel, time.Minute); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func getDownloadOrder(board string) models.Order {
+	return models.Order{
+		ID: BLCU_DOWNLOAD_ORDER_ID,
+		Fields: map[string]any{
+			BLCU_DOWNLOAD_ORDER_FIELD: board,
+		},
+	}
+}
+
+func (blcu *BLCU) ReadTFTP(writer io.Writer) error {
+	client, err := tftp.NewClient(blcu.addr)
+	if err != nil {
+		return err
+	}
+
+	receiver, err := client.Receive("a.bin", "octet")
+	if err != nil {
+		return err
+	}
+
+	_, err = receiver.WriteTo(writer)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type filePayload struct {
+	File      []byte `json:"file"`
+	IsSuccess bool   `json:"isSuccess"`
+}
+
+func (blcu *BLCU) notifyDownloadFailure() {
+	blcu.sendMessage(os.Getenv("BLCU_FILE_TOPIC"), filePayload{IsSuccess: false, File: nil})
+}
+
+func (blcu *BLCU) notifyDownloadSuccess(bytes []byte) {
+	blcu.sendMessage(os.Getenv("BLCU_FILE_TOPIC"), filePayload{IsSuccess: true, File: bytes})
+}

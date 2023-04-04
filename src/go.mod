@@ -8,6 +8,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/joho/godotenv v1.4.0
+	github.com/pin/tftp/v3 v3.0.0
 	github.com/rs/zerolog v1.29.0
 	github.com/xuri/excelize/v2 v2.6.1
 	golang.org/x/exp v0.0.0-20230108222341-4b8118a2686a

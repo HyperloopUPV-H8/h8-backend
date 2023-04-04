@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/board"
+	"github.com/HyperloopUPV-H8/Backend-H8/board/boards/blcu"
 	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter"
@@ -42,8 +43,9 @@ func main() {
 	vehicleBuilder := vehicle.NewBuilder()
 	podData := vehicle_models.NewPodData()
 	orderData := vehicle_models.NewOrderData()
+	blcu := blcu.NewBLCU()
 
-	excel_adapter.Update(document, vehicleBuilder, podData, orderData)
+	excel_adapter.Update(document, vehicleBuilder, podData, orderData, blcu)
 
 	vehicle := vehicleBuilder.Build()
 
@@ -51,6 +53,15 @@ func main() {
 	go vehicle.Listen(vehicleOutput)
 
 	boardMux := board.NewMux(board.WithInput(vehicleOutput), board.WithOutput(vehicle.SendOrder))
+	boardMux.AddBoard(blcu)
+
+	blcuIDs := make(map[uint16]string)
+	for _, packet := range podData.Boards["BLCU"].Packets {
+		blcuIDs[packet.ID] = "blcu"
+	}
+	boardMux.AddBoardMapping(blcuIDs)
+
+	// TODO: remove hardcoded values
 
 	updateChan := make(chan vehicle_models.Update)
 	go boardMux.Listen(updateChan)
@@ -64,6 +75,7 @@ func main() {
 	messageTransfer := message_transfer.Get()
 	orderTransfer, orderChannel := order_transfer.Get()
 
+	websocketBroker.RegisterHandle(blcu, os.Getenv("BLCU_UPLOAD_TOPIC"), os.Getenv("BLCU_DOWNLOAD_TOPIC"))
 	websocketBroker.RegisterHandle(connectionTransfer, os.Getenv("CONNECTION_TRANSFER_UPDATE_TOPIC"))
 	websocketBroker.RegisterHandle(dataTransfer)
 	websocketBroker.RegisterHandle(logger, os.Getenv("LOGGER_ENABLE_TOPIC"), os.Getenv("LOGGER_STATE_TOPIC"))
@@ -97,7 +109,7 @@ func main() {
 	httpServer.ServeData("/backend/"+os.Getenv("SERVER_POD_DATA_ENDPOINT"), podData)
 	httpServer.ServeData("/backend/"+os.Getenv("SERVER_ORDER_DATA_ENDPOINT"), orderData)
 
-	httpServer.HandleFunc("/backend/"+os.Getenv("SERVER_WEB_SOCKET_ENDPOINT"), websocketBroker.HandleConn)
+	httpServer.HandleFunc("/backend", websocketBroker.HandleConn)
 
 	path, _ := os.Getwd()
 	httpServer.FileServer(os.Getenv("SERVER_FILE_SERVER_ENDPOINT"), filepath.Join(path, os.Getenv("SERVER_FILE_SERVER_PATH")))
