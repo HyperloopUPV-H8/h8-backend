@@ -22,7 +22,7 @@ import (
 	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/websocket_broker"
 	"github.com/gorilla/mux"
-	"github.com/joho/godotenv"
+	"github.com/pelletier/go-toml/v2"
 	trace "github.com/rs/zerolog/log"
 )
 
@@ -31,19 +31,20 @@ var traceFile = flag.String("log", "trace.json", "set the trace log file")
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	godotenv.Load(".env")
-
 	flag.Parse()
+
 	traceFile := initTrace(*traceLevel, *traceFile)
 	defer traceFile.Close()
 
-	document := excel_adapter.FetchDocument(os.Getenv("EXCEL_ADAPTER_ID"), os.Getenv("EXCEL_ADAPTER_PATH"), os.Getenv("EXCEL_ADAPTER_NAME"))
+	config := getConfig()
 
-	vehicleBuilder := vehicle.NewBuilder()
+	excelAdapter := excel_adapter.NewExcelAdapter(config.Excel)
+
+	vehicleBuilder := vehicle.NewBuilder(config.Vehicle)
 	podData := vehicle_models.NewPodData()
 	orderData := vehicle_models.NewOrderData()
 
-	excel_adapter.Update(document, vehicleBuilder, podData, orderData)
+	excelAdapter.Update(vehicleBuilder, podData, orderData)
 
 	vehicle := vehicleBuilder.Build()
 
@@ -58,17 +59,25 @@ func main() {
 	// Communication with front-end
 	websocketBroker := websocket_broker.Get()
 
+	connection_transfer.SetConfig(config.Connections)
 	connectionTransfer := connection_transfer.Get()
+
+	data_transfer.SetConfig(config.DataTransfer)
 	dataTransfer := data_transfer.Get()
+
+	log_handle.SetConfig(config.Logger)
 	logger := log_handle.Get()
+
+	message_transfer.SetConfig(config.Messages)
 	messageTransfer := message_transfer.Get()
+
 	orderTransfer, orderChannel := order_transfer.Get()
 
-	websocketBroker.RegisterHandle(connectionTransfer, os.Getenv("CONNECTION_TRANSFER_UPDATE_TOPIC"))
+	websocketBroker.RegisterHandle(connectionTransfer, config.Connections.UpdateTopic)
 	websocketBroker.RegisterHandle(dataTransfer)
-	websocketBroker.RegisterHandle(logger, os.Getenv("LOGGER_ENABLE_TOPIC"), os.Getenv("LOGGER_STATE_TOPIC"))
+	websocketBroker.RegisterHandle(logger, config.Logger.Topics.Enable, config.Logger.Topics.State)
 	websocketBroker.RegisterHandle(messageTransfer)
-	websocketBroker.RegisterHandle(orderTransfer, os.Getenv("ORDER_TRANSFER_SEND_TOPIC"))
+	websocketBroker.RegisterHandle(orderTransfer, config.Orders.SendTopic)
 
 	vehicle.OnConnectionChange(connectionTransfer.Update)
 
@@ -94,15 +103,15 @@ func main() {
 
 	httpServer := server.New(mux.NewRouter())
 
-	httpServer.ServeData("/backend/"+os.Getenv("SERVER_POD_DATA_ENDPOINT"), podData)
-	httpServer.ServeData("/backend/"+os.Getenv("SERVER_ORDER_DATA_ENDPOINT"), orderData)
+	httpServer.ServeData("/backend/"+config.Server.Endpoints.PodData, podData)
+	httpServer.ServeData("/backend/"+config.Server.Endpoints.OrderData, orderData)
 
-	httpServer.HandleFunc("/backend/"+os.Getenv("SERVER_WEB_SOCKET_ENDPOINT"), websocketBroker.HandleConn)
+	httpServer.HandleFunc("/backend/"+config.Server.Endpoints.Websocket, websocketBroker.HandleConn)
 
 	path, _ := os.Getwd()
-	httpServer.FileServer(os.Getenv("SERVER_FILE_SERVER_ENDPOINT"), filepath.Join(path, os.Getenv("SERVER_FILE_SERVER_PATH")))
+	httpServer.FileServer(config.Server.Endpoints.FileServer, filepath.Join(path, config.Server.FileServerPath))
 
-	go httpServer.ListenAndServe(os.Getenv("SERVER_ADDRESS"))
+	go httpServer.ListenAndServe(config.Server.Address)
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
@@ -136,4 +145,21 @@ func getIdToType(podData *vehicle_models.PodData) map[uint16]string {
 		}
 	}
 	return idToType
+}
+
+func getConfig() Config {
+	configFile, fileErr := os.ReadFile("./config.toml")
+
+	if fileErr != nil {
+		trace.Fatal().Stack().Err(fileErr).Msg("error reading config file")
+	}
+
+	var config Config
+	unmarshalErr := toml.Unmarshal(configFile, &config)
+
+	if unmarshalErr != nil {
+		trace.Fatal().Stack().Err(unmarshalErr).Msg("error unmarshaling toml file")
+	}
+
+	return config
 }

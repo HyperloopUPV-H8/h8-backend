@@ -1,9 +1,6 @@
 package sniffer
 
 import (
-	"os"
-	"strconv"
-
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
@@ -19,10 +16,15 @@ type Sniffer struct {
 	trace  zerolog.Logger
 }
 
-func New(dev string, filter string) (*Sniffer, error) {
+type SnifferConfig struct {
+	Mtu              uint
+	SnifferInterface string `toml:"sniffer_interface"`
+}
+
+func New(dev string, filter string, config SnifferConfig) (*Sniffer, error) {
 	trace.Info().Msg("new sniffer")
 
-	source, err := obtainSource(dev, filter)
+	source, err := obtainSource(dev, filter, config.Mtu)
 	if err != nil {
 		trace.Error().Stack().Err(err).Msg("")
 		return nil, err
@@ -35,15 +37,10 @@ func New(dev string, filter string) (*Sniffer, error) {
 	}, nil
 }
 
-func obtainSource(dev string, filter string) (*pcap.Handle, error) {
+func obtainSource(dev string, filter string, mtu uint) (*pcap.Handle, error) {
 	trace.Debug().Str("dev", dev).Str("filter", filter).Msg("obtain source")
-	snaplen, err := strconv.ParseInt(os.Getenv("INTERFACE_MTU"), 10, 32)
-	if err != nil {
-		trace.Fatal().Stack().Err(err).Str("INTERFACE_MTU", os.Getenv("INTERFACE_MTU")).Msg("")
-		return nil, err
-	}
 
-	source, err := pcap.OpenLive(dev, int32(snaplen), true, pcap.BlockForever)
+	source, err := pcap.OpenLive(dev, int32(mtu), true, pcap.BlockForever)
 	if err != nil {
 		return nil, err
 	}

@@ -3,7 +3,6 @@ package connection_transfer
 import (
 	"encoding/json"
 	"errors"
-	"os"
 	"sync"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer/models"
@@ -15,9 +14,20 @@ const (
 	CONNECTION_TRANSFER_HANDLER_NAME = "connectionTransfer"
 )
 
+type ConnectionTransferConfig struct {
+	UpdateTopic string `toml:"update_topic"`
+}
+
 var (
+	connectionTransferConfig = ConnectionTransferConfig{
+		UpdateTopic: "connection/update",
+	}
 	connectionTransfer *ConnectionTransfer
 )
+
+func SetConfig(config ConnectionTransferConfig) {
+	connectionTransferConfig = config
+}
 
 func Get() *ConnectionTransfer {
 	if connectionTransfer == nil {
@@ -33,8 +43,8 @@ func initConnectionTransfer() {
 		writeMx:     &sync.Mutex{},
 		boardStatus: make(map[string]models.Connection),
 		sendMessage: defaultSendMessage,
-
-		trace: trace.With().Str("component", CONNECTION_TRANSFER_HANDLER_NAME).Logger(),
+		updateTopic: connectionTransferConfig.UpdateTopic,
+		trace:       trace.With().Str("component", CONNECTION_TRANSFER_HANDLER_NAME).Logger(),
 	}
 }
 
@@ -42,8 +52,8 @@ type ConnectionTransfer struct {
 	writeMx     *sync.Mutex
 	boardStatus map[string]models.Connection
 	sendMessage func(topic string, payload any, target ...string) error
-
-	trace zerolog.Logger
+	updateTopic string
+	trace       zerolog.Logger
 }
 
 func (connectionTransfer *ConnectionTransfer) UpdateMessage(topic string, payload json.RawMessage, source string) {
@@ -76,7 +86,7 @@ func (connectionTransfer *ConnectionTransfer) Update(name string, up bool) {
 
 func (connectionTransfer *ConnectionTransfer) send() {
 	connectionTransfer.trace.Debug().Msg("send connections")
-	if err := connectionTransfer.sendMessage(os.Getenv("CONNECTION_TRANSFER_UPDATE_TOPIC"), connectionTransfer.boardStatus); err != nil {
+	if err := connectionTransfer.sendMessage(connectionTransfer.updateTopic, connectionTransfer.boardStatus); err != nil {
 		connectionTransfer.trace.Error().Stack().Err(err).Msg("")
 		return
 	}

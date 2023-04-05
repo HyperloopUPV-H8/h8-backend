@@ -3,8 +3,6 @@ package data_transfer
 import (
 	"encoding/json"
 	"errors"
-	"os"
-	"strconv"
 	"sync"
 	"time"
 
@@ -17,9 +15,25 @@ const (
 	DATA_TRANSFER_HANDLER_NAME = "dataTransfer"
 )
 
+type DataTransferTopics struct {
+	Update string
+}
+type DataTransferConfig struct {
+	Fps    uint
+	Topics DataTransferTopics
+}
+
 var (
+	dataTransferConfig = DataTransferConfig{
+		Fps:    30,
+		Topics: DataTransferTopics{Update: "podData/update"},
+	}
 	dataTransfer *DataTransfer
 )
+
+func SetConfig(config DataTransferConfig) {
+	dataTransferConfig = config
+}
 
 func Get() *DataTransfer {
 	if dataTransfer == nil {
@@ -32,15 +46,11 @@ func Get() *DataTransfer {
 func initDataTransfer() {
 	trace.Info().Msg("init data transfer")
 
-	refreshRate, err := strconv.ParseInt(os.Getenv("DATA_TRANSFER_FPS"), 10, 32)
-	if err != nil {
-		trace.Fatal().Stack().Err(err).Str("DATA_TRANSFER_FPS", os.Getenv("DATA_TRANSFER_FPS")).Msg("")
-	}
-
 	dataTransfer = &DataTransfer{
 		bufMx:       &sync.Mutex{},
 		packetBuf:   make(map[uint16]models.Update),
-		ticker:      time.NewTicker(time.Second / time.Duration(refreshRate)),
+		ticker:      time.NewTicker(time.Second / time.Duration(dataTransferConfig.Fps)),
+		updateTopic: dataTransferConfig.Topics.Update,
 		sendMessage: defaultSendMessage,
 		trace:       trace.With().Str("component", DATA_TRANSFER_HANDLER_NAME).Logger(),
 	}
@@ -52,6 +62,7 @@ type DataTransfer struct {
 	bufMx       *sync.Mutex
 	packetBuf   map[uint16]models.Update
 	ticker      *time.Ticker
+	updateTopic string
 	sendMessage func(topic string, payload any, target ...string) error
 	trace       zerolog.Logger
 }
@@ -86,7 +97,7 @@ func (dataTransfer *DataTransfer) sendBuf() {
 	defer dataTransfer.bufMx.Unlock()
 
 	dataTransfer.trace.Trace().Msg("send buffer")
-	if err := dataTransfer.sendMessage(os.Getenv("DATA_TRANSFER_TOPIC"), dataTransfer.packetBuf); err != nil {
+	if err := dataTransfer.sendMessage(dataTransfer.updateTopic, dataTransfer.packetBuf); err != nil {
 		dataTransfer.trace.Error().Stack().Err(err).Msg("")
 		return
 	}

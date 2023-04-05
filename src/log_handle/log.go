@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -22,8 +21,35 @@ const (
 )
 
 var (
+	loggerConfig = LoggerConfig{
+		DumpSize:      7000,
+		RowSize:       20,
+		AutosaveDelay: "1m",
+		Path:          "./log",
+		Topics: LoggerTopics{
+			Enable: "logger/enable",
+			State:  "logger/state",
+		},
+	}
 	logger *LogHandle
 )
+
+type LoggerConfig struct {
+	DumpSize      uint   `toml:"dump_size"`
+	RowSize       uint   `toml:"row_size"`
+	AutosaveDelay string `toml:"autosave_delay"`
+	Path          string
+	Topics        LoggerTopics
+}
+
+type LoggerTopics struct {
+	Enable string
+	State  string
+}
+
+func SetConfig(config LoggerConfig) {
+	loggerConfig = config
+}
 
 func Get() *LogHandle {
 	if logger == nil {
@@ -36,21 +62,9 @@ func Get() *LogHandle {
 func initLogger() {
 	trace.Info().Msg("init log handle")
 
-	dumpSize, err := strconv.ParseInt(os.Getenv("LOGGER_DUMP_SIZE"), 10, 32)
+	autosaveDelay, err := time.ParseDuration(loggerConfig.AutosaveDelay)
 	if err != nil {
-		trace.Fatal().Stack().Err(err).Str("LOGGER_DUMP_SIZE", os.Getenv("LOGGER_DUMP_SIZE")).Msg("")
-		return
-	}
-
-	rowSize, err := strconv.ParseInt(os.Getenv("LOGGER_ROW_SIZE"), 10, 32)
-	if err != nil {
-		trace.Fatal().Stack().Err(err).Str("LOGGER_ROW_SIZE", os.Getenv("LOGGER_ROW_SIZE")).Msg("")
-		return
-	}
-
-	autosaveDelay, err := time.ParseDuration(os.Getenv("LOGGER_AUTOSAVE_DELAY"))
-	if err != nil {
-		trace.Fatal().Stack().Err(err).Str("LOGGER_AUTOSAVE_DELAY", os.Getenv("LOGGER_AUTOSAVE_DELAY")).Msg("")
+		trace.Fatal().Stack().Err(err).Str("LOGGER_AUTOSAVE_DELAY", loggerConfig.AutosaveDelay).Msg("")
 	}
 
 	logger = &LogHandle{
@@ -64,8 +78,11 @@ func initLogger() {
 		isRunning: false,
 		session:   "",
 
-		sendMessage:   defaultSendMessage,
-		dumpThreshold: int(dumpSize / rowSize),
+		topics:      LoggerTopics{Enable: loggerConfig.Topics.Enable, State: loggerConfig.Topics.State},
+		sendMessage: defaultSendMessage,
+
+		path:          loggerConfig.Path,
+		dumpThreshold: loggerConfig.DumpSize / loggerConfig.RowSize,
 
 		trace: trace.With().Str("component", LOG_HANDLE_HANDLER_NAME).Logger(),
 	}
@@ -82,8 +99,14 @@ type LogHandle struct {
 	isRunning bool
 	session   string
 
-	sendMessage   func(topic string, payload any, target ...string) error
-	dumpThreshold int
+	topics struct {
+		Enable string
+		State  string
+	}
+	sendMessage func(topic string, payload any, target ...string) error
+
+	path          string
+	dumpThreshold uint
 
 	trace zerolog.Logger
 }
@@ -91,7 +114,7 @@ type LogHandle struct {
 func (logger *LogHandle) UpdateMessage(topic string, payload json.RawMessage, source string) {
 	logger.trace.Debug().Str("topic", topic).Str("source", source).Msg("update message")
 	switch topic {
-	case os.Getenv("LOGGER_ENABLE_TOPIC"):
+	case logger.topics.Enable:
 		logger.handleEnableRequest(topic, payload, source)
 	}
 	logger.notifyState()
@@ -123,7 +146,7 @@ func (logger *LogHandle) handleEnableRequest(topic string, payload json.RawMessa
 
 func (logger *LogHandle) notifyState() {
 	logger.trace.Trace().Bool("running", logger.isRunning).Msg("notify state")
-	if err := logger.sendMessage(os.Getenv("LOGGER_STATE_TOPIC"), logger.isRunning); err != nil {
+	if err := logger.sendMessage(logger.topics.State, logger.isRunning); err != nil {
 		logger.trace.Error().Stack().Err(err).Msg("")
 	}
 }
@@ -173,7 +196,7 @@ func (logger *LogHandle) run() {
 func (logger *LogHandle) checkDump() {
 	logger.trace.Trace().Msg("check dump")
 	for _, buf := range logger.buffer {
-		if len(buf) > logger.dumpThreshold {
+		if len(buf) > int(logger.dumpThreshold) {
 			logger.flush()
 			break
 		}
@@ -232,7 +255,7 @@ func (logger *LogHandle) getFile(valueName string) *os.File {
 }
 
 func (logger *LogHandle) createFile(valueName string) *os.File {
-	basePath := os.Getenv("LOGGER_BASE_PATH")
+	basePath := logger.path
 	err := os.MkdirAll(filepath.Join(basePath, valueName), os.ModeDir)
 	if err != nil {
 		logger.trace.Fatal().Stack().Err(err).Msg("")
