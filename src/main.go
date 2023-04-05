@@ -23,6 +23,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/websocket_broker"
 	"github.com/gorilla/mux"
 	"github.com/pelletier/go-toml/v2"
+	"github.com/pkg/browser"
 	trace "github.com/rs/zerolog/log"
 )
 
@@ -112,6 +113,7 @@ func main() {
 	httpServer.FileServer(config.Server.Endpoints.FileServer, filepath.Join(path, config.Server.FileServerPath))
 
 	go httpServer.ListenAndServe(config.Server.Address)
+	browser.OpenURL("http://127.0.0.1:4000")
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
