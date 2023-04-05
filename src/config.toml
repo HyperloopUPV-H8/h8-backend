@@ -1,8 +1,8 @@
 
 [server]
-address = "localhost:4000"
+address = "127.0.0.1:4000"
 file_server_path = "static" # Change name to front build path
-endpoints = { pod_data = "podDataStructure", order_data = "orderDataStructure", websocket = "", file_server = "/" }
+endpoints = { pod_data = "/podDataStructure", order_data = "/orderDataStructure", websocket = "", file_server = "/" }
 
 [vehicle]
 tcp_client_tag = "TCP_CLIENT"
@@ -10,7 +10,6 @@ tcp_server_tag = "TCP_SERVER"
 udp_tag = "UDP"
 network = { mtu = 1500, sniffer_interface = "\\Device\\NPF_Loopback" }
 
-# [excel]
 [excel.download]
 id = "1BEwASubu0el9oQA6PSwVKaNU-Q6gbJ40JR6kgqguKYE"
 credentials = "./secret.json"
@@ -29,7 +28,7 @@ ids_table = "ids"
 [logger]
 dump_size = 7000
 row_size = 20
-autosave_delay = "1m" # Change to number in milliseconds instead of string
+autosave_delay = "1m"
 path = "./log"
 topics = { enable = "logger/enable", state = "logger/state" }
 
