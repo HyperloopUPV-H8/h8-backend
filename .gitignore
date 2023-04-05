@@ -1,8 +1,3 @@
-
-src/cmd/**
-
-!src/cmd/MVP-4
-
 # GOOGLE API KEY
 secret.json
 
