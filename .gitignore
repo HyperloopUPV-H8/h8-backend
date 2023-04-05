@@ -2,3 +2,16 @@
 src/cmd/**
 
 !src/cmd/MVP-4
+
+# GOOGLE API KEY
+secret.json
+
+trace.JSON
+
+# BUILD
+*.exe
+
+# EXCEL
+*.xlsx
+
+static
