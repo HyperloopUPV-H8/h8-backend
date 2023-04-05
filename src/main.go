@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -113,7 +114,7 @@ func main() {
 	httpServer.FileServer(config.Server.Endpoints.FileServer, filepath.Join(path, config.Server.FileServerPath))
 
 	go httpServer.ListenAndServe(config.Server.Address)
-	browser.OpenURL("http://127.0.0.1:4000")
+	browser.OpenURL(fmt.Sprintf("http://%s", config.Server.Address))
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
