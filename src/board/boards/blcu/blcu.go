@@ -10,7 +10,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 )
 
-// TODO: Find a better way to store these values (.env?)
+// TODO: Get these values from the TOML
 const (
 	BLCU_BOARD_NAME           = "blcu"
 	BLCU_HANDLER_NAME         = "blcu"

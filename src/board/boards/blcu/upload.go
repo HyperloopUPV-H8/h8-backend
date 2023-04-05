@@ -35,7 +35,7 @@ type uploadPayload struct {
 }
 
 func (blcu *BLCU) requestUpload(board string) error {
-	uploadOrder := getUploadOrder(board)
+	uploadOrder := createUploadOrder(board)
 	if err := blcu.Request(uploadOrder); err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func (blcu *BLCU) requestUpload(board string) error {
 	return nil
 }
 
-func getUploadOrder(board string) models.Order {
+func createUploadOrder(board string) models.Order {
 	return models.Order{
 		ID: BLCU_UPLOAD_ORDER_ID,
 		Fields: map[string]any{

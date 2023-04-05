@@ -22,7 +22,7 @@ func (blcu *BLCU) handleDownload(payload json.RawMessage) ([]byte, error) {
 		return nil, err
 	}
 
-	buffer := bytes.NewBuffer(nil)
+	var buffer *bytes.Buffer
 	if err := blcu.ReadTFTP(buffer); err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func (blcu *BLCU) handleDownload(payload json.RawMessage) ([]byte, error) {
 }
 
 func (blcu *BLCU) requestDownload(board string) error {
-	downloadOrder := getDownloadOrder(board)
+	downloadOrder := createDownloadOrder(board)
 	if err := blcu.Request(downloadOrder); err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func (blcu *BLCU) requestDownload(board string) error {
 	return nil
 }
 
-func getDownloadOrder(board string) models.Order {
+func createDownloadOrder(board string) models.Order {
 	return models.Order{
 		ID: BLCU_DOWNLOAD_ORDER_ID,
 		Fields: map[string]any{
