@@ -13,6 +13,7 @@ type ParseConfig struct {
 	BoardSheetPrefix  string `toml:"board_sheet_prefix"`
 	TablePrefix       string `toml:"table_prefix"`
 	AddressTable      string `toml:"address_table"`
+	BackendEntryKey   string `toml:"backend_entry_key"`
 	UnitsTable        string `toml:"units_table"`
 	PortsTable        string `toml:"ports_table"`
 	IdsTable          string `toml:"ids_table"`

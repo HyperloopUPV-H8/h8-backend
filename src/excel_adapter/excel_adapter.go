@@ -30,10 +30,11 @@ func NewExcelAdapter(config ExcelAdapterConfig) ExcelAdapter {
 		config: config,
 		boards: getBoards(document, config.Parse.AddressTable),
 		globalInfo: getGlobalInfo(document, GlobalInfoConfig{
-			config.Parse.AddressTable,
-			config.Parse.UnitsTable,
-			config.Parse.PortsTable,
-			config.Parse.IdsTable,
+			AddressTable:    config.Parse.AddressTable,
+			BackendEntryKey: config.Parse.BackendEntryKey,
+			UnitsTable:      config.Parse.UnitsTable,
+			PortsTable:      config.Parse.PortsTable,
+			IdsTable:        config.Parse.IdsTable,
 		}),
 		document: document,
 	}
@@ -98,15 +99,17 @@ func (ea *ExcelAdapter) Update(objects ...models.FromDocument) {
 }
 
 type GlobalInfoConfig struct {
-	AddressTable string
-	UnitsTable   string
-	PortsTable   string
-	IdsTable     string
+	AddressTable    string
+	BackendEntryKey string
+	UnitsTable      string
+	PortsTable      string
+	IdsTable        string
 }
 
 func getGlobalInfo(document internalModels.Document, config GlobalInfoConfig) models.GlobalInfo {
 	trace.Trace().Msg("get global info")
 	return models.GlobalInfo{
+		BackendIP:        getBackendIP(config.AddressTable, config.BackendEntryKey, document),
 		BoardToIP:        getInfoTableToMap(config.AddressTable, document),
 		UnitToOperations: getInfoTableToMap(config.UnitsTable, document),
 		ProtocolToPort:   getInfoTableToMap(config.PortsTable, document),
@@ -127,4 +130,15 @@ func getInfoTableToMap(tableName string, document internalModels.Document) map[s
 	}
 	trace.Trace().Str("table", tableName).Msg("get info table")
 	return mapping
+}
+
+func getBackendIP(addressTableName string, backendKey string, document internalModels.Document) string {
+	for _, entry := range document.Info.Tables[addressTableName].Rows {
+		if entry[0] == backendKey {
+			return entry[1]
+		}
+	}
+
+	trace.Fatal().Msg("Backend IP not found")
+	panic("Backend IP not found") // NEVER RUN BECAUSE trace.Fatal() calls os.exit()
 }

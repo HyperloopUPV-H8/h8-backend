@@ -2,7 +2,6 @@ package vehicle
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
@@ -68,7 +67,7 @@ func (builder *Builder) AddGlobal(global excel_models.GlobalInfo) {
 		return
 	}
 
-	laddr := common.AddrWithPort(os.Getenv("VEHICLE_LADDR"), global.ProtocolToPort[builder.config.TcpClientTag])
+	laddr := common.AddrWithPort(global.BackendIP, global.ProtocolToPort[builder.config.TcpClientTag])
 	for board, ip := range global.BoardToIP {
 		builder.trace.Debug().Str("board", board).Str("ip", ip).Msg("add board")
 		var err error
