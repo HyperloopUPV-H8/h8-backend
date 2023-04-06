@@ -16,12 +16,12 @@ const (
 var (
 	messageTransfer       *MessageTransfer
 	messageTransferConfig = MessageTransferConfig{
-		updateTopic: "message/update",
+		UpdateTopic: "message/update",
 	}
 )
 
 type MessageTransferConfig struct {
-	updateTopic string `toml:"update_topic"`
+	UpdateTopic string `toml:"update_topic"`
 }
 
 func SetConfig(config MessageTransferConfig) {
@@ -39,7 +39,7 @@ func Get() *MessageTransfer {
 func initMessageTransfer() {
 	trace.Info().Msg("init message transfer")
 	messageTransfer = &MessageTransfer{
-		updateTopic: messageTransferConfig.updateTopic,
+		updateTopic: messageTransferConfig.UpdateTopic,
 		sendMessage: defaultSendMessage,
 		trace:       trace.With().Str("component", MESSAGE_TRANSFER_HANDLER_NAME).Logger(),
 	}

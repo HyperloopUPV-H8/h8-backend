@@ -44,6 +44,8 @@ func New(laddr string, raddr string, mtu uint) (*Pipe, error) {
 		isClosed: true,
 		mtu:      int(mtu),
 
+		onConnectionChange: func(bool) {},
+
 		trace: trace.With().Str("component", "pipe").IPAddr("addr", remoteAddr.IP).Logger(),
 	}
 

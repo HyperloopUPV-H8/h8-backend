@@ -126,6 +126,9 @@ func getInfoTableToMap(tableName string, document internalModels.Document) map[s
 	}
 
 	for _, row := range table.Rows {
+		if row[0] == "Backend" {
+			continue
+		}
 		mapping[row[0]] = row[1]
 	}
 	trace.Trace().Str("table", tableName).Msg("get info table")
