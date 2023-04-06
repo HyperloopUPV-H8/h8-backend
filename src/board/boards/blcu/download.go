@@ -72,15 +72,15 @@ func (blcu *BLCU) ReadTFTP(writer io.Writer) error {
 	return nil
 }
 
-type filePayload struct {
+type fileResponsePayload struct {
 	File      []byte `json:"file"`
-	IsSuccess bool   `json:"isSuccess"`
+	IsSuccess bool   `json:"success"`
 }
 
 func (blcu *BLCU) notifyDownloadFailure() {
-	blcu.sendMessage(os.Getenv("BLCU_FILE_TOPIC"), filePayload{IsSuccess: false, File: nil})
+	blcu.sendMessage(os.Getenv("BLCU_DOWNLOAD_TOPIC"), fileResponsePayload{IsSuccess: false, File: nil})
 }
 
 func (blcu *BLCU) notifyDownloadSuccess(bytes []byte) {
-	blcu.sendMessage(os.Getenv("BLCU_FILE_TOPIC"), filePayload{IsSuccess: true, File: bytes})
+	blcu.sendMessage(os.Getenv("BLCU_DOWNLOAD_TOPIC"), fileResponsePayload{IsSuccess: true, File: bytes})
 }

@@ -13,7 +13,7 @@ import (
 )
 
 func (blcu *BLCU) handleUpload(payload json.RawMessage) error {
-	var uploadData uploadPayload
+	var uploadData uploadRequestPayload
 	if err := json.Unmarshal(payload, &uploadData); err != nil {
 		return err
 	}
@@ -29,9 +29,14 @@ func (blcu *BLCU) handleUpload(payload json.RawMessage) error {
 	return nil
 }
 
-type uploadPayload struct {
+type uploadRequestPayload struct {
 	Board string `json:"board"`
 	File  []byte `json:"file"`
+}
+
+type uploadResponsePayload struct {
+	Percentage int  `json:"percentage"`
+	IsSuccess  bool `json:"success"`
 }
 
 func (blcu *BLCU) requestUpload(board string) error {
@@ -79,10 +84,10 @@ func (blcu *BLCU) WriteTFTP(reader io.Reader) error {
 // the topic BLCU_STATE_TOPIC expects a number between 0 and 100, the idea is in the future to inform about the percentage of the file uploaded
 func (blcu *BLCU) notifyUploadFailure() {
 	// 0 means failre
-	blcu.sendMessage(os.Getenv("BLCU_STATE_TOPIC"), 0)
+	blcu.sendMessage(os.Getenv("BLCU_UPLOAD_TOPIC"), uploadResponsePayload{Percentage: 0, IsSuccess: false})
 }
 
 func (blcu *BLCU) notifyUploadSuccess() {
 	// 100 means success
-	blcu.sendMessage(os.Getenv("BLCU_STATE_TOPIC"), 100)
+	blcu.sendMessage(os.Getenv("BLCU_UPLOAD_TOPIC"), uploadResponsePayload{Percentage: 100, IsSuccess: true})
 }
