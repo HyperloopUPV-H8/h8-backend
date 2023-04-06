@@ -17,7 +17,7 @@ type Config struct {
 	Vehicle      vehicle.BuilderConfig
 	DataTransfer data_transfer.DataTransferConfig `toml:"data_transfer"`
 	Orders       struct {
-		SendTopic string
+		SendTopic string `toml:"send_topic"`
 	}
 	Messages message_transfer.MessageTransferConfig
 	Server   server.ServerConfig

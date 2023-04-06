@@ -108,7 +108,7 @@ func main() {
 	httpServer.ServeData("/backend"+config.Server.Endpoints.PodData, podData)
 	httpServer.ServeData("/backend"+config.Server.Endpoints.OrderData, orderData)
 
-	httpServer.HandleFunc("/"+config.Server.Endpoints.Websocket, websocketBroker.HandleConn)
+	httpServer.HandleFunc(config.Server.Endpoints.Websocket, websocketBroker.HandleConn)
 
 	path, _ := os.Getwd()
 	httpServer.FileServer(config.Server.Endpoints.FileServer, filepath.Join(path, config.Server.FileServerPath))
