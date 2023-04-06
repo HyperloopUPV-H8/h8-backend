@@ -25,7 +25,7 @@ type MessageTransferConfig struct {
 func New(config MessageTransferConfig) MessageTransfer {
 	trace.Info().Msg("new message transfer")
 	return MessageTransfer{
-		updateTopic: config.updateTopic,
+		updateTopic: config.UpdateTopic,
 		sendMessage: defaultSendMessage,
 		trace:       trace.With().Str("component", MESSAGE_TRANSFER_HANDLER_NAME).Logger(),
 	}
