@@ -2,7 +2,6 @@ package sniffer
 
 import (
 	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
@@ -73,7 +72,7 @@ func (sniffer *Sniffer) read(output chan<- []byte, errorChan chan<- error) {
 
 		sniffer.trace.Trace().Msg("read")
 
-		output <- gopacket.NewPacket(raw, layers.LayerTypeEthernet, gopacket.DecodeOptions{
+		output <- gopacket.NewPacket(raw, sniffer.source.LinkType(), gopacket.DecodeOptions{
 			Lazy:   true,
 			NoCopy: true,
 		}).ApplicationLayer().Payload()

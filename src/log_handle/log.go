@@ -213,12 +213,14 @@ func (logger *LogHandle) Update(update vehicle_models.Update) {
 func (logger *LogHandle) start() {
 	logger.trace.Debug().Msg("start logger")
 	logger.buffer = make(map[string][]models.Value)
+	logger.isRunning = true
 	go logger.run()
 }
 
 func (logger *LogHandle) stop() {
 	logger.trace.Debug().Msg("stop logger")
 	logger.done <- struct{}{}
+	logger.isRunning = false
 	logger.flush()
 	logger.Close()
 }
