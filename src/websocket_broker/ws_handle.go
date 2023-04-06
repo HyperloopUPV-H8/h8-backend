@@ -13,24 +13,9 @@ import (
 	trace "github.com/rs/zerolog/log"
 )
 
-var (
-	upgrader websocket.Upgrader = websocket.Upgrader{
-		CheckOrigin: func(*http.Request) bool { return true },
-	}
-	broker *WebSocketBroker = nil
-)
-
-func Get() *WebSocketBroker {
-	if broker == nil {
-		initBroker()
-	}
-	trace.Debug().Msg("get websocket broker")
-	return broker
-}
-
-func initBroker() {
-	trace.Info().Msg("init websocket broker")
-	broker = &WebSocketBroker{
+func New() WebSocketBroker {
+	trace.Info().Msg("new websocket broker")
+	return WebSocketBroker{
 		handlers:   make(map[string][]models.MessageHandler),
 		handlersMx: &sync.Mutex{},
 		clients:    make(map[string]*websocket.Conn),
@@ -52,6 +37,10 @@ func (broker *WebSocketBroker) HandleConn(writter http.ResponseWriter, request *
 	defer request.Body.Close()
 
 	writter.Header().Set("Access-Control-Allow-Origin", "*")
+
+	upgrader := websocket.Upgrader{
+		CheckOrigin: func(*http.Request) bool { return true },
+	}
 
 	conn, err := upgrader.Upgrade(writter, request, writter.Header())
 	if err != nil {

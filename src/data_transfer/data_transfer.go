@@ -15,6 +15,14 @@ const (
 	DATA_TRANSFER_HANDLER_NAME = "dataTransfer"
 )
 
+type DataTransfer struct {
+	bufMx       *sync.Mutex
+	packetBuf   map[uint16]models.Update
+	ticker      *time.Ticker
+	updateTopic string
+	sendMessage func(topic string, payload any, target ...string) error
+	trace       zerolog.Logger
+}
 type DataTransferTopics struct {
 	Update string
 }
@@ -23,48 +31,21 @@ type DataTransferConfig struct {
 	Topics DataTransferTopics
 }
 
-var (
-	dataTransferConfig = DataTransferConfig{
-		Fps:    30,
-		Topics: DataTransferTopics{Update: "podData/update"},
-	}
-	dataTransfer *DataTransfer
-)
+func New(config DataTransferConfig) DataTransfer {
+	trace.Info().Msg("create data transfer")
 
-func SetConfig(config DataTransferConfig) {
-	dataTransferConfig = config
-}
-
-func Get() *DataTransfer {
-	if dataTransfer == nil {
-		initDataTransfer()
-	}
-	trace.Debug().Msg("get data transfer")
-	return dataTransfer
-}
-
-func initDataTransfer() {
-	trace.Info().Msg("init data transfer")
-
-	dataTransfer = &DataTransfer{
+	dataTransfer := DataTransfer{
 		bufMx:       &sync.Mutex{},
 		packetBuf:   make(map[uint16]models.Update),
-		ticker:      time.NewTicker(time.Second / time.Duration(dataTransferConfig.Fps)),
-		updateTopic: dataTransferConfig.Topics.Update,
+		ticker:      time.NewTicker(time.Second / time.Duration(config.Fps)),
+		updateTopic: config.Topics.Update,
 		sendMessage: defaultSendMessage,
 		trace:       trace.With().Str("component", DATA_TRANSFER_HANDLER_NAME).Logger(),
 	}
 
 	go dataTransfer.run()
-}
 
-type DataTransfer struct {
-	bufMx       *sync.Mutex
-	packetBuf   map[uint16]models.Update
-	ticker      *time.Ticker
-	updateTopic string
-	sendMessage func(topic string, payload any, target ...string) error
-	trace       zerolog.Logger
+	return dataTransfer
 }
 
 func (dataTransfer *DataTransfer) UpdateMessage(topic string, payload json.RawMessage, source string) {

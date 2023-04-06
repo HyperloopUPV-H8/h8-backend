@@ -13,42 +13,22 @@ const (
 	MESSAGE_TRANSFER_HANDLER_NAME = "messageTransfer"
 )
 
-var (
-	messageTransfer       *MessageTransfer
-	messageTransferConfig = MessageTransferConfig{
-		UpdateTopic: "message/update",
-	}
-)
-
-type MessageTransferConfig struct {
-	UpdateTopic string `toml:"update_topic"`
-}
-
-func SetConfig(config MessageTransferConfig) {
-	messageTransferConfig = config
-}
-
-func Get() *MessageTransfer {
-	if messageTransfer == nil {
-		initMessageTransfer()
-	}
-	trace.Debug().Msg("get message transfer")
-	return messageTransfer
-}
-
-func initMessageTransfer() {
-	trace.Info().Msg("init message transfer")
-	messageTransfer = &MessageTransfer{
-		updateTopic: messageTransferConfig.UpdateTopic,
-		sendMessage: defaultSendMessage,
-		trace:       trace.With().Str("component", MESSAGE_TRANSFER_HANDLER_NAME).Logger(),
-	}
-}
-
 type MessageTransfer struct {
 	updateTopic string
 	sendMessage func(topic string, payload any, targets ...string) error
 	trace       zerolog.Logger
+}
+type MessageTransferConfig struct {
+	UpdateTopic string `toml:"update_topic"`
+}
+
+func New(config MessageTransferConfig) MessageTransfer {
+	trace.Info().Msg("new message transfer")
+	return MessageTransfer{
+		updateTopic: config.updateTopic,
+		sendMessage: defaultSendMessage,
+		trace:       trace.With().Str("component", MESSAGE_TRANSFER_HANDLER_NAME).Logger(),
+	}
 }
 
 func (messageTransfer *MessageTransfer) SendMessage(message models.Message) error {
