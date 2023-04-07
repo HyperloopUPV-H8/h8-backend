@@ -126,6 +126,7 @@ func getInfoTableToMap(tableName string, document internalModels.Document) map[s
 	}
 
 	for _, row := range table.Rows {
+		//TODO: PUT THIS IN TOML
 		if row[0] == "Backend" {
 			continue
 		}
