@@ -13,17 +13,21 @@ import (
 )
 
 func (blcu *BLCU) handleDownload(payload json.RawMessage) ([]byte, error) {
+	blcu.trace.Debug().Msg("Handling download")
 	var board string
 	if err := json.Unmarshal(payload, &board); err != nil {
+		blcu.trace.Error().Err(err).Stack().Msg("Unmarshal payload")
 		return nil, err
 	}
 
 	if err := blcu.requestDownload(board); err != nil {
+		blcu.trace.Error().Err(err).Stack().Msg("Request download")
 		return nil, err
 	}
 
 	var buffer *bytes.Buffer
 	if err := blcu.ReadTFTP(buffer); err != nil {
+		blcu.trace.Error().Err(err).Stack().Msg("Read TFTP")
 		return nil, err
 	}
 
@@ -31,6 +35,8 @@ func (blcu *BLCU) handleDownload(payload json.RawMessage) ([]byte, error) {
 }
 
 func (blcu *BLCU) requestDownload(board string) error {
+	blcu.trace.Info().Str("board", board).Msg("Requesting download")
+
 	downloadOrder := createDownloadOrder(board)
 	if err := blcu.Request(downloadOrder); err != nil {
 		return err
@@ -54,6 +60,8 @@ func createDownloadOrder(board string) models.Order {
 }
 
 func (blcu *BLCU) ReadTFTP(writer io.Writer) error {
+	blcu.trace.Info().Msg("Reading TFTP")
+
 	client, err := tftp.NewClient(blcu.addr)
 	if err != nil {
 		return err
@@ -78,9 +86,11 @@ type fileResponsePayload struct {
 }
 
 func (blcu *BLCU) notifyDownloadFailure() {
+	blcu.trace.Warn().Msg("Download failed")
 	blcu.sendMessage(os.Getenv("BLCU_DOWNLOAD_TOPIC"), fileResponsePayload{IsSuccess: false, File: nil})
 }
 
 func (blcu *BLCU) notifyDownloadSuccess(bytes []byte) {
+	blcu.trace.Info().Msg("Download success")
 	blcu.sendMessage(os.Getenv("BLCU_DOWNLOAD_TOPIC"), fileResponsePayload{IsSuccess: true, File: bytes})
 }
