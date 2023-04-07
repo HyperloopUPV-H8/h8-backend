@@ -1,7 +1,7 @@
 # GOOGLE API KEY
 secret.json
 
-trace.JSON
+trace.json
 
 # BUILD
 *.exe
@@ -10,3 +10,5 @@ trace.JSON
 *.xlsx
 
 static
+
+.vscode
