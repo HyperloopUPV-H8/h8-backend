@@ -1,7 +1,10 @@
 package sniffer
 
 import (
+	"fmt"
+
 	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
@@ -10,9 +13,10 @@ import (
 const SNAPLEN = 1500
 
 type Sniffer struct {
-	source *pcap.Handle
-	filter string
-	trace  zerolog.Logger
+	source   *pcap.Handle
+	filter   string
+	trace    zerolog.Logger
+	linkType layers.LinkType
 }
 
 type SnifferConfig struct {
@@ -30,9 +34,10 @@ func New(dev string, filter string, config SnifferConfig) (*Sniffer, error) {
 	}
 
 	return &Sniffer{
-		source: source,
-		filter: filter,
-		trace:  trace.With().Str("component", "sniffer").Str("dev", dev).Logger(),
+		source:   source,
+		filter:   filter,
+		trace:    trace.With().Str("component", "sniffer").Str("dev", dev).Logger(),
+		linkType: source.LinkType(),
 	}, nil
 }
 
@@ -72,9 +77,16 @@ func (sniffer *Sniffer) read(output chan<- []byte, errorChan chan<- error) {
 
 		sniffer.trace.Trace().Msg("read")
 
-		output <- gopacket.NewPacket(raw, sniffer.source.LinkType(), gopacket.DecodeOptions{
+		appLayer := gopacket.NewPacket(raw, sniffer.linkType, gopacket.DecodeOptions{
 			Lazy:   true,
 			NoCopy: true,
-		}).ApplicationLayer().Payload()
+		}).ApplicationLayer()
+
+		if appLayer == nil {
+			continue
+		}
+
+		fmt.Println(appLayer.Payload())
+		output <- appLayer.Payload()
 	}
 }

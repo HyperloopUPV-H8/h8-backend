@@ -3,6 +3,7 @@ module github.com/HyperloopUPV-H8/Backend-H8
 go 1.19
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/google/gopacket v1.1.19
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0

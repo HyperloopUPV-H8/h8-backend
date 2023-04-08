@@ -43,8 +43,6 @@ func New(config DataTransferConfig) DataTransfer {
 		trace:       trace.With().Str("component", DATA_TRANSFER_HANDLER_NAME).Logger(),
 	}
 
-	go dataTransfer.run()
-
 	return dataTransfer
 }
 
@@ -61,7 +59,7 @@ func (DataTransfer *DataTransfer) HandlerName() string {
 	return DATA_TRANSFER_HANDLER_NAME
 }
 
-func (dataTransfer *DataTransfer) run() {
+func (dataTransfer *DataTransfer) Run() {
 	dataTransfer.trace.Info().Msg("run")
 	for {
 		<-dataTransfer.ticker.C
@@ -76,7 +74,6 @@ func (dataTransfer *DataTransfer) run() {
 func (dataTransfer *DataTransfer) sendBuf() {
 	dataTransfer.bufMx.Lock()
 	defer dataTransfer.bufMx.Unlock()
-
 	dataTransfer.trace.Trace().Msg("send buffer")
 	if err := dataTransfer.sendMessage(dataTransfer.updateTopic, dataTransfer.packetBuf); err != nil {
 		dataTransfer.trace.Error().Stack().Err(err).Msg("")

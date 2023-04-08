@@ -3,7 +3,6 @@ package vehicle
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	excel_models "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
@@ -84,27 +83,29 @@ func (builder *Builder) AddGlobal(global excel_models.GlobalInfo) {
 }
 
 func getFilter(addrs []string, protocolToPort map[string]string, tcpClientTag string, tcpServerTag string, udpTag string) string {
-	udp := fmt.Sprintf("(udp port %s)", protocolToPort[udpTag])
-	udpAddr := ""
-	for _, addr := range addrs {
-		udpAddr = fmt.Sprintf("%s or (src host %s)", udpAddr, addr)
-	}
-	udpAddr = strings.TrimPrefix(udpAddr, " or ")
-	udp = fmt.Sprintf("%s and (%s)", udp, udpAddr)
+	// udp := fmt.Sprintf("(udp port %s)", protocolToPort[udpTag])
+	// udpAddr := ""
+	// for _, addr := range addrs {
+	// 	udpAddr = fmt.Sprintf("%s or (src host %s)", udpAddr, addr)
+	// }
+	// udpAddr = strings.TrimPrefix(udpAddr, " or ")
+	// udp = fmt.Sprintf("%s and (%s)", udp, udpAddr)
 
-	tcp := fmt.Sprintf("(tcp port %s or tcp port %s) and (tcp[tcpflags] & (tcp-fin | tcp-syn | tcp-ack) == 0)", protocolToPort[tcpClientTag], protocolToPort[tcpServerTag])
-	tcpAddrSrc := ""
-	tcpAddrDst := ""
-	for _, addr := range addrs {
-		tcpAddrSrc = fmt.Sprintf("%s or (src host %s)", tcpAddrSrc, addr)
-		tcpAddrDst = fmt.Sprintf("%s or (dst host %s)", tcpAddrDst, addr)
-	}
-	tcpAddrSrc = strings.TrimPrefix(tcpAddrSrc, " or ")
-	tcpAddrDst = strings.TrimPrefix(tcpAddrDst, " or ")
-	tcp = fmt.Sprintf("%s and (%s) and (%s)", tcp, tcpAddrSrc, tcpAddrDst)
+	// tcp := fmt.Sprintf("(tcp port %s or tcp port %s) and (tcp[tcpflags] & (tcp-fin | tcp-syn | tcp-ack) == 0)", protocolToPort[tcpClientTag], protocolToPort[tcpServerTag])
+	// tcpAddrSrc := ""
+	// tcpAddrDst := ""
+	// for _, addr := range addrs {
+	// 	tcpAddrSrc = fmt.Sprintf("%s or (src host %s)", tcpAddrSrc, addr)
+	// 	tcpAddrDst = fmt.Sprintf("%s or (dst host %s)", tcpAddrDst, addr)
+	// }
+	// tcpAddrSrc = strings.TrimPrefix(tcpAddrSrc, " or ")
+	// tcpAddrDst = strings.TrimPrefix(tcpAddrDst, " or ")
+	// tcp = fmt.Sprintf("%s and (%s) and (%s)", tcp, tcpAddrSrc, tcpAddrDst)
 
-	filter := fmt.Sprintf("(%s) or (%s)", udp, tcp)
-	trace.Trace().Strs("addrs", addrs).Str("filter", filter).Msg("new filter")
+	// filter := fmt.Sprintf("(%s) or (%s)", udp, tcp)
+	// trace.Trace().Strs("addrs", addrs).Str("filter", filter).Msg("new filter")
+	filter := "(src host 192.168.0.1) and (not udp port 53) "
+	fmt.Println(filter)
 	return filter
 }
 

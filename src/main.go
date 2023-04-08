@@ -85,6 +85,8 @@ func main() {
 	websocketBroker.RegisterHandle(&messageTransfer)
 	websocketBroker.RegisterHandle(&orderTransfer, config.Orders.SendTopic)
 
+	go dataTransfer.Run()
+
 	vehicle.OnConnectionChange(connectionTransfer.Update)
 
 	idToType := getIdToType(podData)
