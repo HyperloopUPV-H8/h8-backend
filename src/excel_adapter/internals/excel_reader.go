@@ -2,15 +2,25 @@ package internals
 
 import (
 	"log"
-	"os"
 	"strings"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/internals/models"
 	"github.com/xuri/excelize/v2"
 )
 
-func GetDocument(file *excelize.File) models.Document {
-	infoSheet, boardSheets := parseSheets(file)
+type ParseConfig struct {
+	GlobalSheetPrefix string `toml:"global_sheet_prefix"`
+	BoardSheetPrefix  string `toml:"board_sheet_prefix"`
+	TablePrefix       string `toml:"table_prefix"`
+	AddressTable      string `toml:"address_table"`
+	BackendEntryKey   string `toml:"backend_entry_key"`
+	UnitsTable        string `toml:"units_table"`
+	PortsTable        string `toml:"ports_table"`
+	IdsTable          string `toml:"ids_table"`
+}
+
+func GetDocument(file *excelize.File, config ParseConfig) models.Document {
+	infoSheet, boardSheets := parseSheets(file, config)
 	document := models.Document{
 		Info:        infoSheet,
 		BoardSheets: boardSheets,
@@ -18,16 +28,17 @@ func GetDocument(file *excelize.File) models.Document {
 	return document
 }
 
-func parseSheets(file *excelize.File) (models.Sheet, map[string]models.Sheet) {
+func parseSheets(file *excelize.File, config ParseConfig) (models.Sheet, map[string]models.Sheet) {
 	infoSheet := models.Sheet{}
 	boardSheets := make(map[string]models.Sheet)
 	sheetMap := file.GetSheetMap()
 	for _, name := range sheetMap {
 		cols := getSheetCols(file, name)
-		if !strings.HasPrefix(name, os.Getenv("EXCEL_ADAPTER_GLOBAL_SHEET_PREFIX")) {
-			boardSheets[strings.TrimPrefix(name, os.Getenv("EXCEL_ADAPTER_GLOBAL_SHEET_PREFIX"))] = parseSheet(name, cols)
-		} else {
-			infoSheet = parseSheet(name, cols)
+		if strings.HasPrefix(name, config.GlobalSheetPrefix) {
+			infoSheet = parseSheet(name, cols, config.TablePrefix)
+
+		} else if strings.HasPrefix(name, config.BoardSheetPrefix) {
+			boardSheets[strings.TrimPrefix(name, config.BoardSheetPrefix)] = parseSheet(name, cols, config.TablePrefix)
 		}
 	}
 
@@ -42,10 +53,10 @@ func getSheetCols(file *excelize.File, sheetName string) [][]string {
 	return cols
 }
 
-func parseSheet(name string, cols [][]string) models.Sheet {
+func parseSheet(name string, cols [][]string, tablePrefix string) models.Sheet {
 	tables := make(map[string]models.Table)
 
-	for name, bound := range findTables(cols) {
+	for name, bound := range findTables(cols, tablePrefix) {
 		tables[name] = parseTable(cols, bound)
 	}
 
@@ -54,13 +65,13 @@ func parseSheet(name string, cols [][]string) models.Sheet {
 	}
 }
 
-func findTables(cols [][]string) map[string][4]int {
+func findTables(cols [][]string, tablePrefix string) map[string][4]int {
 	tables := make(map[string][4]int)
 	for i, col := range cols {
 		for j, cell := range col {
-			if strings.HasPrefix(cell, os.Getenv("EXCEL_ADAPTER_TABLE_PREFIX")) {
+			if strings.HasPrefix(cell, tablePrefix) {
 				end := findTableEnd(cols, i, j)
-				tables[strings.TrimPrefix(cell, os.Getenv("EXCEL_ADAPTER_TABLE_PREFIX"))] = [4]int{i, j, i + end[0], j + end[1] + 2}
+				tables[strings.TrimPrefix(cell, tablePrefix)] = [4]int{i, j, i + end[0], j + end[1] + 2}
 			}
 		}
 	}

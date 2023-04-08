@@ -1,4 +1,14 @@
+# GOOGLE API KEY
+secret.json
 
-src/cmd/**
+trace.json
 
-!src/cmd/MVP-4
+# BUILD
+*.exe
+
+# EXCEL
+*.xlsx
+
+static
+
+.vscode

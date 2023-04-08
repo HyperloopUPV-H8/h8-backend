@@ -13,33 +13,40 @@ import (
 
 const SHEETS_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
-func DownloadFile(id string, path string, name string) error {
-	trace.Trace().Str("id", id).Str("path", path).Str("name", name).Msg("download file")
-	client, errClient := getClient()
+type DownloadConfig struct {
+	Id          string
+	Path        string
+	Name        string
+	Credentials string
+}
+
+func DownloadFile(config DownloadConfig) error {
+	trace.Trace().Str("id", config.Id).Str("path", config.Path).Str("name", config.Name).Msg("download file")
+	client, errClient := getClient(config.Credentials)
 	if errClient != nil {
-		trace.Error().Str("id", id).Str("path", path).Str("name", name).Stack().Err(errClient).Msg("")
+		trace.Error().Str("id", config.Id).Str("path", config.Path).Str("name", config.Name).Stack().Err(errClient).Msg("")
 		return errClient
 	}
 
-	file, errFile := getFile(client, id, SHEETS_MIME_TYPE)
+	file, errFile := getFile(client, config.Id, SHEETS_MIME_TYPE)
 	if errFile != nil {
-		trace.Error().Str("id", id).Str("path", path).Str("name", name).Stack().Err(errFile).Msg("")
+		trace.Error().Str("id", config.Id).Str("path", config.Path).Str("name", config.Name).Stack().Err(errFile).Msg("")
 		return errFile
 	}
 
-	errSaving := saveFile(file, path, name)
+	errSaving := saveFile(file, config.Path, config.Name)
 	if errSaving != nil {
-		trace.Error().Str("id", id).Str("path", path).Str("name", name).Stack().Err(errSaving).Msg("")
+		trace.Error().Str("id", config.Id).Str("path", config.Path).Str("name", config.Name).Stack().Err(errSaving).Msg("")
 	}
 
 	return errSaving
 }
 
-func getClient() (*drive.Service, error) {
+func getClient(credentials string) (*drive.Service, error) {
 	trace.Trace().Msg("get client")
 	ctx := context.Background()
 
-	client, err := drive.NewService(ctx, option.WithCredentialsFile(os.Getenv("EXCEL_ADAPTER_CREDENTIALS")))
+	client, err := drive.NewService(ctx, option.WithCredentialsFile(credentials))
 	if err != nil {
 		return nil, err
 	}

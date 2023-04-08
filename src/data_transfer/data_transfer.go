@@ -3,8 +3,6 @@ package data_transfer
 import (
 	"encoding/json"
 	"errors"
-	"os"
-	"strconv"
 	"sync"
 	"time"
 
@@ -17,43 +15,37 @@ const (
 	DATA_TRANSFER_HANDLER_NAME = "dataTransfer"
 )
 
-var (
-	dataTransfer *DataTransfer
-)
-
-func Get() *DataTransfer {
-	if dataTransfer == nil {
-		initDataTransfer()
-	}
-	trace.Debug().Msg("get data transfer")
-	return dataTransfer
+type DataTransfer struct {
+	bufMx       *sync.Mutex
+	packetBuf   map[uint16]models.Update
+	ticker      *time.Ticker
+	updateTopic string
+	sendMessage func(topic string, payload any, target ...string) error
+	trace       zerolog.Logger
+}
+type DataTransferTopics struct {
+	Update string
+}
+type DataTransferConfig struct {
+	Fps    uint
+	Topics DataTransferTopics
 }
 
-func initDataTransfer() {
-	trace.Info().Msg("init data transfer")
+func New(config DataTransferConfig) DataTransfer {
+	trace.Info().Msg("create data transfer")
 
-	refreshRate, err := strconv.ParseInt(os.Getenv("DATA_TRANSFER_FPS"), 10, 32)
-	if err != nil {
-		trace.Fatal().Stack().Err(err).Str("DATA_TRANSFER_FPS", os.Getenv("DATA_TRANSFER_FPS")).Msg("")
-	}
-
-	dataTransfer = &DataTransfer{
+	dataTransfer := DataTransfer{
 		bufMx:       &sync.Mutex{},
 		packetBuf:   make(map[uint16]models.Update),
-		ticker:      time.NewTicker(time.Second / time.Duration(refreshRate)),
+		ticker:      time.NewTicker(time.Second / time.Duration(config.Fps)),
+		updateTopic: config.Topics.Update,
 		sendMessage: defaultSendMessage,
 		trace:       trace.With().Str("component", DATA_TRANSFER_HANDLER_NAME).Logger(),
 	}
 
 	go dataTransfer.run()
-}
 
-type DataTransfer struct {
-	bufMx       *sync.Mutex
-	packetBuf   map[uint16]models.Update
-	ticker      *time.Ticker
-	sendMessage func(topic string, payload any, target ...string) error
-	trace       zerolog.Logger
+	return dataTransfer
 }
 
 func (dataTransfer *DataTransfer) UpdateMessage(topic string, payload json.RawMessage, source string) {
@@ -86,7 +78,7 @@ func (dataTransfer *DataTransfer) sendBuf() {
 	defer dataTransfer.bufMx.Unlock()
 
 	dataTransfer.trace.Trace().Msg("send buffer")
-	if err := dataTransfer.sendMessage(os.Getenv("DATA_TRANSFER_TOPIC"), dataTransfer.packetBuf); err != nil {
+	if err := dataTransfer.sendMessage(dataTransfer.updateTopic, dataTransfer.packetBuf); err != nil {
 		dataTransfer.trace.Error().Stack().Err(err).Msg("")
 		return
 	}

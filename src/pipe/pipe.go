@@ -3,8 +3,6 @@ package pipe
 import (
 	"errors"
 	"net"
-	"os"
-	"strconv"
 
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
@@ -25,7 +23,7 @@ type Pipe struct {
 	trace zerolog.Logger
 }
 
-func New(laddr string, raddr string) (*Pipe, error) {
+func New(laddr string, raddr string, mtu uint) (*Pipe, error) {
 	trace.Info().Str("laddr", laddr).Str("raddr", raddr).Msg("new pipe")
 	localAddr, err := net.ResolveTCPAddr("tcp", laddr)
 	if err != nil {
@@ -39,18 +37,14 @@ func New(laddr string, raddr string) (*Pipe, error) {
 		return nil, err
 	}
 
-	mtu, err := strconv.ParseInt(os.Getenv("INTERFACE_MTU"), 10, 32)
-	if err != nil {
-		trace.Fatal().Stack().Err(err).Str("INTERFACE_MTU", os.Getenv("INTERFACE_MTU")).Msg("")
-		return nil, err
-	}
-
 	pipe := &Pipe{
 		laddr: localAddr,
 		raddr: remoteAddr,
 
 		isClosed: true,
 		mtu:      int(mtu),
+
+		onConnectionChange: func(bool) {},
 
 		trace: trace.With().Str("component", "pipe").IPAddr("addr", remoteAddr.IP).Logger(),
 	}

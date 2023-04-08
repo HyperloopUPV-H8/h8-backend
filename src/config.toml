@@ -1,0 +1,51 @@
+
+[server]
+address = "127.0.0.1:4000"
+file_server_path = "static" # Change name to front build path
+endpoints = { pod_data = "/podDataStructure", order_data = "/orderDataStructure", websocket = "/backend", file_server = "/" }
+
+[vehicle]
+tcp_client_tag = "TCP_CLIENT"
+tcp_server_tag = "TCP_SERVER"
+udp_tag = "UDP"
+network = { mtu = 1500, sniffer_interface = "\\Device\\NPF_Loopback" }
+
+[excel.download]
+id = "1BEwASubu0el9oQA6PSwVKaNU-Q6gbJ40JR6kgqguKYE"
+credentials = "./secret.json"
+name = "ade.xlsx"
+path = "."
+
+[excel.parse]
+global_sheet_prefix = "GLOBAL "
+board_sheet_prefix = "BOARD "
+table_prefix = "[TABLE] "
+address_table = "addresses"
+backend_entry_key = "Backend"
+units_table = "units"
+ports_table = "ports"
+ids_table = "ids"
+
+[logger]
+dump_size = 7000
+row_size = 20
+autosave_delay = "1m"
+path = "./log"
+topics = { enable = "logger/enable", state = "logger/state" }
+
+[orders]
+send_topic = "order/send"
+
+[messages]
+update_topic = "message/update"
+
+[data_transfer]
+fps = 30
+topics = { update = "podData/update" }
+
+[connections]
+update_topic = "connection/update"
+
+
+
+
