@@ -39,9 +39,9 @@ type BLCU struct {
 	trace zerolog.Logger
 }
 
-func NewBLCU() *BLCU {
+func NewBLCU() BLCU {
 	trace.Info().Msg("New BLCU")
-	blcu := &BLCU{
+	blcu := BLCU{
 		inputChannel: make(chan models.Update, BLCU_INPUT_CHAN_BUF),
 		ackChannel:   make(chan struct{}, BLCU_ACK_CHAN_BUF),
 		trace:        trace.With().Str("component", BLCU_COMPONENT_NAME).Logger(),

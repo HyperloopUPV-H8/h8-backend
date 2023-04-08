@@ -45,7 +45,7 @@ func main() {
 	orderData := vehicle_models.NewOrderData()
 	blcu := blcu.NewBLCU()
 
-	excel_adapter.Update(document, vehicleBuilder, podData, orderData, blcu)
+	excel_adapter.Update(document, vehicleBuilder, podData, orderData, &blcu)
 
 	vehicle := vehicleBuilder.Build()
 
@@ -53,7 +53,7 @@ func main() {
 	go vehicle.Listen(vehicleOutput)
 
 	boardMux := board.NewMux(board.WithInput(vehicleOutput), board.WithOutput(vehicle.SendOrder))
-	boardMux.AddBoard(blcu)
+	boardMux.AddBoard(&blcu)
 
 	blcuIDs := make(map[uint16]string)
 	for _, packet := range podData.Boards["BLCU"].Packets {
@@ -75,7 +75,7 @@ func main() {
 	messageTransfer := message_transfer.Get()
 	orderTransfer, orderChannel := order_transfer.Get()
 
-	websocketBroker.RegisterHandle(blcu, os.Getenv("BLCU_UPLOAD_TOPIC"), os.Getenv("BLCU_DOWNLOAD_TOPIC"))
+	websocketBroker.RegisterHandle(&blcu, os.Getenv("BLCU_UPLOAD_TOPIC"), os.Getenv("BLCU_DOWNLOAD_TOPIC"))
 	websocketBroker.RegisterHandle(connectionTransfer, os.Getenv("CONNECTION_TRANSFER_UPDATE_TOPIC"))
 	websocketBroker.RegisterHandle(dataTransfer)
 	websocketBroker.RegisterHandle(logger, os.Getenv("LOGGER_ENABLE_TOPIC"), os.Getenv("LOGGER_STATE_TOPIC"))
