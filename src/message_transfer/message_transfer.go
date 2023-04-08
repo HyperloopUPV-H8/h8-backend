@@ -3,7 +3,6 @@ package message_transfer
 import (
 	"encoding/json"
 	"errors"
-	"os"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/message_transfer/models"
 	"github.com/rs/zerolog"
@@ -14,34 +13,27 @@ const (
 	MESSAGE_TRANSFER_HANDLER_NAME = "messageTransfer"
 )
 
-var (
-	messageTransfer *MessageTransfer
-)
-
-func Get() *MessageTransfer {
-	if messageTransfer == nil {
-		initMessageTransfer()
-	}
-	trace.Debug().Msg("get message transfer")
-	return messageTransfer
+type MessageTransfer struct {
+	updateTopic string
+	sendMessage func(topic string, payload any, targets ...string) error
+	trace       zerolog.Logger
+}
+type MessageTransferConfig struct {
+	UpdateTopic string `toml:"update_topic"`
 }
 
-func initMessageTransfer() {
-	trace.Info().Msg("init message transfer")
-	messageTransfer = &MessageTransfer{
+func New(config MessageTransferConfig) MessageTransfer {
+	trace.Info().Msg("new message transfer")
+	return MessageTransfer{
+		updateTopic: config.UpdateTopic,
 		sendMessage: defaultSendMessage,
 		trace:       trace.With().Str("component", MESSAGE_TRANSFER_HANDLER_NAME).Logger(),
 	}
 }
 
-type MessageTransfer struct {
-	sendMessage func(topic string, payload any, targets ...string) error
-	trace       zerolog.Logger
-}
-
 func (messageTransfer *MessageTransfer) SendMessage(message models.Message) error {
 	messageTransfer.trace.Warn().Uint16("id", message.ID).Str("type", message.Type).Str("desc", message.Description).Msg("send message")
-	return messageTransfer.sendMessage(os.Getenv("MESSAGE_TRANSFER_SEND_TOPIC"), message)
+	return messageTransfer.sendMessage(messageTransfer.updateTopic, message)
 }
 
 func (messageTransfer *MessageTransfer) UpdateMessage(topic string, payload json.RawMessage, source string) {

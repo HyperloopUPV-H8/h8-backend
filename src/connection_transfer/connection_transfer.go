@@ -3,7 +3,6 @@ package connection_transfer
 import (
 	"encoding/json"
 	"errors"
-	"os"
 	"sync"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer/models"
@@ -15,35 +14,28 @@ const (
 	CONNECTION_TRANSFER_HANDLER_NAME = "connectionTransfer"
 )
 
-var (
-	connectionTransfer *ConnectionTransfer
-)
-
-func Get() *ConnectionTransfer {
-	if connectionTransfer == nil {
-		initConnectionTransfer()
-	}
-	trace.Debug().Msg("get connection transfer")
-	return connectionTransfer
-}
-
-func initConnectionTransfer() {
-	trace.Info().Msg("init connection transfer")
-	connectionTransfer = &ConnectionTransfer{
-		writeMx:     &sync.Mutex{},
-		boardStatus: make(map[string]models.Connection),
-		sendMessage: defaultSendMessage,
-
-		trace: trace.With().Str("component", CONNECTION_TRANSFER_HANDLER_NAME).Logger(),
-	}
-}
-
 type ConnectionTransfer struct {
 	writeMx     *sync.Mutex
 	boardStatus map[string]models.Connection
 	sendMessage func(topic string, payload any, target ...string) error
+	updateTopic string
+	trace       zerolog.Logger
+}
 
-	trace zerolog.Logger
+type ConnectionTransferConfig struct {
+	UpdateTopic string `toml:"update_topic"`
+}
+
+func New(config ConnectionTransferConfig) ConnectionTransfer {
+	trace.Info().Msg("new connection transfer")
+
+	return ConnectionTransfer{
+		writeMx:     &sync.Mutex{},
+		boardStatus: make(map[string]models.Connection),
+		sendMessage: defaultSendMessage,
+		updateTopic: config.UpdateTopic,
+		trace:       trace.With().Str("component", CONNECTION_TRANSFER_HANDLER_NAME).Logger(),
+	}
 }
 
 func (connectionTransfer *ConnectionTransfer) UpdateMessage(topic string, payload json.RawMessage, source string) {
@@ -76,7 +68,7 @@ func (connectionTransfer *ConnectionTransfer) Update(name string, up bool) {
 
 func (connectionTransfer *ConnectionTransfer) send() {
 	connectionTransfer.trace.Debug().Msg("send connections")
-	if err := connectionTransfer.sendMessage(os.Getenv("CONNECTION_TRANSFER_UPDATE_TOPIC"), connectionTransfer.boardStatus); err != nil {
+	if err := connectionTransfer.sendMessage(connectionTransfer.updateTopic, connectionTransfer.boardStatus); err != nil {
 		connectionTransfer.trace.Error().Stack().Err(err).Msg("")
 		return
 	}

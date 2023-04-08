@@ -13,28 +13,13 @@ const (
 	ORDER_CHAN_BUFFER   = 100
 )
 
-var (
-	orderTransfer *OrderTransfer
-	channel       <-chan vehicle_models.Order
-)
-
-func Get() (*OrderTransfer, <-chan vehicle_models.Order) {
-	if orderTransfer == nil {
-		initOrderTransfer()
-	}
-
-	trace.Debug().Msg("get order transfer")
-	return orderTransfer, channel
-}
-
-func initOrderTransfer() {
-	trace.Info().Msg("init order transfer")
-	orderChannel := make(chan vehicle_models.Order, ORDER_CHAN_BUFFER)
-	orderTransfer = &OrderTransfer{
-		channel: orderChannel,
+func New() (OrderTransfer, <-chan vehicle_models.Order) {
+	trace.Info().Msg("new order transfer")
+	channel := make(chan vehicle_models.Order, ORDER_CHAN_BUFFER)
+	return OrderTransfer{
+		channel: channel,
 		trace:   trace.With().Str("component", ORDER_TRASNFER_NAME).Logger(),
-	}
-	channel = orderChannel
+	}, channel
 }
 
 type OrderTransfer struct {

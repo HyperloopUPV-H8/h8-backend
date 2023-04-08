@@ -10,11 +10,10 @@ import (
 	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/board"
-	"github.com/HyperloopUPV-H8/Backend-H8/board/boards/blcu"
 	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter"
-	"github.com/HyperloopUPV-H8/Backend-H8/log_handle"
+	"github.com/HyperloopUPV-H8/Backend-H8/logger"
 	"github.com/HyperloopUPV-H8/Backend-H8/message_transfer"
 	message_transfer_models "github.com/HyperloopUPV-H8/Backend-H8/message_transfer/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/order_transfer"
@@ -23,7 +22,7 @@ import (
 	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/websocket_broker"
 	"github.com/gorilla/mux"
-	"github.com/joho/godotenv"
+	"github.com/pelletier/go-toml/v2"
 	trace "github.com/rs/zerolog/log"
 )
 
@@ -32,20 +31,20 @@ var traceFile = flag.String("log", "trace.json", "set the trace log file")
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	godotenv.Load(".env")
-
 	flag.Parse()
+
 	traceFile := initTrace(*traceLevel, *traceFile)
 	defer traceFile.Close()
 
-	document := excel_adapter.FetchDocument(os.Getenv("EXCEL_ADAPTER_ID"), os.Getenv("EXCEL_ADAPTER_PATH"), os.Getenv("EXCEL_ADAPTER_NAME"))
+	config := getConfig("./config.toml")
 
-	vehicleBuilder := vehicle.NewBuilder()
+	excelAdapter := excel_adapter.NewExcelAdapter(config.Excel)
+
+	vehicleBuilder := vehicle.NewBuilder(config.Vehicle)
 	podData := vehicle_models.NewPodData()
 	orderData := vehicle_models.NewOrderData()
-	blcu := blcu.NewBLCU()
 
-	excel_adapter.Update(document, vehicleBuilder, podData, orderData, &blcu)
+	excelAdapter.Update(vehicleBuilder, podData, orderData)
 
 	vehicle := vehicleBuilder.Build()
 
@@ -53,34 +52,28 @@ func main() {
 	go vehicle.Listen(vehicleOutput)
 
 	boardMux := board.NewMux(board.WithInput(vehicleOutput), board.WithOutput(vehicle.SendOrder))
-	boardMux.AddBoard(&blcu)
-
-	blcuIDs := make(map[uint16]string)
-	for _, packet := range podData.Boards["BLCU"].Packets {
-		blcuIDs[packet.ID] = "blcu"
-	}
-	boardMux.AddBoardMapping(blcuIDs)
-
-	// TODO: remove hardcoded values
 
 	updateChan := make(chan vehicle_models.Update)
 	go boardMux.Listen(updateChan)
 
 	// Communication with front-end
-	websocketBroker := websocket_broker.Get()
+	websocketBroker := websocket_broker.New()
 
-	connectionTransfer := connection_transfer.Get()
-	dataTransfer := data_transfer.Get()
-	logger := log_handle.Get()
-	messageTransfer := message_transfer.Get()
-	orderTransfer, orderChannel := order_transfer.Get()
+	connectionTransfer := connection_transfer.New(config.Connections)
 
-	websocketBroker.RegisterHandle(&blcu, os.Getenv("BLCU_UPLOAD_TOPIC"), os.Getenv("BLCU_DOWNLOAD_TOPIC"))
-	websocketBroker.RegisterHandle(connectionTransfer, os.Getenv("CONNECTION_TRANSFER_UPDATE_TOPIC"))
-	websocketBroker.RegisterHandle(dataTransfer)
-	websocketBroker.RegisterHandle(logger, os.Getenv("LOGGER_ENABLE_TOPIC"), os.Getenv("LOGGER_STATE_TOPIC"))
-	websocketBroker.RegisterHandle(messageTransfer)
-	websocketBroker.RegisterHandle(orderTransfer, os.Getenv("ORDER_TRANSFER_SEND_TOPIC"))
+	dataTransfer := data_transfer.New(config.DataTransfer)
+
+	logger := logger.New(config.Logger)
+
+	messageTransfer := message_transfer.New(config.Messages)
+
+	orderTransfer, orderChannel := order_transfer.New()
+
+	websocketBroker.RegisterHandle(&connectionTransfer, config.Connections.UpdateTopic)
+	websocketBroker.RegisterHandle(&dataTransfer)
+	websocketBroker.RegisterHandle(&logger, config.Logger.Topics.Enable, config.Logger.Topics.State)
+	websocketBroker.RegisterHandle(&messageTransfer)
+	websocketBroker.RegisterHandle(&orderTransfer, config.Orders.SendTopic)
 
 	vehicle.OnConnectionChange(connectionTransfer.Update)
 
@@ -106,15 +99,16 @@ func main() {
 
 	httpServer := server.New(mux.NewRouter())
 
-	httpServer.ServeData("/backend/"+os.Getenv("SERVER_POD_DATA_ENDPOINT"), podData)
-	httpServer.ServeData("/backend/"+os.Getenv("SERVER_ORDER_DATA_ENDPOINT"), orderData)
+	httpServer.ServeData("/backend"+config.Server.Endpoints.PodData, podData)
+	httpServer.ServeData("/backend"+config.Server.Endpoints.OrderData, orderData)
 
-	httpServer.HandleFunc("/backend", websocketBroker.HandleConn)
+	httpServer.HandleFunc(config.Server.Endpoints.Websocket, websocketBroker.HandleConn)
 
 	path, _ := os.Getwd()
-	httpServer.FileServer(os.Getenv("SERVER_FILE_SERVER_ENDPOINT"), filepath.Join(path, os.Getenv("SERVER_FILE_SERVER_PATH")))
+	httpServer.FileServer(config.Server.Endpoints.FileServer, filepath.Join(path, config.Server.FileServerPath))
 
-	go httpServer.ListenAndServe(os.Getenv("SERVER_ADDRESS"))
+	go httpServer.ListenAndServe(config.Server.Address)
+	// browser.OpenURL(fmt.Sprintf("http://%s", config.Server.Address))
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
@@ -148,4 +142,21 @@ func getIdToType(podData *vehicle_models.PodData) map[uint16]string {
 		}
 	}
 	return idToType
+}
+
+func getConfig(path string) Config {
+	configFile, fileErr := os.ReadFile(path)
+
+	if fileErr != nil {
+		trace.Fatal().Stack().Err(fileErr).Msg("error reading config file")
+	}
+
+	var config Config
+	unmarshalErr := toml.Unmarshal(configFile, &config)
+
+	if unmarshalErr != nil {
+		trace.Fatal().Stack().Err(unmarshalErr).Msg("error unmarshaling toml file")
+	}
+
+	return config
 }

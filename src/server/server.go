@@ -9,6 +9,18 @@ import (
 	trace "github.com/rs/zerolog/log"
 )
 
+type ServerConfig struct {
+	Address            string
+	FileServerPath     string `toml:"file_server_path"`
+	FileServerEndpoint string `toml:"file_server_endpoint"`
+	Endpoints          struct {
+		FileServer string `toml:"file_server"`
+		PodData    string `toml:"pod_data"`
+		OrderData  string `toml:"order_data"`
+		Websocket  string
+	}
+}
+
 type Server struct {
 	router *mux.Router
 	trace  zerolog.Logger

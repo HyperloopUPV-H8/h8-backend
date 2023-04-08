@@ -1,7 +1,6 @@
 package excel_adapter
 
 import (
-	"os"
 	"path/filepath"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/internals"
@@ -11,35 +10,65 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-func FetchDocument(id string, path string, name string) internalModels.Document {
-	trace.Info().Str("id", id).Str("path", path).Str("name", name).Msg("fetch document")
+type ExcelAdapterConfig struct {
+	Download internals.DownloadConfig
+	Parse    internals.ParseConfig
+}
 
-	errDownloading := internals.DownloadFile(id, path, name)
+type ExcelAdapter struct {
+	config     ExcelAdapterConfig
+	boards     map[string]models.Board
+	globalInfo models.GlobalInfo
+	document   internalModels.Document
+}
+
+func NewExcelAdapter(config ExcelAdapterConfig) ExcelAdapter {
+	//TODO: poner config del download nesteado en el TOML
+	document := fetchDocument(config.Download, config.Parse)
+
+	return ExcelAdapter{
+		config: config,
+		boards: getBoards(document, config.Parse.AddressTable),
+		globalInfo: getGlobalInfo(document, GlobalInfoConfig{
+			AddressTable:    config.Parse.AddressTable,
+			BackendEntryKey: config.Parse.BackendEntryKey,
+			UnitsTable:      config.Parse.UnitsTable,
+			PortsTable:      config.Parse.PortsTable,
+			IdsTable:        config.Parse.IdsTable,
+		}),
+		document: document,
+	}
+}
+
+func fetchDocument(downloadConfig internals.DownloadConfig, parseConfig internals.ParseConfig) internalModels.Document {
+	trace.Info().Str("id", downloadConfig.Id).Str("path", downloadConfig.Path).Str("name", downloadConfig.Name).Msg("fetch document")
+
+	errDownloading := internals.DownloadFile(downloadConfig)
 	if errDownloading != nil {
 		trace.Error().Stack().Err(errDownloading).Msg("")
-		trace.Warn().Str("id", id).Str("path", path).Str("name", name).Msg("using local document")
+		trace.Warn().Str("id", downloadConfig.Id).Str("path", downloadConfig.Path).Str("name", downloadConfig.Name).Msg("using local document")
 	}
 
-	file, err := excelize.OpenFile(filepath.Join(path, name))
+	file, err := excelize.OpenFile(filepath.Join(downloadConfig.Path, downloadConfig.Name))
 	if err != nil {
 		trace.Fatal().Stack().Err(err).Msg("")
 	}
 
-	return internals.GetDocument(file)
+	return internals.GetDocument(file, parseConfig)
 }
 
-func getBoards(document internalModels.Document) map[string]models.Board {
+func getBoards(document internalModels.Document, addressTableName string) map[string]models.Board {
 	trace.Trace().Msg("get boards")
 	boards := make(map[string]models.Board, len(document.BoardSheets)-1)
 	for name, sheet := range document.BoardSheets {
 		trace.Trace().Str("board", name).Msg("add board")
-		boards[name] = models.NewBoard(name, getIP(name, document), sheet)
+		boards[name] = models.NewBoard(name, getIP(name, document, addressTableName), sheet)
 	}
 	return boards
 }
 
-func getIP(board string, document internalModels.Document) string {
-	for _, row := range document.Info.Tables[os.Getenv("EXCEL_ADAPTER_ADDRESS_TABLE_NAME")].Rows {
+func getIP(board string, document internalModels.Document, addressTableName string) string {
+	for _, row := range document.Info.Tables[addressTableName].Rows {
 		if row[0] == board {
 			trace.Trace().Str("board", board).Str("addr", row[1]).Msg("get board ip")
 			return row[1]
@@ -50,16 +79,15 @@ func getIP(board string, document internalModels.Document) string {
 	return ""
 }
 
-func Update(document internalModels.Document, objects ...models.FromDocument) {
+func (ea *ExcelAdapter) Update(objects ...models.FromDocument) {
 	trace.Debug().Msg("update from document")
 
 	trace.Trace().Msg("update global info")
-	globalInfo := getGlobalInfo(document)
 	for _, object := range objects {
-		object.AddGlobal(globalInfo)
+		object.AddGlobal(ea.globalInfo)
 	}
 
-	for name, board := range getBoards(document) {
+	for name, board := range ea.boards {
 		trace.Trace().Str("board", name).Msg("update board")
 		for _, packet := range board.GetPackets() {
 			trace.Trace().Str("packet", packet.Description.ID).Msg("update packet")
@@ -70,13 +98,22 @@ func Update(document internalModels.Document, objects ...models.FromDocument) {
 	}
 }
 
-func getGlobalInfo(document internalModels.Document) models.GlobalInfo {
+type GlobalInfoConfig struct {
+	AddressTable    string
+	BackendEntryKey string
+	UnitsTable      string
+	PortsTable      string
+	IdsTable        string
+}
+
+func getGlobalInfo(document internalModels.Document, config GlobalInfoConfig) models.GlobalInfo {
 	trace.Trace().Msg("get global info")
 	return models.GlobalInfo{
-		BoardToIP:        getInfoTableToMap(os.Getenv("EXCEL_ADAPTER_ADDRESS_TABLE_NAME"), document),
-		UnitToOperations: getInfoTableToMap(os.Getenv("EXCEL_ADAPTER_UNITS_TABLE_NAME"), document),
-		ProtocolToPort:   getInfoTableToMap(os.Getenv("EXCEL_ADAPTER_PORTS_TABLE_NAME"), document),
-		BoardToID:        getInfoTableToMap(os.Getenv("EXCEL_ADAPTER_IDS_TABLE_NAME"), document),
+		BackendIP:        getBackendIP(config.AddressTable, config.BackendEntryKey, document),
+		BoardToIP:        getInfoTableToMap(config.AddressTable, document),
+		UnitToOperations: getInfoTableToMap(config.UnitsTable, document),
+		ProtocolToPort:   getInfoTableToMap(config.PortsTable, document),
+		BoardToID:        getInfoTableToMap(config.IdsTable, document),
 	}
 }
 
@@ -89,8 +126,23 @@ func getInfoTableToMap(tableName string, document internalModels.Document) map[s
 	}
 
 	for _, row := range table.Rows {
+		//TODO: PUT THIS IN TOML
+		if row[0] == "Backend" {
+			continue
+		}
 		mapping[row[0]] = row[1]
 	}
 	trace.Trace().Str("table", tableName).Msg("get info table")
 	return mapping
+}
+
+func getBackendIP(addressTableName string, backendKey string, document internalModels.Document) string {
+	for _, entry := range document.Info.Tables[addressTableName].Rows {
+		if entry[0] == backendKey {
+			return entry[1]
+		}
+	}
+
+	trace.Fatal().Msg("Backend IP not found")
+	panic("Backend IP not found") // NEVER RUN BECAUSE trace.Fatal() calls os.exit()
 }
