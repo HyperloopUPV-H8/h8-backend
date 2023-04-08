@@ -12,20 +12,6 @@ import (
 	trace "github.com/rs/zerolog/log"
 )
 
-// TODO: Get these values from the TOML
-const (
-	BLCU_COMPONENT_NAME       = "blcu"
-	BLCU_BOARD_NAME           = "blcu"
-	BLCU_HANDLER_NAME         = "blcu"
-	BLCU_UPLOAD_ORDER_ID      = 700
-	BLCU_DOWNLOAD_ORDER_ID    = 701
-	BLCU_UPLOAD_ORDER_FIELD   = "board"
-	BLCU_DOWNLOAD_ORDER_FIELD = "board"
-	BLCU_INPUT_CHAN_BUF       = 100
-	BLCU_ACK_CHAN_BUF         = 1
-	BLCU_ACK_PACKET_NAME      = "tftp_ack"
-)
-
 type BLCU struct {
 	addr  string
 	ackID uint16
@@ -36,15 +22,18 @@ type BLCU struct {
 	sendOrder   func(models.Order) error
 	sendMessage func(topic string, payload any, targets ...string) error
 
+	config BLCUConfig
+
 	trace zerolog.Logger
 }
 
-func NewBLCU() BLCU {
+func NewBLCU(config BLCUConfig) BLCU {
 	trace.Info().Msg("New BLCU")
 	blcu := BLCU{
 		inputChannel: make(chan models.Update, BLCU_INPUT_CHAN_BUF),
 		ackChannel:   make(chan struct{}, BLCU_ACK_CHAN_BUF),
 		trace:        trace.With().Str("component", BLCU_COMPONENT_NAME).Logger(),
+		config:       config,
 	}
 
 	return blcu
@@ -56,7 +45,7 @@ func (blcu *BLCU) AddGlobal(global excel_models.GlobalInfo) {
 }
 
 func (blcu *BLCU) AddPacket(boardName string, packet excel_models.Packet) {
-	if packet.Description.Name != BLCU_ACK_PACKET_NAME {
+	if packet.Description.Name != blcu.config.Packets.Ack.Name {
 		return
 	}
 

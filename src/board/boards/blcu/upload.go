@@ -47,7 +47,7 @@ type uploadResponsePayload struct {
 func (blcu *BLCU) requestUpload(board string) error {
 	blcu.trace.Info().Str("board", board).Msg("Requesting upload")
 
-	uploadOrder := createUploadOrder(board)
+	uploadOrder := blcu.createUploadOrder(board)
 	if err := blcu.Request(uploadOrder); err != nil {
 		return err
 	}
@@ -60,11 +60,11 @@ func (blcu *BLCU) requestUpload(board string) error {
 	return nil
 }
 
-func createUploadOrder(board string) models.Order {
+func (blcu *BLCU) createUploadOrder(board string) models.Order {
 	return models.Order{
-		ID: BLCU_UPLOAD_ORDER_ID,
+		ID: blcu.config.Packets.Upload.Id,
 		Fields: map[string]any{
-			BLCU_UPLOAD_ORDER_FIELD: board,
+			blcu.config.Packets.Upload.Field: board,
 		},
 	}
 }

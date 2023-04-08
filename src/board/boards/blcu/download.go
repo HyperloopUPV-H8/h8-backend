@@ -37,7 +37,7 @@ func (blcu *BLCU) handleDownload(payload json.RawMessage) ([]byte, error) {
 func (blcu *BLCU) requestDownload(board string) error {
 	blcu.trace.Info().Str("board", board).Msg("Requesting download")
 
-	downloadOrder := createDownloadOrder(board)
+	downloadOrder := blcu.createDownloadOrder(board)
 	if err := blcu.Request(downloadOrder); err != nil {
 		return err
 	}
@@ -50,11 +50,11 @@ func (blcu *BLCU) requestDownload(board string) error {
 	return nil
 }
 
-func createDownloadOrder(board string) models.Order {
+func (blcu *BLCU) createDownloadOrder(board string) models.Order {
 	return models.Order{
-		ID: BLCU_DOWNLOAD_ORDER_ID,
+		ID: blcu.config.Packets.Download.Id,
 		Fields: map[string]any{
-			BLCU_DOWNLOAD_ORDER_FIELD: board,
+			blcu.config.Packets.Download.Field: board,
 		},
 	}
 }

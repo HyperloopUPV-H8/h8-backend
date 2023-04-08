@@ -8,7 +8,6 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/pelletier/go-toml/v2 v2.0.7
-	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/pin/tftp/v3 v3.0.0
 	github.com/rs/zerolog v1.29.0
 	github.com/xuri/excelize/v2 v2.6.1

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/board"
+	"github.com/HyperloopUPV-H8/Backend-H8/board/boards/blcu"
 	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter"
@@ -43,8 +44,9 @@ func main() {
 	vehicleBuilder := vehicle.NewBuilder(config.Vehicle)
 	podData := vehicle_models.NewPodData()
 	orderData := vehicle_models.NewOrderData()
+	blcu := blcu.NewBLCU(config.BLCU)
 
-	excelAdapter.Update(vehicleBuilder, podData, orderData)
+	excelAdapter.Update(vehicleBuilder, podData, orderData, &blcu)
 
 	vehicle := vehicleBuilder.Build()
 
@@ -52,6 +54,13 @@ func main() {
 	go vehicle.Listen(vehicleOutput)
 
 	boardMux := board.NewMux(board.WithInput(vehicleOutput), board.WithOutput(vehicle.SendOrder))
+	boardMux.AddBoard(&blcu)
+
+	blcuIDs := make(map[uint16]string)
+	for _, packet := range podData.Boards["BLCU"].Packets {
+		blcuIDs[packet.ID] = "blcu"
+	}
+	boardMux.AddBoardMapping(blcuIDs)
 
 	updateChan := make(chan vehicle_models.Update)
 	go boardMux.Listen(updateChan)
@@ -69,6 +78,7 @@ func main() {
 
 	orderTransfer, orderChannel := order_transfer.New()
 
+	websocketBroker.RegisterHandle(&blcu, config.BLCU.Topics.Upload, config.BLCU.Topics.Download)
 	websocketBroker.RegisterHandle(&connectionTransfer, config.Connections.UpdateTopic)
 	websocketBroker.RegisterHandle(&dataTransfer)
 	websocketBroker.RegisterHandle(&logger, config.Logger.Topics.Enable, config.Logger.Topics.State)
