@@ -10,12 +10,13 @@ import (
 )
 
 var traceLevelMap = map[string]zerolog.Level{
-	"fatal": zerolog.FatalLevel,
-	"error": zerolog.ErrorLevel,
-	"warn":  zerolog.WarnLevel,
-	"info":  zerolog.InfoLevel,
-	"debug": zerolog.DebugLevel,
-	"trace": zerolog.TraceLevel,
+	"fatal":    zerolog.FatalLevel,
+	"error":    zerolog.ErrorLevel,
+	"warn":     zerolog.WarnLevel,
+	"info":     zerolog.InfoLevel,
+	"debug":    zerolog.DebugLevel,
+	"trace":    zerolog.TraceLevel,
+	"disabled": zerolog.Disabled,
 }
 
 func initTrace(traceLevel string, traceFile string) *os.File {

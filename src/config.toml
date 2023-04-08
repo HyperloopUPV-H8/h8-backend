@@ -1,8 +1,13 @@
 
 [server]
 address = "127.0.0.1:4000"
-file_server_path = "static" # Change name to front build path
-endpoints = { pod_data = "/podDataStructure", order_data = "/orderDataStructure", websocket = "/backend", file_server = "/" }
+file_server_path = "static"
+
+[server.endpoints]
+pod_data = "/podDataStructure"
+order_data = "/orderStructures"
+websocket = "/backend"
+file_server = "/"
 
 [vehicle]
 tcp_client_tag = "TCP_CLIENT"
@@ -46,6 +51,11 @@ topics = { update = "podData/update" }
 [connections]
 update_topic = "connection/update"
 
+[blcu.packets]
+upload = { id = 700, field = "board" }
+download = { id = 701, field = "board" }
+ack = { name = "tftp_ack" }
 
-
-
+[blcu.topics]
+upload = "blcu/upload"
+download = "blcu/download"
