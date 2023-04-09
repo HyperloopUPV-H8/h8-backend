@@ -53,8 +53,11 @@ func (blcu *BLCU) requestDownload(board string) error {
 func (blcu *BLCU) createDownloadOrder(board string) models.Order {
 	return models.Order{
 		ID: blcu.config.Packets.Download.Id,
-		Fields: map[string]any{
-			blcu.config.Packets.Download.Field: board,
+		Fields: map[string]models.Field{
+			blcu.config.Packets.Download.Field: {
+				Value:     board,
+				IsEnabled: true,
+			},
 		},
 	}
 }

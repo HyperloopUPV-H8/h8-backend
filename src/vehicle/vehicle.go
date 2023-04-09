@@ -42,12 +42,15 @@ func (vehicle *Vehicle) SendOrder(order models.Order) error {
 		return err
 	}
 
-	fields := order.Fields
-	fields = vehicle.displayConverter.Revert(fields)
-	fields = vehicle.podConverter.Revert(fields)
-	raw := vehicle.parser.Encode(order.ID, fields)
+	valuesMap := fieldsValuesToMap(order.Fields)
+	valuesMap = vehicle.displayConverter.Revert(valuesMap)
+	valuesMap = vehicle.podConverter.Convert(valuesMap)
 
-	_, err := common.WriteAll(pipe, raw)
+	valuesRaw := vehicle.parser.Encode(order.ID, valuesMap)
+	bitArray := vehicle.parser.CreateBitArray(order.ID, fieldsEnableToMap(order.Fields))
+	fullRaw := append(valuesRaw, bitArray...)
+
+	_, err := common.WriteAll(pipe, fullRaw)
 
 	if err == nil {
 		vehicle.stats.sent++
@@ -57,6 +60,26 @@ func (vehicle *Vehicle) SendOrder(order models.Order) error {
 	}
 
 	return err
+}
+
+func fieldsValuesToMap(fields map[string]models.Field) map[string]any {
+	valuesMap := make(map[string]any)
+
+	for name, field := range fields {
+		valuesMap[name] = field.Value
+	}
+
+	return valuesMap
+}
+
+func fieldsEnableToMap(fields map[string]models.Field) map[string]bool {
+	enableMap := make(map[string]bool)
+
+	for name, field := range fields {
+		enableMap[name] = field.IsEnabled
+	}
+
+	return enableMap
 }
 
 func (vehicle *Vehicle) Listen(output chan<- models.Update) {
