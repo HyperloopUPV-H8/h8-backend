@@ -54,6 +54,7 @@ func New(laddr string, raddr string, mtu uint) (*Pipe, error) {
 	return pipe, nil
 }
 
+// FIXME: si las placas no cierran la conexión bien, el back peta (hacer prueba con board_conn)
 func (pipe *Pipe) connect() {
 	pipe.trace.Debug().Msg("connecting")
 	for pipe.isClosed {
@@ -126,7 +127,7 @@ func (pipe *Pipe) Close(reconnect bool) error {
 	return err
 }
 
-func (pipe *Pipe) OnConnectionChange(callback func(bool)) {
+func (pipe *Pipe) SetOnConnectionChange(callback func(bool)) {
 	pipe.trace.Debug().Msg("set on connection change")
 	pipe.onConnectionChange = callback
 }

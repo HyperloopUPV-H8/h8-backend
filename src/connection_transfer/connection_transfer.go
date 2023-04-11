@@ -52,15 +52,15 @@ func (connectionTransfer *ConnectionTransfer) HandlerName() string {
 	return CONNECTION_TRANSFER_HANDLER_NAME
 }
 
-func (connectionTransfer *ConnectionTransfer) Update(name string, up bool) {
+func (connectionTransfer *ConnectionTransfer) Update(name string, IsConnected bool) {
 	connectionTransfer.writeMx.Lock()
 	defer connectionTransfer.writeMx.Unlock()
 
-	connectionTransfer.trace.Debug().Str("connection", name).Bool("isConnected", up).Msg("update connection state")
+	connectionTransfer.trace.Debug().Str("connection", name).Bool("isConnected", IsConnected).Msg("update connection state")
 
 	connectionTransfer.boardStatus[name] = models.Connection{
 		Name:        name,
-		IsConnected: up,
+		IsConnected: IsConnected,
 	}
 
 	connectionTransfer.send()

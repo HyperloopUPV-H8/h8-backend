@@ -143,7 +143,7 @@ func (builder *Builder) Build() *Vehicle {
 	vehicle.sniffer.Listen(vehicle.readChan)
 	for name, pipe := range vehicle.pipes {
 		pipe.SetOutput(vehicle.readChan)
-		pipe.OnConnectionChange(func(name string) func(state bool) {
+		pipe.SetOnConnectionChange(func(name string) func(state bool) {
 			return func(state bool) {
 				vehicle.onConnectionChange(name, state)
 			}

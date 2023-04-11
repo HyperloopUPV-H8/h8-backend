@@ -78,7 +78,7 @@ func (vehicle *Vehicle) Listen(output chan<- models.Update) {
 	}
 }
 
-func (vehicle *Vehicle) OnConnectionChange(callback func(string, bool)) {
+func (vehicle *Vehicle) SetOnConnectionChange(callback func(string, bool)) {
 	vehicle.trace.Debug().Msg("set on connection change")
 	vehicle.onConnectionChange = callback
 }

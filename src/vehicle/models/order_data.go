@@ -39,7 +39,7 @@ func (orderData *OrderData) AddPacket(boardName string, packet excelAdapterModel
 		log.Fatalf("order transfer: AddPacket: %s\n", err)
 	}
 
-	fields := make(map[string]Field, len(packet.Values))
+	fields := make(map[string]FieldDescription, len(packet.Values))
 	for _, value := range packet.Values {
 		fields[value.Name] = getField(value.ID, value.Type)
 	}
@@ -51,27 +51,27 @@ func (orderData *OrderData) AddPacket(boardName string, packet excelAdapterModel
 	}
 }
 
-func getField(name string, valueType string) Field {
+func getField(name string, valueType string) FieldDescription {
 	if isNumeric(valueType) {
-		return Field{
+		return FieldDescription{
 			Name: name,
-			ValueType: Value{
+			ValueDescription: Value{
 				Kind:  "numeric",
 				Value: valueType,
 			},
 		}
 	} else if valueType == "bool" {
-		return Field{
+		return FieldDescription{
 			Name: name,
-			ValueType: Value{
+			ValueDescription: Value{
 				Kind:  "boolean",
 				Value: "",
 			},
 		}
 	} else {
-		return Field{
+		return FieldDescription{
 			Name: name,
-			ValueType: Value{
+			ValueDescription: Value{
 				Kind:  "enum",
 				Value: getEnumMembers(valueType),
 			},
@@ -88,14 +88,14 @@ func getEnumMembers(enumExp string) []string {
 }
 
 type OrderDescription struct {
-	ID     uint16           `json:"id"`
-	Name   string           `json:"name"`
-	Fields map[string]Field `json:"fields"`
+	ID     uint16                      `json:"id"`
+	Name   string                      `json:"name"`
+	Fields map[string]FieldDescription `json:"fields"`
 }
 
-type Field struct {
-	Name      string `json:"name"`
-	ValueType Value  `json:"valueType"`
+type FieldDescription struct {
+	Name             string `json:"name"`
+	ValueDescription Value  `json:"valueDescription"`
 }
 
 type Value struct {
