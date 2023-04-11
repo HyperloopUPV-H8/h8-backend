@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer/models"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
@@ -68,7 +69,10 @@ func (connectionTransfer *ConnectionTransfer) Update(name string, IsConnected bo
 
 func (connectionTransfer *ConnectionTransfer) send() {
 	connectionTransfer.trace.Debug().Msg("send connections")
-	if err := connectionTransfer.sendMessage(connectionTransfer.updateTopic, connectionTransfer.boardStatus); err != nil {
+
+	connArr := common.Values(connectionTransfer.boardStatus)
+
+	if err := connectionTransfer.sendMessage(connectionTransfer.updateTopic, connArr); err != nil {
 		connectionTransfer.trace.Error().Stack().Err(err).Msg("")
 		return
 	}
