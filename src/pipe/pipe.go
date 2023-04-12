@@ -23,7 +23,7 @@ type Pipe struct {
 	trace zerolog.Logger
 }
 
-func New(laddr string, raddr string, mtu uint) (*Pipe, error) {
+func New(laddr string, raddr string, mtu uint, outputChan chan []byte, onConnectionChange func(bool)) (*Pipe, error) {
 	trace.Info().Str("laddr", laddr).Str("raddr", raddr).Msg("new pipe")
 	localAddr, err := net.ResolveTCPAddr("tcp", laddr)
 	if err != nil {
@@ -38,13 +38,14 @@ func New(laddr string, raddr string, mtu uint) (*Pipe, error) {
 	}
 
 	pipe := &Pipe{
-		laddr: localAddr,
-		raddr: remoteAddr,
+		laddr:  localAddr,
+		raddr:  remoteAddr,
+		output: outputChan,
 
 		isClosed: true,
 		mtu:      int(mtu),
 
-		onConnectionChange: func(bool) {},
+		onConnectionChange: onConnectionChange,
 
 		trace: trace.With().Str("component", "pipe").IPAddr("addr", remoteAddr.IP).Logger(),
 	}
@@ -75,11 +76,6 @@ func (pipe *Pipe) open(conn *net.TCPConn) {
 	pipe.conn = conn
 	pipe.isClosed = false
 	pipe.onConnectionChange(!pipe.isClosed)
-}
-
-func (pipe *Pipe) SetOutput(output chan<- []byte) {
-	pipe.trace.Debug().Msg("set output")
-	pipe.output = output
 }
 
 func (pipe *Pipe) listen() {
@@ -125,9 +121,4 @@ func (pipe *Pipe) Close(reconnect bool) error {
 		go pipe.connect()
 	}
 	return err
-}
-
-func (pipe *Pipe) SetOnConnectionChange(callback func(bool)) {
-	pipe.trace.Debug().Msg("set on connection change")
-	pipe.onConnectionChange = callback
 }

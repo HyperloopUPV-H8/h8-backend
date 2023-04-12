@@ -15,9 +15,9 @@ type UpdateFactory struct {
 	trace     zerolog.Logger
 }
 
-func NewFactory() *UpdateFactory {
+func NewFactory() UpdateFactory {
 	trace.Info().Msg("new update factory")
-	return &UpdateFactory{
+	return UpdateFactory{
 		count:     make(map[uint16]uint64),
 		timestamp: make(map[uint16]uint64),
 		trace:     trace.With().Str("component", "updateFactory").Logger(),

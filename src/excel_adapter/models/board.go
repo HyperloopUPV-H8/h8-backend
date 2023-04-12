@@ -1,10 +1,7 @@
 package models
 
 import (
-	"fmt"
-
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/internals/models"
-	"golang.org/x/exp/slices"
 )
 
 const (
@@ -14,38 +11,39 @@ const (
 )
 
 type Board struct {
-	Name         string
-	IP           string
-	Descriptions map[string]Description
-	Measurements map[string]Value
-	Structures   map[string]Structure
+	Name    string
+	IP      string
+	Packets []Packet
 }
 
 func NewBoard(name string, ip string, sheet models.Sheet) Board {
+
+	descriptions := getDescriptions(sheet.Tables[PACKET_TABLE_NAME])
+	measurements := getMeasurements(sheet.Tables[MEASUREMENT_TABLE_NAME])
+	structures := getStructures(sheet.Tables[STRUCTURES_TABLE_NAME])
+
 	return Board{
-		Name:         name,
-		IP:           ip,
-		Descriptions: getDescriptions(sheet.Tables[PACKET_TABLE_NAME]),
-		Measurements: getMeasurements(sheet.Tables[MEASUREMENT_TABLE_NAME]),
-		Structures:   getStructures(sheet.Tables[STRUCTURES_TABLE_NAME]),
+		Name:    name,
+		IP:      ip,
+		Packets: getPackets(descriptions, measurements, structures),
 	}
 }
 
-func (board Board) GetPackets() []Packet {
+func getPackets(descriptions map[string]Description, measurements map[string]Value, structures map[string]Structure) []Packet {
 	expandedPackets := make([]Packet, 0)
-	for _, description := range board.Descriptions {
-		measurements := board.getPacketMeasurements(description)
+	for _, description := range descriptions {
+		measurements := getPacketMeasurements(description, structures[description.Name], measurements)
 		packetDTOs := expandPacket(description, measurements)
 		expandedPackets = append(expandedPackets, packetDTOs...)
 	}
 	return expandedPackets
 }
 
-func (board Board) getPacketMeasurements(description Description) []Value {
-	wantedMeasurements := board.Structures[description.Name].Measurements
+func getPacketMeasurements(description Description, structure Structure, values map[string]Value) []Value {
+	wantedMeasurements := structure.Measurements
 	measurements := make([]Value, len(wantedMeasurements))
 	for index, id := range wantedMeasurements {
-		measurements[index] = board.Measurements[id]
+		measurements[index] = values[id]
 	}
 
 	return measurements
@@ -97,16 +95,4 @@ func getColumn(i int, table models.Table) []string {
 	}
 
 	return column
-}
-
-func (board *Board) FindContainingPacket(valueName string) string {
-	for _, structure := range board.Structures {
-		if slices.IndexFunc(structure.Measurements, func(name string) bool {
-			return name == valueName
-		}) != -1 {
-			return structure.PacketName
-		}
-	}
-
-	panic(fmt.Sprintf("valueName %s doesn't exist", valueName))
 }

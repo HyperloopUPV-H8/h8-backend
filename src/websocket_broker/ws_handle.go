@@ -131,6 +131,14 @@ func (broker *WebSocketBroker) RegisterHandle(handler models.MessageHandler, top
 	}
 }
 
+// TODO: finish function
+func (broker *WebSocketBroker) Subscribe(topic string, callback func(topic string, payload json.RawMessage, source string)) {
+	broker.handlersMx.Lock()
+	defer broker.handlersMx.Unlock()
+	broker.trace.Debug().Str("topic", topic).Msg("subscribe")
+
+}
+
 func (broker *WebSocketBroker) RemoveHandler(topic string, handlerName string) {
 	broker.handlersMx.Lock()
 	defer broker.handlersMx.Unlock()

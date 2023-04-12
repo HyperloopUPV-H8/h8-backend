@@ -10,8 +10,36 @@ import (
 
 type OrderData map[string]OrderDescription
 
-func NewOrderData() *OrderData {
-	return &OrderData{}
+func NewOrderData(boards map[string]excelAdapterModels.Board) OrderData {
+
+	orderData := make(map[string]OrderDescription)
+
+	for _, board := range boards {
+		for _, packet := range board.Packets {
+			if packet.Description.Type != "order" {
+				continue
+			}
+
+			id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
+			if err != nil {
+				log.Fatalf("order transfer: AddPacket: %s\n", err)
+			}
+
+			fields := make(map[string]FieldDescription, len(packet.Values))
+			for _, value := range packet.Values {
+				fields[value.Name] = getField(value.ID, value.Type)
+			}
+
+			orderData[packet.Description.Name] = OrderDescription{
+				ID:     uint16(id),
+				Name:   packet.Description.Name,
+				Fields: fields,
+			}
+
+		}
+	}
+
+	return orderData
 }
 
 func isNumeric(kind string) bool {
@@ -25,30 +53,6 @@ func isNumeric(kind string) bool {
 		kind == "int64" ||
 		kind == "float32" ||
 		kind == "float64")
-}
-
-func (orderData *OrderData) AddGlobal(global excelAdapterModels.GlobalInfo) {}
-
-func (orderData *OrderData) AddPacket(boardName string, packet excelAdapterModels.Packet) {
-	if packet.Description.Type != "order" {
-		return
-	}
-
-	id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
-	if err != nil {
-		log.Fatalf("order transfer: AddPacket: %s\n", err)
-	}
-
-	fields := make(map[string]FieldDescription, len(packet.Values))
-	for _, value := range packet.Values {
-		fields[value.Name] = getField(value.ID, value.Type)
-	}
-
-	(*orderData)[packet.Description.Name] = OrderDescription{
-		ID:     uint16(id),
-		Name:   packet.Description.Name,
-		Fields: fields,
-	}
 }
 
 func getField(name string, valueType string) FieldDescription {

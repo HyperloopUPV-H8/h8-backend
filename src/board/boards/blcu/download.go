@@ -87,10 +87,12 @@ type fileResponsePayload struct {
 
 func (blcu *BLCU) notifyDownloadFailure() {
 	blcu.trace.Warn().Msg("Download failed")
+	//FIXME: change to toml
 	blcu.sendMessage(os.Getenv("BLCU_DOWNLOAD_TOPIC"), fileResponsePayload{IsSuccess: false, File: nil})
 }
 
 func (blcu *BLCU) notifyDownloadSuccess(bytes []byte) {
+	//FIXME: change to toml
 	blcu.trace.Info().Msg("Download success")
 	blcu.sendMessage(os.Getenv("BLCU_DOWNLOAD_TOPIC"), fileResponsePayload{IsSuccess: true, File: bytes})
 }

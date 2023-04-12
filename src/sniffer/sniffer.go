@@ -20,10 +20,10 @@ type SnifferConfig struct {
 	SnifferInterface string `toml:"sniffer_interface"`
 }
 
-func New(dev string, filter string, config SnifferConfig) (*Sniffer, error) {
+func New(filter string, config SnifferConfig) (*Sniffer, error) {
 	trace.Info().Msg("new sniffer")
 
-	source, err := obtainSource(dev, filter, config.Mtu)
+	source, err := obtainSource(config.SnifferInterface, filter, config.Mtu)
 	if err != nil {
 		trace.Error().Stack().Err(err).Msg("")
 		return nil, err
@@ -32,7 +32,7 @@ func New(dev string, filter string, config SnifferConfig) (*Sniffer, error) {
 	return &Sniffer{
 		source: source,
 		filter: filter,
-		trace:  trace.With().Str("component", "sniffer").Str("dev", dev).Logger(),
+		trace:  trace.With().Str("component", "sniffer").Str("dev", config.SnifferInterface).Logger(),
 	}, nil
 }
 

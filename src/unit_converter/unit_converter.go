@@ -10,40 +10,34 @@ import (
 )
 
 type UnitConverter struct {
-	Kind           string
-	operations     map[string]models.Operations
-	unitOperations map[string]string
-	trace          zerolog.Logger
+	operations map[string]models.Operations
+	trace      zerolog.Logger
 }
 
-func NewUnitConverter(kind string) *UnitConverter {
+func NewUnitConverter(kind string, boards map[string]excelAdapterModels.Board, unitToOperations map[string]string) UnitConverter {
 	trace.Info().Str("kind", kind).Msg("new unit converter")
-	return &UnitConverter{
-		Kind:       kind,
-		operations: make(map[string]models.Operations),
-		trace:      trace.With().Str("component", "unitConverter").Str("kind", kind).Logger(),
-	}
-}
 
-func (converter *UnitConverter) AddGlobal(global excelAdapterModels.GlobalInfo) {
-	converter.trace.Debug().Msg("add global")
-	converter.unitOperations = global.UnitToOperations
-}
+	operations := make(map[string]models.Operations)
 
-func (converter *UnitConverter) AddPacket(boardName string, packet excelAdapterModels.Packet) {
-	converter.trace.Debug().Str("id", packet.Description.ID).Str("name", packet.Description.Name).Str("board", boardName).Msg("add packet")
-	for _, val := range packet.Values {
-		var ops string
-		if converter.Kind == "pod" && val.PodUnits != "" {
-			ops = getCustomOrGlobalOperations(val.PodUnits, converter.unitOperations)
-		} else if converter.Kind == "display" && val.DisplayUnits != "" {
-			ops = getCustomOrGlobalOperations(val.DisplayUnits, converter.unitOperations)
-		} else {
-			converter.trace.Trace().Str("id", val.ID).Msg("no unit conversion")
-			continue
+	for _, board := range boards {
+		for _, packet := range board.Packets {
+			for _, val := range packet.Values {
+				var ops string
+				if kind == "pod" && val.PodUnits != "" {
+					ops = getCustomOrGlobalOperations(val.PodUnits, unitToOperations)
+				} else if kind == "display" && val.DisplayUnits != "" {
+					ops = getCustomOrGlobalOperations(val.DisplayUnits, unitToOperations)
+				} else {
+					continue
+				}
+				operations[val.ID] = models.NewOperations(ops)
+			}
 		}
-		converter.trace.Trace().Str("operations", ops).Str("id", val.ID).Msg("add units")
-		converter.operations[val.ID] = models.NewOperations(ops)
+	}
+
+	return UnitConverter{
+		operations: operations,
+		trace:      trace.With().Str("component", "unitConverter").Str("kind", kind).Logger(),
 	}
 }
 

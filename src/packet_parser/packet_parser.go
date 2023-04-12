@@ -19,47 +19,44 @@ type PacketParser struct {
 	trace       zerolog.Logger
 }
 
-func (parser *PacketParser) AddGlobal(excelAdapterModels.GlobalInfo) {
-	parser.trace.Debug().Msg("add global")
-}
-
-func (parser *PacketParser) AddPacket(boardName string, packet excelAdapterModels.Packet) {
-	parser.trace.Debug().Str("id", packet.Description.ID).Str("name", packet.Description.Name).Str("board", boardName).Msg("add packet")
-
-	id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
-	if err != nil {
-		parser.trace.Error().Stack().Err(err).Str("id", packet.Description.ID).Msg("")
-		return
-	}
-
-	valueDescriptors := make([]models.ValueDescriptor, 0, len(packet.Values))
-	for _, value := range packet.Values {
-		if value.ID == "" {
-			continue
-		}
-
-		parser.trace.Trace().Str("id", value.ID).Str("type", value.Type).Msg("add value")
-
-		kind := value.Type
-		if strings.HasPrefix(strings.ToUpper(kind), "ENUM") {
-			kind = "enum"
-			parser.enums[value.ID] = models.GetEnum(strings.ToUpper(value.Type))
-		}
-
-		valueDescriptors = append(valueDescriptors, models.ValueDescriptor{
-			ID:   value.ID,
-			Type: kind,
-		})
-	}
-
-	parser.descriptors[uint16(id)] = valueDescriptors
-}
-
-func NewPacketParser() *PacketParser {
+func NewPacketParser(boards map[string]excelAdapterModels.Board) PacketParser {
 	trace.Info().Msg("new packet parser")
-	return &PacketParser{
-		descriptors: make(map[uint16]models.PacketDescriptor),
-		enums:       make(map[string]models.Enum),
+
+	descriptors := make(map[uint16]models.PacketDescriptor)
+	enums := make(map[string]models.Enum)
+
+	for _, board := range boards {
+		for _, packet := range board.Packets {
+			id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
+			if err != nil {
+				continue
+			}
+
+			valueDescriptors := make([]models.ValueDescriptor, 0, len(packet.Values))
+			for _, value := range packet.Values {
+				if value.ID == "" {
+					continue
+				}
+
+				kind := value.Type
+				if strings.HasPrefix(strings.ToUpper(kind), "ENUM") {
+					kind = "enum"
+					enums[value.ID] = models.GetEnum(strings.ToUpper(value.Type))
+				}
+
+				valueDescriptors = append(valueDescriptors, models.ValueDescriptor{
+					ID:   value.ID,
+					Type: kind,
+				})
+			}
+
+			descriptors[uint16(id)] = valueDescriptors
+		}
+	}
+
+	return PacketParser{
+		descriptors: descriptors,
+		enums:       enums,
 		trace:       trace.With().Str("component", "packetParser").Logger(),
 	}
 }
