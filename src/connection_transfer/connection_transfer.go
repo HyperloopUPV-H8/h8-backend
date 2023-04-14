@@ -18,7 +18,7 @@ const (
 type ConnectionTransfer struct {
 	writeMx     *sync.Mutex
 	boardStatus map[string]models.Connection
-	SendMessage func(topic string, payload any, target ...string) error
+	sendMessage func(topic string, payload any, target ...string) error
 	updateTopic string
 	trace       zerolog.Logger
 }
@@ -33,7 +33,7 @@ func New(config ConnectionTransferConfig) ConnectionTransfer {
 	return ConnectionTransfer{
 		writeMx:     &sync.Mutex{},
 		boardStatus: make(map[string]models.Connection),
-		SendMessage: defaultSendMessage,
+		sendMessage: defaultSendMessage,
 		updateTopic: config.UpdateTopic,
 		trace:       trace.With().Str("component", CONNECTION_TRANSFER_HANDLER_NAME).Logger(),
 	}
@@ -46,7 +46,7 @@ func (connectionTransfer *ConnectionTransfer) UpdateMessage(topic string, payloa
 
 func (connectionTransfer *ConnectionTransfer) SetSendMessage(sendMessage func(topic string, payload any, target ...string) error) {
 	connectionTransfer.trace.Debug().Msg("set send message")
-	connectionTransfer.SendMessage = sendMessage
+	connectionTransfer.sendMessage = sendMessage
 }
 
 func (connectionTransfer *ConnectionTransfer) HandlerName() string {
@@ -72,7 +72,7 @@ func (connectionTransfer *ConnectionTransfer) send() {
 
 	connArr := common.Values(connectionTransfer.boardStatus)
 
-	if err := connectionTransfer.SendMessage(connectionTransfer.updateTopic, connArr); err != nil {
+	if err := connectionTransfer.sendMessage(connectionTransfer.updateTopic, connArr); err != nil {
 		connectionTransfer.trace.Error().Stack().Err(err).Msg("")
 		return
 	}
