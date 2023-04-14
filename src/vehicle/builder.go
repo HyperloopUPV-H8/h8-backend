@@ -12,6 +12,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/sniffer"
 	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/internals"
+	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
 
@@ -31,26 +32,24 @@ type VehicleConfig struct {
 	}
 }
 
-// TODO: FINISH ORGANIZING VEHICLE AND BUILDER
 func NewVehicle(boards map[string]excel_models.Board, globalInfo excel_models.GlobalInfo, config VehicleConfig, onConnectionChange func(string, bool)) Vehicle {
 	trace.Trace().Msg("new vehicle builder")
 
 	messageChan := make(chan []byte, MESSAGE_CHAN_BUF_SIZE)
-
+	trace := trace.With().Str("component", "vehicle").Logger()
 	vehicle := Vehicle{
 		parser:             packet_parser.NewPacketParser(boards),
 		displayConverter:   unit_converter.NewUnitConverter("display", boards, globalInfo.UnitToOperations),
 		podConverter:       unit_converter.NewUnitConverter("pod", boards, globalInfo.UnitToOperations),
-		sniffer:            createSniffer(globalInfo, config),
-		pipes:              createPipes(globalInfo, messageChan, onConnectionChange, config),
-		idToBoard:          getIdToBoard(boards),
+		sniffer:            createSniffer(globalInfo, config, trace),
+		pipes:              createPipes(globalInfo, messageChan, onConnectionChange, config, trace),
+		idToBoard:          getIdToBoard(boards, trace),
 		packetFactory:      internals.NewFactory(),
 		updateChan:         make(chan []byte, UPDATE_CHAN_BUF_SIZE),
 		messageChan:        messageChan,
 		onConnectionChange: onConnectionChange,
 		stats:              newStats(),
-
-		trace: trace.With().Str("component", "vehicle").Logger(),
+		trace:              trace,
 	}
 
 	vehicle.sniffer.Listen(vehicle.updateChan)
@@ -58,23 +57,26 @@ func NewVehicle(boards map[string]excel_models.Board, globalInfo excel_models.Gl
 	return vehicle
 }
 
-func createSniffer(global excel_models.GlobalInfo, config VehicleConfig) sniffer.Sniffer {
+func createSniffer(global excel_models.GlobalInfo, config VehicleConfig, trace zerolog.Logger) sniffer.Sniffer {
 	filter := getFilter(common.Values(global.BoardToIP), global.ProtocolToPort, config.TcpClientTag, config.TcpServerTag, config.UdpTag)
 	sniffer, err := sniffer.New(filter, config.Network)
+
 	if err != nil {
-		//TODO: log.Fatal pero con el trace
+		trace.Fatal().Stack().Err(err).Msg("error creating sniffer")
 	}
 
 	return *sniffer
 }
 
-func createPipes(global excel_models.GlobalInfo, messageChan chan []byte, onConnectionChange func(string, bool), config VehicleConfig) map[string]*pipe.Pipe {
+func createPipes(global excel_models.GlobalInfo, messageChan chan []byte, onConnectionChange func(string, bool), config VehicleConfig, trace zerolog.Logger) map[string]*pipe.Pipe {
 	laddr := common.AddrWithPort(global.BackendIP, global.ProtocolToPort[config.TcpClientTag])
 	pipes := make(map[string]*pipe.Pipe)
 	for board, ip := range global.BoardToIP {
 		pipe, err := pipe.New(laddr, common.AddrWithPort(ip, global.ProtocolToPort[config.TcpServerTag]), config.Network.Mtu, messageChan, func(state bool) { onConnectionChange(board, state) })
+
 		if err != nil {
-			//TODO: log fatal con trace
+			trace.Fatal().Stack().Err(err).Msg("error creating pipe")
+
 		}
 
 		pipes[board] = pipe
@@ -107,13 +109,13 @@ func getFilter(addrs []string, protocolToPort map[string]string, tcpClientTag st
 	return filter
 }
 
-func getIdToBoard(boards map[string]excel_models.Board) map[uint16]string {
+func getIdToBoard(boards map[string]excel_models.Board, trace zerolog.Logger) map[uint16]string {
 	idToBoard := make(map[uint16]string)
 	for _, board := range boards {
 		for _, packet := range board.Packets {
 			id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
 			if err != nil {
-				//TODO: log fatal
+				trace.Fatal().Stack().Err(err).Msg("error parsing id")
 				continue
 			}
 			idToBoard[uint16(id)] = board.Name
