@@ -14,17 +14,18 @@ import (
 )
 
 type Vehicle struct {
-	sniffer          *sniffer.Sniffer
-	parser           *packet_parser.PacketParser
-	displayConverter *unit_converter.UnitConverter
-	podConverter     *unit_converter.UnitConverter
+	sniffer          sniffer.Sniffer
+	parser           packet_parser.PacketParser
+	displayConverter unit_converter.UnitConverter
+	podConverter     unit_converter.UnitConverter
 	pipes            map[string]*pipe.Pipe
 
-	packetFactory *internals.UpdateFactory
+	packetFactory internals.UpdateFactory
 
-	readChan chan []byte
+	updateChan  chan []byte
+	messageChan chan []byte
 
-	idToPipe map[uint16]string
+	idToBoard map[uint16]string
 
 	stats *Stats
 
@@ -35,9 +36,9 @@ type Vehicle struct {
 
 func (vehicle *Vehicle) SendOrder(order models.Order) error {
 	vehicle.trace.Info().Uint16("id", order.ID).Msg("send order")
-	pipe, ok := vehicle.pipes[vehicle.idToPipe[order.ID]]
+	pipe, ok := vehicle.pipes[vehicle.idToBoard[order.ID]]
 	if !ok {
-		err := fmt.Errorf("%s pipe for %d not found", vehicle.idToPipe[order.ID], order.ID)
+		err := fmt.Errorf("%s pipe for %d not found", vehicle.idToBoard[order.ID], order.ID)
 		vehicle.trace.Error().Stack().Err(err).Msg("")
 		return err
 	}
@@ -61,7 +62,7 @@ func (vehicle *Vehicle) SendOrder(order models.Order) error {
 
 func (vehicle *Vehicle) Listen(output chan<- models.Update) {
 	vehicle.trace.Info().Msg("start listening")
-	for raw := range vehicle.readChan {
+	for raw := range vehicle.updateChan {
 		rawCopy := make([]byte, len(raw))
 		copy(rawCopy, raw)
 
@@ -76,9 +77,4 @@ func (vehicle *Vehicle) Listen(output chan<- models.Update) {
 		vehicle.trace.Trace().Msg("read")
 		output <- update
 	}
-}
-
-func (vehicle *Vehicle) SetOnConnectionChange(callback func(string, bool)) {
-	vehicle.trace.Debug().Msg("set on connection change")
-	vehicle.onConnectionChange = callback
 }

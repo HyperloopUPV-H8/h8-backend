@@ -12,40 +12,38 @@ type PodData struct {
 	Boards map[string]Board `json:"boards"`
 }
 
-func NewPodData() *PodData {
-	return &PodData{
-		Boards: make(map[string]Board),
-	}
-}
+func NewPodData(excelBoards map[string]excelAdapterModels.Board) PodData {
+	boards := make(map[string]Board)
+	for name, excelBoard := range excelBoards {
+		packets := make(map[uint16]Packet)
+		for _, packet := range excelBoard.Packets {
+			if packet.Description.Type != "data" {
+				continue
+			}
 
-func (podData *PodData) AddGlobal(global excelAdapterModels.GlobalInfo) {}
+			id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
+			if err != nil {
+				log.Fatalf("data transfer: AddPacket: %s\n", err)
+			}
 
-func (podData *PodData) AddPacket(boardName string, packet excelAdapterModels.Packet) {
-	if packet.Description.Type != "data" {
-		return
-	}
-
-	id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
-	if err != nil {
-		log.Fatalf("data transfer: AddPacket: %s\n", err)
-	}
-
-	dataBoard, ok := podData.Boards[boardName]
-	if !ok {
-		podData.Boards[boardName] = Board{
-			Name:    boardName,
-			Packets: make(map[uint16]Packet),
+			packets[uint16(id)] = Packet{
+				ID:           uint16(id),
+				Name:         packet.Description.Name,
+				HexValue:     "",
+				Count:        0,
+				CycleTime:    0,
+				Measurements: getMeasurements(packet.Values),
+			}
 		}
-		dataBoard = podData.Boards[boardName]
+
+		boards[name] = Board{
+			Name:    name,
+			Packets: packets,
+		}
 	}
 
-	dataBoard.Packets[uint16(id)] = Packet{
-		ID:           uint16(id),
-		Name:         packet.Description.Name,
-		HexValue:     "",
-		Count:        0,
-		CycleTime:    0,
-		Measurements: getMeasurements(packet.Values),
+	return PodData{
+		Boards: boards,
 	}
 }
 

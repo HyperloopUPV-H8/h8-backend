@@ -17,22 +17,12 @@ import (
 )
 
 const (
-	READ_CHAN_BUF_SIZE  = 100
-	ERROR_CHAN_BUF_SIZE = 100
+	UPDATE_CHAN_BUF_SIZE  = 100
+	MESSAGE_CHAN_BUF_SIZE = 100
+	ERROR_CHAN_BUF_SIZE   = 100
 )
 
-type Builder struct {
-	sniffer          *sniffer.Sniffer
-	config           BuilderConfig
-	parser           *packet_parser.PacketParser
-	displayConverter *unit_converter.UnitConverter
-	podConverter     *unit_converter.UnitConverter
-	pipes            map[string]*pipe.Pipe
-	idToPipe         map[uint16]string
-	trace            zerolog.Logger
-}
-
-type BuilderConfig struct {
+type VehicleConfig struct {
 	TcpClientTag string `toml:"tcp_client_tag"`
 	TcpServerTag string `toml:"tcp_server_tag"`
 	UdpTag       string `toml:"udp_tag"`
@@ -42,45 +32,56 @@ type BuilderConfig struct {
 	}
 }
 
-func NewBuilder(config BuilderConfig) *Builder {
+func NewVehicle(boards map[string]excel_models.Board, globalInfo excel_models.GlobalInfo, config VehicleConfig, onConnectionChange func(string, bool)) Vehicle {
 	trace.Trace().Msg("new vehicle builder")
-	return &Builder{
-		parser:           packet_parser.NewPacketParser(),
-		displayConverter: unit_converter.NewUnitConverter("display"),
-		podConverter:     unit_converter.NewUnitConverter("pod"),
-		sniffer:          nil,
-		pipes:            make(map[string]*pipe.Pipe),
-		idToPipe:         make(map[uint16]string),
-		trace:            trace.With().Str("component", "vehicleBuilder").Logger(),
-		config:           config,
+
+	messageChan := make(chan []byte, MESSAGE_CHAN_BUF_SIZE)
+	trace := trace.With().Str("component", "vehicle").Logger()
+	vehicle := Vehicle{
+		parser:             packet_parser.NewPacketParser(boards),
+		displayConverter:   unit_converter.NewUnitConverter("display", boards, globalInfo.UnitToOperations),
+		podConverter:       unit_converter.NewUnitConverter("pod", boards, globalInfo.UnitToOperations),
+		sniffer:            createSniffer(globalInfo, config, trace),
+		pipes:              createPipes(globalInfo, messageChan, onConnectionChange, config, trace),
+		idToBoard:          getIdToBoard(boards, trace),
+		packetFactory:      internals.NewFactory(),
+		updateChan:         make(chan []byte, UPDATE_CHAN_BUF_SIZE),
+		messageChan:        messageChan,
+		onConnectionChange: onConnectionChange,
+		stats:              newStats(),
+		trace:              trace,
 	}
+
+	vehicle.sniffer.Listen(vehicle.updateChan)
+
+	return vehicle
 }
 
-func (builder *Builder) AddGlobal(global excel_models.GlobalInfo) {
-	builder.trace.Debug().Msg("add global")
+func createSniffer(global excel_models.GlobalInfo, config VehicleConfig, trace zerolog.Logger) sniffer.Sniffer {
+	filter := getFilter(common.Values(global.BoardToIP), global.ProtocolToPort, config.TcpClientTag, config.TcpServerTag, config.UdpTag)
+	sniffer, err := sniffer.New(filter, config.Network)
 
-	var err error
-	filter := getFilter(common.Values(global.BoardToIP), global.ProtocolToPort, builder.config.TcpClientTag, builder.config.TcpServerTag, builder.config.UdpTag)
-	builder.sniffer, err = sniffer.New(builder.config.Network.SnifferInterface, filter, builder.config.Network)
 	if err != nil {
-		builder.trace.Fatal().Stack().Err(err).Msg("")
-		return
+		trace.Fatal().Stack().Err(err).Msg("error creating sniffer")
 	}
 
-	laddr := common.AddrWithPort(global.BackendIP, global.ProtocolToPort[builder.config.TcpClientTag])
+	return *sniffer
+}
+
+func createPipes(global excel_models.GlobalInfo, messageChan chan []byte, onConnectionChange func(string, bool), config VehicleConfig, trace zerolog.Logger) map[string]*pipe.Pipe {
+	laddr := common.AddrWithPort(global.BackendIP, global.ProtocolToPort[config.TcpClientTag])
+	pipes := make(map[string]*pipe.Pipe)
 	for board, ip := range global.BoardToIP {
-		builder.trace.Debug().Str("board", board).Str("ip", ip).Msg("add board")
-		var err error
-		builder.pipes[board], err = pipe.New(laddr, common.AddrWithPort(ip, global.ProtocolToPort[builder.config.TcpServerTag]), builder.config.Network.Mtu)
-		if err != nil {
-			builder.trace.Fatal().Stack().Err(err).Msg("")
-			return
-		}
-	}
+		pipe, err := pipe.New(laddr, common.AddrWithPort(ip, global.ProtocolToPort[config.TcpServerTag]), config.Network.Mtu, messageChan, func(state bool) { onConnectionChange(board, state) })
 
-	builder.parser.AddGlobal(global)
-	builder.displayConverter.AddGlobal(global)
-	builder.podConverter.AddGlobal(global)
+		if err != nil {
+			trace.Fatal().Stack().Err(err).Msg("error creating pipe")
+
+		}
+
+		pipes[board] = pipe
+	}
+	return pipes
 }
 
 func getFilter(addrs []string, protocolToPort map[string]string, tcpClientTag string, tcpServerTag string, udpTag string) string {
@@ -108,47 +109,18 @@ func getFilter(addrs []string, protocolToPort map[string]string, tcpClientTag st
 	return filter
 }
 
-func (builder *Builder) AddPacket(boardName string, packet excel_models.Packet) {
-	builder.trace.Debug().Str("id", packet.Description.ID).Str("name", packet.Description.Name).Str("board", boardName).Msg("add packet")
-	id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
-	if err != nil {
-		builder.trace.Error().Stack().Err(err).Msg("")
-		return
-	}
-	builder.idToPipe[uint16(id)] = boardName
-
-	builder.parser.AddPacket(boardName, packet)
-	builder.displayConverter.AddPacket(boardName, packet)
-	builder.podConverter.AddPacket(boardName, packet)
-}
-
-func (builder *Builder) Build() *Vehicle {
-	builder.trace.Info().Msg("build")
-	vehicle := &Vehicle{
-		sniffer:          builder.sniffer,
-		parser:           builder.parser,
-		displayConverter: builder.displayConverter,
-		podConverter:     builder.podConverter,
-		pipes:            builder.pipes,
-
-		packetFactory: internals.NewFactory(),
-
-		idToPipe: builder.idToPipe,
-		readChan: make(chan []byte, READ_CHAN_BUF_SIZE),
-		stats:    newStats(),
-
-		trace: trace.With().Str("component", "vehicle").Logger(),
-	}
-
-	vehicle.sniffer.Listen(vehicle.readChan)
-	for name, pipe := range vehicle.pipes {
-		pipe.SetOutput(vehicle.readChan)
-		pipe.SetOnConnectionChange(func(name string) func(state bool) {
-			return func(state bool) {
-				vehicle.onConnectionChange(name, state)
+func getIdToBoard(boards map[string]excel_models.Board, trace zerolog.Logger) map[uint16]string {
+	idToBoard := make(map[uint16]string)
+	for _, board := range boards {
+		for _, packet := range board.Packets {
+			id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
+			if err != nil {
+				trace.Fatal().Stack().Err(err).Msg("error parsing id")
+				continue
 			}
-		}(name))
+			idToBoard[uint16(id)] = board.Name
+		}
 	}
 
-	return vehicle
+	return idToBoard
 }

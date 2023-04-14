@@ -3,7 +3,6 @@ package blcu
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 
 	excel_models "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
@@ -27,9 +26,10 @@ type BLCU struct {
 	trace zerolog.Logger
 }
 
-func NewBLCU(config BLCUConfig) BLCU {
+func NewBLCU(global excel_models.GlobalInfo, config BLCUConfig) BLCU {
 	trace.Info().Msg("New BLCU")
 	blcu := BLCU{
+		addr:         fmt.Sprintf("%s:%s", global.BoardToIP["BLCU"], global.ProtocolToPort["TFTP"]),
 		inputChannel: make(chan models.Update, BLCU_INPUT_CHAN_BUF),
 		ackChannel:   make(chan struct{}, BLCU_ACK_CHAN_BUF),
 		trace:        trace.With().Str("component", BLCU_COMPONENT_NAME).Logger(),
@@ -39,11 +39,7 @@ func NewBLCU(config BLCUConfig) BLCU {
 	return blcu
 }
 
-func (blcu *BLCU) AddGlobal(global excel_models.GlobalInfo) {
-	blcu.addr = fmt.Sprintf("%s:%s", global.BoardToIP["BLCU"], global.ProtocolToPort["TFTP"])
-	blcu.trace.Debug().Str("addr", blcu.addr).Msg("Add global info")
-}
-
+// TODO: remove ackPacket, it should from the tcp connection instead of the updates
 func (blcu *BLCU) AddPacket(boardName string, packet excel_models.Packet) {
 	if packet.Description.Name != blcu.config.Packets.Ack.Name {
 		return
@@ -62,13 +58,13 @@ func (blcu *BLCU) AddPacket(boardName string, packet excel_models.Packet) {
 func (blcu *BLCU) UpdateMessage(topic string, payload json.RawMessage, source string) {
 	blcu.trace.Debug().Str("topic", topic).Str("source", source).Msg("Update message")
 	switch topic {
-	case os.Getenv("BLCU_UPLOAD_TOPIC"):
+	case blcu.config.Topics.Upload:
 		if err := blcu.handleUpload(payload); err != nil {
 			blcu.notifyUploadFailure()
 		} else {
 			blcu.notifyUploadSuccess()
 		}
-	case os.Getenv("BLCU_DOWNLOAD_TOPIC"):
+	case blcu.config.Topics.Download:
 		if file, err := blcu.handleDownload(payload); err != nil {
 			blcu.notifyDownloadFailure()
 		} else {

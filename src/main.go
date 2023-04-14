@@ -39,17 +39,15 @@ func main() {
 
 	config := getConfig("./config.toml")
 
-	excelAdapter := excel_adapter.NewExcelAdapter(config.Excel)
+	boards, globalInfo := excel_adapter.FetchBoardsAndGlobalInfo(config.Excel)
 
-	vehicleBuilder := vehicle.NewBuilder(config.Vehicle)
-	podData := vehicle_models.NewPodData()
-	orderData := vehicle_models.NewOrderData()
-	blcu := blcu.NewBLCU(config.BLCU)
+	connectionTransfer := connection_transfer.New(config.Connections)
 
-	excelAdapter.Update(vehicleBuilder, podData, orderData, &blcu)
+	podData := vehicle_models.NewPodData(boards)
+	orderData := vehicle_models.NewOrderData(boards)
+	blcu := blcu.NewBLCU(globalInfo, config.BLCU)
 
-	vehicle := vehicleBuilder.Build()
-
+	vehicle := vehicle.NewVehicle(boards, globalInfo, config.Vehicle, connectionTransfer.Update)
 	vehicleOutput := make(chan vehicle_models.Update)
 	go vehicle.Listen(vehicleOutput)
 
@@ -68,15 +66,10 @@ func main() {
 	// Communication with front-end
 	websocketBroker := websocket_broker.New()
 
-	connectionTransfer := connection_transfer.New(config.Connections)
-
 	dataTransfer := data_transfer.New(config.DataTransfer)
-
-	logger := logger.New(config.Logger)
-
 	messageTransfer := message_transfer.New(config.Messages)
-
 	orderTransfer, orderChannel := order_transfer.New()
+	logger := logger.New(config.Logger)
 
 	websocketBroker.RegisterHandle(&blcu, config.BLCU.Topics.Upload, config.BLCU.Topics.Download)
 	websocketBroker.RegisterHandle(&connectionTransfer, config.Connections.UpdateTopic)
@@ -86,8 +79,6 @@ func main() {
 	websocketBroker.RegisterHandle(&orderTransfer, config.Orders.SendTopic)
 
 	go dataTransfer.Run()
-
-	vehicle.SetOnConnectionChange(connectionTransfer.Update)
 
 	idToType := getIdToType(podData)
 	go func() {
@@ -100,6 +91,11 @@ func main() {
 			}
 		}
 	}()
+
+	//TODO: send message from vehicle to mux and mux to message transfer
+	// go func() {
+	// 	for message := range
+	// }
 
 	go func() {
 		for order := range orderChannel {
@@ -136,7 +132,7 @@ loop:
 	}
 }
 
-func getIdToType(podData *vehicle_models.PodData) map[uint16]string {
+func getIdToType(podData vehicle_models.PodData) map[uint16]string {
 	idToType := make(map[uint16]string)
 	for _, brd := range podData.Boards {
 		for _, pkt := range brd.Packets {

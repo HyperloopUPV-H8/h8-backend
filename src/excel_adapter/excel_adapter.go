@@ -15,29 +15,20 @@ type ExcelAdapterConfig struct {
 	Parse    internals.ParseConfig
 }
 
-type ExcelAdapter struct {
-	config     ExcelAdapterConfig
-	boards     map[string]models.Board
-	globalInfo models.GlobalInfo
-	document   internalModels.Document
-}
-
-func NewExcelAdapter(config ExcelAdapterConfig) ExcelAdapter {
-	//TODO: poner config del download nesteado en el TOML
+func FetchBoardsAndGlobalInfo(config ExcelAdapterConfig) (map[string]models.Board, models.GlobalInfo) {
 	document := fetchDocument(config.Download, config.Parse)
 
-	return ExcelAdapter{
-		config: config,
-		boards: getBoards(document, config.Parse.AddressTable),
-		globalInfo: getGlobalInfo(document, GlobalInfoConfig{
-			AddressTable:    config.Parse.AddressTable,
-			BackendEntryKey: config.Parse.BackendEntryKey,
-			UnitsTable:      config.Parse.UnitsTable,
-			PortsTable:      config.Parse.PortsTable,
-			IdsTable:        config.Parse.IdsTable,
-		}),
-		document: document,
-	}
+	globalInfo := getGlobalInfo(document, GlobalInfoConfig{
+		AddressTable:    config.Parse.AddressTable,
+		BackendEntryKey: config.Parse.BackendEntryKey,
+		UnitsTable:      config.Parse.UnitsTable,
+		PortsTable:      config.Parse.PortsTable,
+		IdsTable:        config.Parse.IdsTable,
+	})
+
+	boards := getBoards(document, config.Parse.AddressTable)
+
+	return boards, globalInfo
 }
 
 func fetchDocument(downloadConfig internals.DownloadConfig, parseConfig internals.ParseConfig) internalModels.Document {
@@ -77,25 +68,6 @@ func getIP(board string, document internalModels.Document, addressTableName stri
 
 	trace.Fatal().Str("board", board).Msg("missing board ip")
 	return ""
-}
-
-func (ea *ExcelAdapter) Update(objects ...models.FromDocument) {
-	trace.Debug().Msg("update from document")
-
-	trace.Trace().Msg("update global info")
-	for _, object := range objects {
-		object.AddGlobal(ea.globalInfo)
-	}
-
-	for name, board := range ea.boards {
-		trace.Trace().Str("board", name).Msg("update board")
-		for _, packet := range board.GetPackets() {
-			trace.Trace().Str("packet", packet.Description.ID).Msg("update packet")
-			for _, object := range objects {
-				object.AddPacket(board.Name, packet)
-			}
-		}
-	}
 }
 
 type GlobalInfoConfig struct {

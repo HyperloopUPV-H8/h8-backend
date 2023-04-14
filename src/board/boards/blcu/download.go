@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"os"
 	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
@@ -87,10 +86,10 @@ type fileResponsePayload struct {
 
 func (blcu *BLCU) notifyDownloadFailure() {
 	blcu.trace.Warn().Msg("Download failed")
-	blcu.sendMessage(os.Getenv("BLCU_DOWNLOAD_TOPIC"), fileResponsePayload{IsSuccess: false, File: nil})
+	blcu.sendMessage(blcu.config.Topics.Download, fileResponsePayload{IsSuccess: false, File: nil})
 }
 
 func (blcu *BLCU) notifyDownloadSuccess(bytes []byte) {
 	blcu.trace.Info().Msg("Download success")
-	blcu.sendMessage(os.Getenv("BLCU_DOWNLOAD_TOPIC"), fileResponsePayload{IsSuccess: true, File: bytes})
+	blcu.sendMessage(blcu.config.Topics.Download, fileResponsePayload{IsSuccess: true, File: bytes})
 }
