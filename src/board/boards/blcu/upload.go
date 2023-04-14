@@ -92,10 +92,10 @@ func (blcu *BLCU) WriteTFTP(reader io.Reader) error {
 // the topic BLCU_STATE_TOPIC expects a number between 0 and 100, the idea is in the future to inform about the percentage of the file uploaded
 func (blcu *BLCU) notifyUploadFailure() {
 	blcu.trace.Warn().Msg("Upload failed")
-	blcu.sendMessage(blcu.uploadTopic, uploadResponsePayload{Percentage: 0, IsSuccess: false})
+	blcu.sendMessage(blcu.config.Topics.Download, uploadResponsePayload{Percentage: 0, IsSuccess: false})
 }
 
 func (blcu *BLCU) notifyUploadSuccess() {
 	blcu.trace.Info().Msg("Upload success")
-	blcu.sendMessage(blcu.uploadTopic, uploadResponsePayload{Percentage: 100, IsSuccess: true})
+	blcu.sendMessage(blcu.config.Topics.Download, uploadResponsePayload{Percentage: 100, IsSuccess: true})
 }

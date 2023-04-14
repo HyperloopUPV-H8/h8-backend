@@ -86,10 +86,10 @@ type fileResponsePayload struct {
 
 func (blcu *BLCU) notifyDownloadFailure() {
 	blcu.trace.Warn().Msg("Download failed")
-	blcu.sendMessage(blcu.downloadTopic, fileResponsePayload{IsSuccess: false, File: nil})
+	blcu.sendMessage(blcu.config.Topics.Download, fileResponsePayload{IsSuccess: false, File: nil})
 }
 
 func (blcu *BLCU) notifyDownloadSuccess(bytes []byte) {
 	blcu.trace.Info().Msg("Download success")
-	blcu.sendMessage(blcu.downloadTopic, fileResponsePayload{IsSuccess: true, File: bytes})
+	blcu.sendMessage(blcu.config.Topics.Download, fileResponsePayload{IsSuccess: true, File: bytes})
 }

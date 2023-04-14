@@ -15,9 +15,6 @@ type BLCU struct {
 	addr  string
 	ackID uint16
 
-	uploadTopic   string
-	downloadTopic string
-
 	inputChannel chan models.Update
 	ackChannel   chan struct{}
 
@@ -32,13 +29,11 @@ type BLCU struct {
 func NewBLCU(global excel_models.GlobalInfo, config BLCUConfig) BLCU {
 	trace.Info().Msg("New BLCU")
 	blcu := BLCU{
-		addr:          fmt.Sprintf("%s:%s", global.BoardToIP["BLCU"], global.ProtocolToPort["TFTP"]),
-		uploadTopic:   config.Topics.Upload,
-		downloadTopic: config.Topics.Download,
-		inputChannel:  make(chan models.Update, BLCU_INPUT_CHAN_BUF),
-		ackChannel:    make(chan struct{}, BLCU_ACK_CHAN_BUF),
-		trace:         trace.With().Str("component", BLCU_COMPONENT_NAME).Logger(),
-		config:        config,
+		addr:         fmt.Sprintf("%s:%s", global.BoardToIP["BLCU"], global.ProtocolToPort["TFTP"]),
+		inputChannel: make(chan models.Update, BLCU_INPUT_CHAN_BUF),
+		ackChannel:   make(chan struct{}, BLCU_ACK_CHAN_BUF),
+		trace:        trace.With().Str("component", BLCU_COMPONENT_NAME).Logger(),
+		config:       config,
 	}
 
 	return blcu
