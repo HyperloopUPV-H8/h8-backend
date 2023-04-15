@@ -3,7 +3,12 @@
 #address = "192.168.0.9:4000"
 address = "127.0.0.9:4000"
 file_server_path = "static" # Change name to front build path
-endpoints = { pod_data = "/podDataStructure", order_data = "/orderDataStructure", websocket = "/backend", file_server = "/" }
+
+[server.endpoints]
+pod_data = "/podDataStructure"
+order_data = "/orderDataStructure"
+websocket = "/backend"
+file_server = "/"
 
 [vehicle]
 tcp_client_tag = "TCP_CLIENT"
@@ -11,6 +16,10 @@ tcp_server_tag = "TCP_SERVER"
 udp_tag = "UDP"
 # network = { mtu = 1500, sniffer_interface = "\\Device\\NPF_{015224CF-DC7F-4F81-AA58-947027697645}" }
 network = { mtu = 1500, sniffer_interface = "\\Device\\NPF_Loopback" }
+[vehicle.messages]
+fault_id_key = "fault"
+warning_id_key = "warning"
+blcu_ack_id = "blcu_ack"
 
 [excel.download]
 id = "1BEwASubu0el9oQA6PSwVKaNU-Q6gbJ40JR6kgqguKYE"
@@ -22,11 +31,13 @@ path = "."
 global_sheet_prefix = "GLOBAL "
 board_sheet_prefix = "BOARD "
 table_prefix = "[TABLE] "
+[excel.parse.global]
 address_table = "addresses"
 backend_entry_key = "Backend"
 units_table = "units"
 ports_table = "ports"
-ids_table = "ids"
+board_ids_table = "board_ids"
+message_ids_table = "message_ids"
 
 [logger]
 dump_size = 7000

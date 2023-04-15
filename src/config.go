@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/HyperloopUPV-H8/Backend-H8/board/boards/blcu"
+	"github.com/HyperloopUPV-H8/Backend-H8/blcu"
 	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter"

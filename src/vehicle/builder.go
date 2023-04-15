@@ -7,6 +7,7 @@ import (
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	excel_models "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
+	"github.com/HyperloopUPV-H8/Backend-H8/message_parser"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet_parser"
 	"github.com/HyperloopUPV-H8/Backend-H8/pipe"
 	"github.com/HyperloopUPV-H8/Backend-H8/sniffer"
@@ -30,6 +31,7 @@ type VehicleConfig struct {
 		Mtu              uint
 		SnifferInterface string `toml:"sniffer_interface"`
 	}
+	Messages message_parser.MessageParserConfig
 }
 
 func NewVehicle(boards map[string]excel_models.Board, globalInfo excel_models.GlobalInfo, config VehicleConfig, onConnectionChange func(string, bool)) Vehicle {
@@ -39,6 +41,7 @@ func NewVehicle(boards map[string]excel_models.Board, globalInfo excel_models.Gl
 	trace := trace.With().Str("component", "vehicle").Logger()
 	vehicle := Vehicle{
 		parser:             packet_parser.NewPacketParser(boards),
+		messageParser:      message_parser.New(globalInfo, config.Messages),
 		displayConverter:   unit_converter.NewUnitConverter("display", boards, globalInfo.UnitToOperations),
 		podConverter:       unit_converter.NewUnitConverter("pod", boards, globalInfo.UnitToOperations),
 		sniffer:            createSniffer(globalInfo, config, trace),
@@ -72,8 +75,8 @@ func createPipes(global excel_models.GlobalInfo, messageChan chan []byte, onConn
 	laddr := common.AddrWithPort(global.BackendIP, global.ProtocolToPort[config.TcpClientTag])
 	pipes := make(map[string]*pipe.Pipe)
 	for board, ip := range global.BoardToIP {
-		pipe, err := pipe.New(laddr, common.AddrWithPort(ip, global.ProtocolToPort[config.TcpServerTag]), config.Network.Mtu, messageChan, func(state bool) { onConnectionChange(board, state) })
-
+		raddr := common.AddrWithPort(ip, global.ProtocolToPort[config.TcpServerTag])
+		pipe, err := pipe.New(laddr, raddr, config.Network.Mtu, messageChan, func(state bool) { onConnectionChange(board, state) })
 		if err != nil {
 			trace.Fatal().Stack().Err(err).Msg("error creating pipe")
 
