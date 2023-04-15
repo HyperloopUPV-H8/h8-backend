@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -87,8 +86,7 @@ func main() {
 				err := messageTransfer.SendMessage(m)
 
 				if err != nil {
-					//TODO: change to trace?
-					fmt.Println("Error sending message")
+					trace.Error().Err(err).Stack().Msg("error sending message")
 				}
 			case message_parser_models.BLCU_ACK:
 				blcu.HandleACK()

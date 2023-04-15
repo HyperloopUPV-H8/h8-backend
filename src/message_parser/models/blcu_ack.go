@@ -1,4 +1,3 @@
 package models
 
-type BLCU_ACK struct {
-}
+type BLCU_ACK struct{}
