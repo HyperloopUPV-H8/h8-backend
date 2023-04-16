@@ -19,16 +19,6 @@ func (buf *RingBuf[T]) Add(value T) (evicted T) {
 	return evicted
 }
 
-func (buf *RingBuf[T]) push(new T) {
-	head := append(buf.buf[:buf.next()], new)
-	buf.buf = append(head, buf.buf[buf.next():]...)
-}
-
-func (buf *RingBuf[T]) pop() (removed T) {
-	buf.buf, removed = Remove(buf.buf, buf.curr)
-	return removed
-}
-
 func (buf *RingBuf[T]) next() int {
 	return (buf.curr + 1) % buf.Len()
 }
@@ -50,6 +40,11 @@ func (buf *RingBuf[T]) Shrink(amount uint) []T {
 	return removed
 }
 
+func (buf *RingBuf[T]) pop() (removed T) {
+	buf.buf, removed = Remove(buf.buf, buf.curr)
+	return removed
+}
+
 func (buf *RingBuf[T]) Grow(amount uint) []T {
 	added := make([]T, 0, amount)
 
@@ -60,4 +55,9 @@ func (buf *RingBuf[T]) Grow(amount uint) []T {
 	}
 
 	return added
+}
+
+func (buf *RingBuf[T]) push(new T) {
+	head := append(buf.buf[:buf.next()], new)
+	buf.buf = append(head, buf.buf[buf.next():]...)
 }
