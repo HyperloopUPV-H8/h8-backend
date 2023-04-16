@@ -19,7 +19,7 @@ func (enum Enum) GetNumericValue(value string) uint8 {
 func GetEnum(literal string) Enum {
 	enum := make(Enum)
 	for i, variant := range strings.Split(strings.TrimSuffix(strings.TrimPrefix(literal, "ENUM("), ")"), ",") {
-		enum[uint8(i)] = variant
+		enum[uint8(i)] = strings.Trim(variant, " ")
 	}
 	return enum
 }
