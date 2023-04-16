@@ -19,7 +19,7 @@ type PacketParser struct {
 	trace       zerolog.Logger
 }
 
-func NewPacketParser(boards map[string]excelAdapterModels.Board) PacketParser {
+func New(boards map[string]excelAdapterModels.Board) PacketParser {
 	trace.Info().Msg("new packet parser")
 
 	return PacketParser{
@@ -108,7 +108,8 @@ func (parser PacketParser) decodeValue(value models.ValueDescriptor, reader io.R
 
 	switch value.Type {
 	case "enum":
-		return internals.DecodeEnum(reader, parser.enums[value.ID])
+		value := internals.DecodeEnum(reader, parser.enums[value.ID])
+		return value
 	case "bool":
 		return internals.DecodeBool(reader)
 	case "string":

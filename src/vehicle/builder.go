@@ -40,7 +40,7 @@ func NewVehicle(boards map[string]excel_models.Board, globalInfo excel_models.Gl
 	messageChan := make(chan []byte, MESSAGE_CHAN_BUF_SIZE)
 	trace := trace.With().Str("component", "vehicle").Logger()
 	vehicle := Vehicle{
-		parser:             packet_parser.NewPacketParser(boards),
+		parser:             packet_parser.New(boards),
 		messageParser:      message_parser.New(globalInfo, config.Messages),
 		displayConverter:   unit_converter.NewUnitConverter("display", boards, globalInfo.UnitToOperations),
 		podConverter:       unit_converter.NewUnitConverter("pod", boards, globalInfo.UnitToOperations),
