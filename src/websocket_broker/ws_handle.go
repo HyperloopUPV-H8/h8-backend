@@ -104,6 +104,8 @@ func (broker *WebSocketBroker) sendMessage(topic string, payload any, targets ..
 
 func (broker *WebSocketBroker) broadcastMessage(message models.Message, targets ...string) error {
 	broker.trace.Trace().Str("topic", message.Topic).Strs("targets", targets).Msg("broadcast message")
+	broker.clientsMx.Lock()
+	defer broker.clientsMx.Unlock()
 	var err error = nil
 	for _, target := range targets {
 		conn, ok := broker.clients[target]

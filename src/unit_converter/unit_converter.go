@@ -74,7 +74,7 @@ func (converter *UnitConverter) Revert(values map[string]any) map[string]any {
 	convertedValues := make(map[string]any, len(values))
 	for name, value := range values {
 		if ops, ok := converter.operations[name]; ok {
-			convertedValues[name] = ops.Convert(value.(float64))
+			convertedValues[name] = ops.Revert(value.(float64))
 		} else {
 			convertedValues[name] = value
 		}

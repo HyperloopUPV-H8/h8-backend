@@ -6,4 +6,5 @@ type Update struct {
 	Count     uint64         `json:"count"`
 	CycleTime uint64         `json:"cycleTime"`
 	Fields    map[string]any `json:"measurementUpdates"`
+	Averages  map[string]any `json:"measurementAverages"`
 }
