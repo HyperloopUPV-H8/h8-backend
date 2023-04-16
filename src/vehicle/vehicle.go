@@ -59,8 +59,8 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.Update, messagesChan cha
 		for raw := range vehicle.messageChan {
 			msg, err := vehicle.messageParser.Parse(raw)
 			if err != nil {
-				vehicle.trace.Fatal().Stack().Err(err).Msg("parse message")
-				panic(err) // TODO: handle error without panicking
+				vehicle.trace.Error().Stack().Err(err).Msg("parse message")
+				continue
 			}
 			messagesChan <- msg
 		}

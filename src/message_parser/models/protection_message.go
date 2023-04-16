@@ -19,9 +19,9 @@ type ProtectionMessage struct {
 
 type ProtectionTimestamp struct {
 	Counter uint16 `json:"counter"`
-	Second  uint8  `json:"seconds"`
-	Minute  uint8  `json:"minutes"`
-	Hour    uint8  `json:"hour"`
+	Seconds uint8  `json:"seconds"`
+	Minutes uint8  `json:"minutes"`
+	Hours   uint8  `json:"hours"`
 	Day     uint8  `json:"day"`
 	Month   uint8  `json:"month"`
 	Year    uint8  `json:"year"`
