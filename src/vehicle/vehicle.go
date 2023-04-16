@@ -45,7 +45,7 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.Update, messagesChan cha
 
 			id, fields := vehicle.parser.Decode(rawCopy)
 			fields = vehicle.podConverter.Convert(fields)
-			fields = vehicle.displayConverter.Convert(fields)
+			fields = vehicle.displayConverter.Revert(fields)
 
 			update := vehicle.packetFactory.NewUpdate(id, rawCopy, fields)
 
@@ -78,7 +78,7 @@ func (vehicle *Vehicle) SendOrder(order models.Order) error {
 	}
 
 	fields := order.Fields
-	fields = vehicle.displayConverter.Revert(fields)
+	fields = vehicle.displayConverter.Convert(fields)
 	fields = vehicle.podConverter.Revert(fields)
 	raw := vehicle.parser.Encode(order.ID, fields)
 
