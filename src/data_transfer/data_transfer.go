@@ -63,9 +63,13 @@ func (dataTransfer *DataTransfer) Run() {
 	dataTransfer.trace.Info().Msg("run")
 	for {
 		<-dataTransfer.ticker.C
+		dataTransfer.bufMx.Lock()
+
 		if len(dataTransfer.packetBuf) == 0 {
 			continue
 		}
+
+		dataTransfer.bufMx.Unlock()
 
 		dataTransfer.sendBuf()
 	}
