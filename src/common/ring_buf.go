@@ -27,6 +27,16 @@ func (buf *RingBuf[T]) Len() int {
 	return len(buf.buf)
 }
 
+func (buf *RingBuf[T]) Resize(size uint) []T {
+	if size > (uint)(buf.Len()) {
+		return buf.Grow(size - (uint)(buf.Len()))
+	} else if size < (uint)(buf.Len()) {
+		return buf.Shrink((uint)(buf.Len()) - size)
+	}
+
+	return nil
+}
+
 func (buf *RingBuf[T]) Shrink(amount uint) []T {
 	removed := make([]T, 0, amount)
 

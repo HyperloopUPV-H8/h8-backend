@@ -22,6 +22,16 @@ func (avg *MovingAverage[N]) Order() int {
 	return avg.buf.Len()
 }
 
+func (avg *MovingAverage[N]) Resize(order uint) N {
+	if order > (uint)(avg.Order()) {
+		avg.Grow(order - (uint)(avg.Order()))
+	} else if order < (uint)(avg.Order()) {
+		avg.Shrink((uint)(avg.Order()) - order)
+	}
+
+	return avg.currAvg
+}
+
 func (avg *MovingAverage[N]) Shrink(amount uint) N {
 	avg.currAvg *= N(avg.Order())
 	for _, removed := range avg.buf.Shrink(amount) {
