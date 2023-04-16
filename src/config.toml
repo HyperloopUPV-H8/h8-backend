@@ -6,7 +6,7 @@ file_server_path = "static" # Change name to front build path
 
 [server.endpoints]
 pod_data = "/podDataStructure"
-order_data = "/orderDataStructure"
+order_data = "/orderStructures"
 websocket = "/backend"
 file_server = "/"
 

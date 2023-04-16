@@ -57,7 +57,12 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.Update, messagesChan cha
 	}()
 	go func() {
 		for raw := range vehicle.messageChan {
-			messagesChan <- vehicle.messageParser.Parse(raw)
+			msg, err := vehicle.messageParser.Parse(raw)
+			if err != nil {
+				vehicle.trace.Error().Stack().Err(err).Str("raw", fmt.Sprintf("%#v", string(raw))).Msg("parse message")
+				continue
+			}
+			messagesChan <- msg
 		}
 	}()
 
