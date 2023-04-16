@@ -10,7 +10,7 @@ import (
 	trace "github.com/rs/zerolog/log"
 )
 
-const DEFAULT_ORDER = 20
+const DEFAULT_ORDER = 100
 
 type UpdateFactory struct {
 	count        map[uint16]uint64
@@ -66,7 +66,11 @@ func (factory UpdateFactory) getCycleTime(id uint16, timestamp uint64) uint64 {
 		factory.cycleTimeAvg[id] = &movAvg
 	}
 
-	return factory.cycleTimeAvg[id].Add(factory.timestamp[id] - timestamp)
+	if _, ok := factory.timestamp[id]; !ok {
+		factory.timestamp[id] = timestamp
+	}
+
+	return factory.cycleTimeAvg[id].Add(timestamp - factory.timestamp[id])
 }
 
 func (factory UpdateFactory) getAverages(id uint16, fields map[string]any) map[string]any {
@@ -96,5 +100,5 @@ func (factory UpdateFactory) getFloatAverage(id uint16, key string, value float6
 		factory.fieldAvg[id][key] = &movAvg
 	}
 
-	return factory.fieldAvg[id][key].Add(value)
+	return (float64)((int)(factory.fieldAvg[id][key].Add(value)*1000)) / 1000
 }
