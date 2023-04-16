@@ -17,3 +17,27 @@ func (avg *MovingAverage[N]) Add(value N) N {
 	avg.currAvg -= avg.buf.Add(value) / N(avg.buf.Len())
 	return avg.currAvg
 }
+
+func (avg *MovingAverage[N]) Order() int {
+	return avg.buf.Len()
+}
+
+func (avg *MovingAverage[N]) Shrink(amount uint) N {
+	avg.currAvg *= N(avg.Order())
+	for _, removed := range avg.buf.Shrink(amount) {
+		avg.currAvg -= removed
+	}
+	avg.currAvg /= N(avg.Order())
+
+	return avg.currAvg
+}
+
+func (avg *MovingAverage[N]) Grow(amount uint) N {
+	avg.currAvg *= N(avg.Order())
+	for _, added := range avg.buf.Grow(amount) {
+		avg.currAvg += added
+	}
+	avg.currAvg /= N(avg.Order())
+
+	return avg.currAvg
+}
