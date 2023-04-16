@@ -3,7 +3,6 @@ package blcu
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 
 	excel_models "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
@@ -37,22 +36,6 @@ func NewBLCU(global excel_models.GlobalInfo, config BLCUConfig) BLCU {
 	}
 
 	return blcu
-}
-
-// TODO: remove ackPacket, it should from the tcp connection instead of the updates
-func (blcu *BLCU) AddPacket(boardName string, packet excel_models.Packet) {
-	if packet.Description.Name != blcu.config.Packets.Ack.Name {
-		return
-	}
-
-	id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
-	if err != nil {
-		blcu.trace.Error().Err(err).Stack().Msg("Error parsing packet ID")
-		return
-	}
-
-	blcu.ackID = uint16(id)
-	blcu.trace.Debug().Uint16("ackID", blcu.ackID).Msg("Add packet info")
 }
 
 func (blcu *BLCU) UpdateMessage(topic string, payload json.RawMessage, source string) {

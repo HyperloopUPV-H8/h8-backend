@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/message_transfer/models"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
@@ -31,8 +30,8 @@ func New(config MessageTransferConfig) MessageTransfer {
 	}
 }
 
-func (messageTransfer *MessageTransfer) SendMessage(message models.Message) error {
-	messageTransfer.trace.Warn().Uint16("id", message.ID).Str("type", message.Type).Str("desc", message.Description).Msg("send message")
+func (messageTransfer *MessageTransfer) SendMessage(message interface{}) error {
+	// messageTransfer.trace.Warn().Uint16("id", message.ID).Str("type", message.Type).Str("desc", message.Description).Msg("send message")
 	return messageTransfer.sendMessage(messageTransfer.updateTopic, message)
 }
 

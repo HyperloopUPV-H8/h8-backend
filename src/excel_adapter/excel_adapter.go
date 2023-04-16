@@ -15,20 +15,34 @@ type ExcelAdapterConfig struct {
 	Parse    internals.ParseConfig
 }
 
-func FetchBoardsAndGlobalInfo(config ExcelAdapterConfig) (map[string]models.Board, models.GlobalInfo) {
+type ExcelAdapter struct {
+	document internalModels.Document
+	config   ExcelAdapterConfig
+}
+
+func New(config ExcelAdapterConfig) ExcelAdapter {
 	document := fetchDocument(config.Download, config.Parse)
 
-	globalInfo := getGlobalInfo(document, GlobalInfoConfig{
-		AddressTable:    config.Parse.AddressTable,
-		BackendEntryKey: config.Parse.BackendEntryKey,
-		UnitsTable:      config.Parse.UnitsTable,
-		PortsTable:      config.Parse.PortsTable,
-		IdsTable:        config.Parse.IdsTable,
-	})
+	return ExcelAdapter{
+		document: document,
+		config:   config,
+	}
+}
 
-	boards := getBoards(document, config.Parse.AddressTable)
+func (adapter ExcelAdapter) GetBoards() map[string]models.Board {
+	return getBoards(adapter.document, adapter.config.Parse.Global.AddressTable)
+}
 
-	return boards, globalInfo
+func (adapter ExcelAdapter) GetGlobalInfo() models.GlobalInfo {
+	trace.Trace().Msg("get global info")
+	return models.GlobalInfo{
+		BackendIP:        getBackendIP(adapter.config.Parse.Global.AddressTable, adapter.config.Parse.Global.BackendEntryKey, adapter.document),
+		BoardToIP:        getInfoTableToMap(adapter.config.Parse.Global.AddressTable, adapter.document),
+		UnitToOperations: getInfoTableToMap(adapter.config.Parse.Global.UnitsTable, adapter.document),
+		ProtocolToPort:   getInfoTableToMap(adapter.config.Parse.Global.PortsTable, adapter.document),
+		BoardToId:        getInfoTableToMap(adapter.config.Parse.Global.BoardIdsTable, adapter.document),
+		MessageToId:      getInfoTableToMap(adapter.config.Parse.Global.MessageIdsTable, adapter.document),
+	}
 }
 
 func fetchDocument(downloadConfig internals.DownloadConfig, parseConfig internals.ParseConfig) internalModels.Document {
@@ -75,18 +89,8 @@ type GlobalInfoConfig struct {
 	BackendEntryKey string
 	UnitsTable      string
 	PortsTable      string
-	IdsTable        string
-}
-
-func getGlobalInfo(document internalModels.Document, config GlobalInfoConfig) models.GlobalInfo {
-	trace.Trace().Msg("get global info")
-	return models.GlobalInfo{
-		BackendIP:        getBackendIP(config.AddressTable, config.BackendEntryKey, document),
-		BoardToIP:        getInfoTableToMap(config.AddressTable, document),
-		UnitToOperations: getInfoTableToMap(config.UnitsTable, document),
-		ProtocolToPort:   getInfoTableToMap(config.PortsTable, document),
-		BoardToID:        getInfoTableToMap(config.IdsTable, document),
-	}
+	BoardIdsTable   string
+	MessageIdsTable string
 }
 
 func getInfoTableToMap(tableName string, document internalModels.Document) map[string]string {

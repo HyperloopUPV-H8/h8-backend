@@ -9,14 +9,13 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/board"
-	"github.com/HyperloopUPV-H8/Backend-H8/board/boards/blcu"
+	"github.com/HyperloopUPV-H8/Backend-H8/blcu"
 	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter"
 	"github.com/HyperloopUPV-H8/Backend-H8/logger"
+	message_parser_models "github.com/HyperloopUPV-H8/Backend-H8/message_parser/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/message_transfer"
-	message_transfer_models "github.com/HyperloopUPV-H8/Backend-H8/message_transfer/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/order_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/server"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle"
@@ -39,7 +38,9 @@ func main() {
 
 	config := getConfig("./config.toml")
 
-	boards, globalInfo := excel_adapter.FetchBoardsAndGlobalInfo(config.Excel)
+	excelAdapter := excel_adapter.New(config.Excel)
+	boards := excelAdapter.GetBoards()
+	globalInfo := excelAdapter.GetGlobalInfo()
 
 	connectionTransfer := connection_transfer.New(config.Connections)
 
@@ -48,29 +49,19 @@ func main() {
 	blcu := blcu.NewBLCU(globalInfo, config.BLCU)
 
 	vehicle := vehicle.NewVehicle(boards, globalInfo, config.Vehicle, connectionTransfer.Update)
-	vehicleOutput := make(chan vehicle_models.Update)
-	go vehicle.Listen(vehicleOutput)
-
-	boardMux := board.NewMux(board.WithInput(vehicleOutput), board.WithOutput(vehicle.SendOrder))
-	boardMux.AddBoard(&blcu)
-
-	blcuIDs := make(map[uint16]string)
-	for _, packet := range podData.Boards["BLCU"].Packets {
-		blcuIDs[packet.ID] = "blcu"
-	}
-	boardMux.AddBoardMapping(blcuIDs)
-
-	updateChan := make(chan vehicle_models.Update)
-	go boardMux.Listen(updateChan)
-
-	// Communication with front-end
-	websocketBroker := websocket_broker.New()
+	vehicleUpdates := make(chan vehicle_models.Update)
+	vehicleMessages := make(chan interface{})
+	go vehicle.Listen(vehicleUpdates, vehicleMessages)
 
 	dataTransfer := data_transfer.New(config.DataTransfer)
+	go dataTransfer.Run()
+
 	messageTransfer := message_transfer.New(config.Messages)
 	orderTransfer, orderChannel := order_transfer.New()
 	logger := logger.New(config.Logger)
 
+	// Communication with front-end
+	websocketBroker := websocket_broker.New()
 	websocketBroker.RegisterHandle(&blcu, config.BLCU.Topics.Upload, config.BLCU.Topics.Download)
 	websocketBroker.RegisterHandle(&connectionTransfer, config.Connections.UpdateTopic)
 	websocketBroker.RegisterHandle(&dataTransfer)
@@ -78,30 +69,34 @@ func main() {
 	websocketBroker.RegisterHandle(&messageTransfer)
 	websocketBroker.RegisterHandle(&orderTransfer, config.Orders.SendTopic)
 
-	go dataTransfer.Run()
-
 	idToType := getIdToType(podData)
 	go func() {
-		for update := range updateChan {
+		for update := range vehicleUpdates {
 			logger.Update(update)
 			if idToType[update.ID] == "data" {
 				dataTransfer.Update(update)
-			} else if msg, err := message_transfer_models.MessageFromUpdate(update); err == nil {
-				messageTransfer.SendMessage(msg)
 			}
 		}
 	}()
 
-	//TODO: send message from vehicle to mux and mux to message transfer
-	// go func() {
-	// 	for message := range
-	// }
+	go func() {
+		for message := range vehicleMessages {
+			switch m := message.(type) {
+			case message_parser_models.ProtectionMessage:
+				err := messageTransfer.SendMessage(m)
+
+				if err != nil {
+					trace.Error().Err(err).Stack().Msg("error sending message")
+				}
+			case message_parser_models.BLCU_ACK:
+				blcu.HandleACK()
+			}
+		}
+	}()
 
 	go func() {
 		for order := range orderChannel {
-			if err := boardMux.Request(order); err != nil {
-				trace.Error().Stack().Err(err).Msg("")
-			}
+			vehicle.SendOrder(order)
 		}
 	}()
 
