@@ -19,8 +19,8 @@ type ProtectionMessage struct {
 
 type ProtectionTimestamp struct {
 	Counter uint16 `json:"counter"`
-	Second  uint8  `json:"second"`
-	Minute  uint8  `json:"minute"`
+	Second  uint8  `json:"seconds"`
+	Minute  uint8  `json:"minutes"`
 	Hour    uint8  `json:"hour"`
 	Day     uint8  `json:"day"`
 	Month   uint8  `json:"month"`
@@ -28,26 +28,31 @@ type ProtectionTimestamp struct {
 }
 
 type OutOfBoundsViolation struct {
+	Kind string     `json:"kind"`
 	Want [2]float64 `json:"want"`
 	Got  float64    `json:"got"`
 }
 
 type UpperBoundViolation struct {
+	Kind string  `json:"kind"`
 	Want float64 `json:"want"`
 	Got  float64 `json:"got"`
 }
 
 type LowerBoundViolation struct {
+	Kind string  `json:"kind"`
 	Want float64 `json:"want"`
 	Got  float64 `json:"got"`
 }
 
 type EqualsViolation struct {
+	Kind string  `json:"kind"`
 	Want float64 `json:"want"`
 	Got  float64 `json:"got"`
 }
 
 type NotEqualsViolation struct {
+	Kind string  `json:"kind"`
 	Want float64 `json:"want"`
 	Got  float64 `json:"got"`
 }
@@ -122,6 +127,7 @@ func getOutOfBoundsViolation(violationParts []string) (OutOfBoundsViolation, err
 	}
 
 	return OutOfBoundsViolation{
+		Kind: "OUT_OF_BOUNDS",
 		Want: [2]float64{lowerBound, upperBound},
 		Got:  got,
 	}, nil
@@ -143,6 +149,7 @@ func getUpperBoundViolation(violationParts []string) (UpperBoundViolation, error
 	}
 
 	return UpperBoundViolation{
+		Kind: "UPPER_BOUND",
 		Want: upperBound,
 		Got:  got,
 	}, nil
@@ -164,6 +171,7 @@ func getLowerBoundViolation(violationParts []string) (LowerBoundViolation, error
 	}
 
 	return LowerBoundViolation{
+		Kind: "LOWER_BOUND",
 		Want: lowerBound,
 		Got:  got,
 	}, nil
@@ -185,6 +193,7 @@ func getEqualsViolation(violationParts []string) (EqualsViolation, error) {
 	}
 
 	return EqualsViolation{
+		Kind: "EQUALS",
 		Want: want,
 		Got:  got,
 	}, nil
@@ -206,6 +215,7 @@ func getNotEqualsViolation(violationParts []string) (NotEqualsViolation, error) 
 	}
 
 	return NotEqualsViolation{
+		Kind: "NOT_EQUALS",
 		Want: want,
 		Got:  got,
 	}, nil
