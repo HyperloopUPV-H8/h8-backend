@@ -14,9 +14,9 @@ const DEFAULT_ORDER = 100
 
 type UpdateFactory struct {
 	count        map[uint16]uint64
-	cycleTimeAvg map[uint16]*common.MovingAverage[uint64]
+	cycleTimeAvg map[uint16]common.MovingAverage[uint64]
 	timestamp    map[uint16]uint64
-	fieldAvg     map[uint16]map[string]*common.MovingAverage[float64]
+	fieldAvg     map[uint16]map[string]common.MovingAverage[float64]
 	trace        zerolog.Logger
 }
 
@@ -24,9 +24,9 @@ func NewFactory() UpdateFactory {
 	trace.Info().Msg("new update factory")
 	return UpdateFactory{
 		count:        make(map[uint16]uint64),
-		cycleTimeAvg: make(map[uint16]*common.MovingAverage[uint64]),
+		cycleTimeAvg: make(map[uint16]common.MovingAverage[uint64]),
 		timestamp:    make(map[uint16]uint64),
-		fieldAvg:     make(map[uint16]map[string]*common.MovingAverage[float64]),
+		fieldAvg:     make(map[uint16]map[string]common.MovingAverage[float64]),
 		trace:        trace.With().Str("component", "updateFactory").Logger(),
 	}
 }
@@ -63,14 +63,15 @@ func (factory UpdateFactory) getNext(id uint16, fields map[string]any) (count ui
 func (factory UpdateFactory) getCycleTime(id uint16, timestamp uint64) uint64 {
 	if _, ok := factory.cycleTimeAvg[id]; !ok {
 		movAvg := common.NewMovingAverage[uint64](DEFAULT_ORDER)
-		factory.cycleTimeAvg[id] = &movAvg
+		factory.cycleTimeAvg[id] = movAvg
 	}
 
 	if _, ok := factory.timestamp[id]; !ok {
 		factory.timestamp[id] = timestamp
 	}
 
-	return factory.cycleTimeAvg[id].Add(timestamp - factory.timestamp[id])
+	cycleTimeAvg := factory.cycleTimeAvg[id]
+	return (&cycleTimeAvg).Add(timestamp - factory.timestamp[id])
 }
 
 func (factory UpdateFactory) getAverages(id uint16, fields map[string]any) map[string]any {
@@ -92,13 +93,14 @@ func (factory UpdateFactory) getAverage(id uint16, key string, value any) any {
 
 func (factory UpdateFactory) getFloatAverage(id uint16, key string, value float64) float64 {
 	if _, ok := factory.fieldAvg[id]; !ok {
-		factory.fieldAvg[id] = make(map[string]*common.MovingAverage[float64])
+		factory.fieldAvg[id] = make(map[string]common.MovingAverage[float64])
 	}
 
 	if _, ok := factory.fieldAvg[id][key]; !ok {
 		movAvg := common.NewMovingAverage[float64](DEFAULT_ORDER)
-		factory.fieldAvg[id][key] = &movAvg
+		factory.fieldAvg[id][key] = movAvg
 	}
 
-	return (float64)((int)(factory.fieldAvg[id][key].Add(value)*1000)) / 1000
+	fieldAvg := factory.fieldAvg[id][key]
+	return (float64)((int)((&fieldAvg).Add(value)*1000)) / 1000
 }
