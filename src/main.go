@@ -82,7 +82,7 @@ func main() {
 	}()
 
 	go func() {
-		for id := range websocketBroker.CloseCh {
+		for id := range websocketBroker.CloseChan {
 			logger.Enable <- loggerPackage.EnableMsg{
 				Client: id,
 				Enable: false,

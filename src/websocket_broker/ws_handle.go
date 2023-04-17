@@ -18,7 +18,7 @@ type WebSocketBroker struct {
 	handlersMx *sync.Mutex
 	clients    map[string]*websocket.Conn
 	clientsMx  *sync.Mutex
-	CloseCh    chan string
+	CloseChan  chan string
 	trace      zerolog.Logger
 }
 
@@ -29,7 +29,7 @@ func New() WebSocketBroker {
 		handlersMx: &sync.Mutex{},
 		clients:    make(map[string]*websocket.Conn),
 		clientsMx:  &sync.Mutex{},
-		CloseCh:    make(chan string),
+		CloseChan:  make(chan string),
 
 		trace: trace.With().Str("component", "webSocketBroker").Logger(),
 	}
@@ -159,6 +159,7 @@ func (broker *WebSocketBroker) closeClient(id string) error {
 	client, ok := broker.clients[id]
 
 	if !ok {
+		broker.trace.Warn().Str("target", id).Msg("client not found")
 		return nil
 	}
 
@@ -167,7 +168,7 @@ func (broker *WebSocketBroker) closeClient(id string) error {
 		return err
 	}
 	delete(broker.clients, id)
-	broker.CloseCh <- id
+	broker.CloseChan <- id
 	return nil
 }
 
