@@ -9,6 +9,7 @@ type Message struct {
 
 func NewMessage(topic string, message any) (Message, error) {
 	messageRaw, err := json.Marshal(message)
+
 	return Message{
 		Topic:   topic,
 		Payload: messageRaw,

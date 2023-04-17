@@ -63,18 +63,22 @@ func (dataTransfer *DataTransfer) Run() {
 	dataTransfer.trace.Info().Msg("run")
 	for {
 		<-dataTransfer.ticker.C
-		if len(dataTransfer.packetBuf) == 0 {
-			continue
-		}
-
-		dataTransfer.sendBuf()
+		dataTransfer.trySend()
 	}
 }
 
-func (dataTransfer *DataTransfer) sendBuf() {
+func (dataTransfer *DataTransfer) trySend() {
 	dataTransfer.bufMx.Lock()
 	defer dataTransfer.bufMx.Unlock()
 
+	if len(dataTransfer.packetBuf) == 0 {
+		return
+	}
+
+	dataTransfer.sendBuf()
+}
+
+func (dataTransfer *DataTransfer) sendBuf() {
 	dataTransfer.trace.Trace().Msg("send buffer")
 	if err := dataTransfer.sendMessage(dataTransfer.updateTopic, dataTransfer.packetBuf); err != nil {
 		dataTransfer.trace.Error().Stack().Err(err).Msg("")
@@ -87,6 +91,7 @@ func (dataTransfer *DataTransfer) sendBuf() {
 func (dataTransfer *DataTransfer) Update(update models.Update) {
 	dataTransfer.bufMx.Lock()
 	defer dataTransfer.bufMx.Unlock()
+
 	dataTransfer.trace.Trace().Uint16("id", update.ID).Msg("update")
 	dataTransfer.packetBuf[update.ID] = update
 }

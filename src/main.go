@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -13,7 +12,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter"
-	"github.com/HyperloopUPV-H8/Backend-H8/logger"
+	loggerPackage "github.com/HyperloopUPV-H8/Backend-H8/logger"
 	message_parser_models "github.com/HyperloopUPV-H8/Backend-H8/message_parser/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/message_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/order_transfer"
@@ -58,10 +57,13 @@ func main() {
 
 	messageTransfer := message_transfer.New(config.Messages)
 	orderTransfer, orderChannel := order_transfer.New()
-	logger := logger.New(config.Logger)
+	logger := loggerPackage.New(config.Logger)
+	go logger.Listen()
 
 	// Communication with front-end
 	websocketBroker := websocket_broker.New()
+	defer websocketBroker.Close()
+
 	websocketBroker.RegisterHandle(&blcu, config.BLCU.Topics.Upload, config.BLCU.Topics.Download)
 	websocketBroker.RegisterHandle(&connectionTransfer, config.Connections.UpdateTopic)
 	websocketBroker.RegisterHandle(&dataTransfer)
@@ -72,9 +74,18 @@ func main() {
 	idToType := getIdToType(podData)
 	go func() {
 		for update := range vehicleUpdates {
-			logger.Update(update)
+			logger.Updates <- update
 			if idToType[update.ID] == "data" {
 				dataTransfer.Update(update)
+			}
+		}
+	}()
+
+	go func() {
+		for id := range websocketBroker.CloseChan {
+			logger.Enable <- loggerPackage.EnableMsg{
+				Client: id,
+				Enable: false,
 			}
 		}
 	}()
@@ -111,6 +122,7 @@ func main() {
 	httpServer.FileServer(config.Server.Endpoints.FileServer, filepath.Join(path, config.Server.FileServerPath))
 
 	go httpServer.ListenAndServe(config.Server.Address)
+
 	// browser.OpenURL(fmt.Sprintf("http://%s", config.Server.Address))
 
 	interrupt := make(chan os.Signal, 1)

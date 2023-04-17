@@ -1,7 +1,7 @@
 
 [server]
 #address = "192.168.0.9:4000"
-address = "127.0.0.9:4000"
+address = "127.0.0.1:4000"
 file_server_path = "static" # Change name to front build path
 
 [server.endpoints]
@@ -42,7 +42,7 @@ message_ids_table = "message_ids"
 [logger]
 dump_size = 7000
 row_size = 20
-autosave_delay = "1m"
+autosave_delay = "10s"
 path = "./log"
 topics = { enable = "logger/enable", state = "logger/state" }
 

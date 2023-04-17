@@ -1,6 +1,7 @@
 # GOOGLE API KEY
 secret.json
 
+log
 trace.json
 
 # BUILD

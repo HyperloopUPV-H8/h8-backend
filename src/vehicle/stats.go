@@ -6,10 +6,8 @@ type Stats struct {
 	sentFail int
 }
 
-func newStats() *Stats {
-	return new(Stats)
-}
-
 func (vehicle *Vehicle) Stats() Stats {
-	return *vehicle.stats
+	vehicle.statsMx.Lock()
+	defer vehicle.statsMx.Unlock()
+	return vehicle.stats
 }
