@@ -7,8 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/logger/models"
 	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/rs/zerolog"
@@ -28,8 +30,10 @@ type Logger struct {
 	done    chan struct{}
 	updates chan vehicle_models.Update
 
-	isRunning bool
-	session   string
+	isRunning   bool
+	isRunningMx sync.Mutex
+
+	session string
 
 	topics struct {
 		Enable string
@@ -71,8 +75,9 @@ func New(config LoggerConfig) Logger {
 		done:    make(chan struct{}),
 		updates: make(chan vehicle_models.Update, UPDATE_CHAN_BUF),
 
-		isRunning: false,
-		session:   "",
+		isRunning:   false,
+		isRunningMx: sync.Mutex{},
+		session:     "",
 
 		topics:      LoggerTopics{Enable: config.Topics.Enable, State: config.Topics.State},
 		sendMessage: defaultSendMessage,
@@ -108,6 +113,8 @@ func (logger *Logger) handleEnableRequest(topic string, payload json.RawMessage,
 	logger.handleEnable(enable)
 
 	// This can cause locks if the client managing the session disconnects. We should talk how this should work
+	logger.isRunningMx.Lock()
+	defer logger.isRunningMx.Unlock()
 	if logger.isRunning {
 		logger.session = source
 	} else {
@@ -118,6 +125,8 @@ func (logger *Logger) handleEnableRequest(topic string, payload json.RawMessage,
 }
 
 func (logger *Logger) notifyState() {
+	logger.isRunningMx.Lock()
+	defer logger.isRunningMx.Unlock()
 	logger.trace.Trace().Bool("running", logger.isRunning).Msg("notify state")
 	if err := logger.sendMessage(logger.topics.State, logger.isRunning); err != nil {
 		logger.trace.Error().Stack().Err(err).Msg("")
@@ -125,8 +134,10 @@ func (logger *Logger) notifyState() {
 }
 
 func (logger *Logger) handleEnable(enable bool) {
+	logger.isRunningMx.Lock()
+	defer logger.isRunningMx.Unlock()
 	logger.trace.Trace().Bool("enable", enable).Msg("handle enable")
-	if enable {
+	if enable && !logger.isRunning {
 		logger.start()
 	} else {
 		logger.stop()
@@ -143,8 +154,6 @@ func (logger *Logger) HandlerName() string {
 }
 
 func (logger *Logger) run() {
-	logger.isRunning = true
-	defer func() { logger.isRunning = false }()
 	logger.trace.Info().Msg("run")
 	for {
 		select {
@@ -177,6 +186,8 @@ func (logger *Logger) checkDump() {
 }
 
 func (logger *Logger) Update(update vehicle_models.Update) {
+	logger.isRunningMx.Lock()
+	defer logger.isRunningMx.Unlock()
 	if logger.isRunning {
 		logger.trace.Trace().Uint16("id", update.ID).Msg("update")
 		logger.updates <- update
@@ -186,12 +197,14 @@ func (logger *Logger) Update(update vehicle_models.Update) {
 func (logger *Logger) start() {
 	logger.trace.Debug().Msg("start logger")
 	logger.buffer = make(map[string][]models.Value)
+	logger.isRunning = true
 	go logger.run()
 }
 
 func (logger *Logger) stop() {
 	logger.trace.Debug().Msg("stop logger")
-	logger.done <- struct{}{}
+	logger.isRunning = false
+	common.TrySend(logger.done, struct{}{})
 	logger.flush()
 	logger.Close()
 }
@@ -249,7 +262,7 @@ func (logger *Logger) createFile(valueName string) *os.File {
 func (logger *Logger) Close() error {
 	logger.trace.Info().Msg("close")
 
-	var err error
+	var err error = nil
 	for _, file := range logger.files {
 		if fileErr := file.Close(); err != nil {
 			logger.trace.Error().Stack().Err(fileErr).Msg("")

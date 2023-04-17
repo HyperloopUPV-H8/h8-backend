@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	excel_models "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
@@ -51,7 +52,8 @@ func NewVehicle(boards map[string]excel_models.Board, globalInfo excel_models.Gl
 		updateChan:         make(chan []byte, UPDATE_CHAN_BUF_SIZE),
 		messageChan:        messageChan,
 		onConnectionChange: onConnectionChange,
-		stats:              newStats(),
+		stats:              Stats{},
+		statsMx:            &sync.Mutex{},
 		trace:              trace,
 	}
 

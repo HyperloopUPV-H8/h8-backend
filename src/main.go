@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -62,6 +61,8 @@ func main() {
 
 	// Communication with front-end
 	websocketBroker := websocket_broker.New()
+	defer websocketBroker.Close()
+
 	websocketBroker.RegisterHandle(&blcu, config.BLCU.Topics.Upload, config.BLCU.Topics.Download)
 	websocketBroker.RegisterHandle(&connectionTransfer, config.Connections.UpdateTopic)
 	websocketBroker.RegisterHandle(&dataTransfer)
@@ -111,6 +112,7 @@ func main() {
 	httpServer.FileServer(config.Server.Endpoints.FileServer, filepath.Join(path, config.Server.FileServerPath))
 
 	go httpServer.ListenAndServe(config.Server.Address)
+
 	// browser.OpenURL(fmt.Sprintf("http://%s", config.Server.Address))
 
 	interrupt := make(chan os.Signal, 1)

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	excel_models "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/rs/zerolog"
@@ -78,10 +79,7 @@ func (blcu *BLCU) Listen(destination chan<- models.Update) {
 
 func (blcu *BLCU) Input(update models.Update) {
 	if update.ID == blcu.ackID {
-		select {
-		case blcu.ackChannel <- struct{}{}:
-		default:
-		}
+		common.TrySend(blcu.ackChannel, struct{}{})
 	}
 	blcu.inputChannel <- update
 }

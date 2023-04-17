@@ -2,6 +2,7 @@ package vehicle
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/message_parser"
@@ -29,8 +30,8 @@ type Vehicle struct {
 
 	idToBoard map[uint16]string
 
-	stats *Stats
-
+	stats              Stats
+	statsMx            *sync.Mutex
 	onConnectionChange func(string, bool)
 
 	trace zerolog.Logger
@@ -48,13 +49,15 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.Update, messagesChan cha
 			fields = vehicle.displayConverter.Convert(fields)
 
 			update := vehicle.packetFactory.NewUpdate(id, rawCopy, fields)
-
+			vehicle.statsMx.Lock()
 			vehicle.stats.recv++
+			vehicle.statsMx.Unlock()
 
 			vehicle.trace.Trace().Msg("read")
 			updateChan <- update
 		}
 	}()
+
 	go func() {
 		for raw := range vehicle.messageChan {
 			msg, err := vehicle.messageParser.Parse(raw)
@@ -83,6 +86,9 @@ func (vehicle *Vehicle) SendOrder(order models.Order) error {
 	raw := vehicle.parser.Encode(order.ID, fields)
 
 	_, err := common.WriteAll(pipe, raw)
+
+	vehicle.statsMx.Lock()
+	defer vehicle.statsMx.Unlock()
 
 	if err == nil {
 		vehicle.stats.sent++

@@ -19,3 +19,12 @@ func ReadTimeout[T any](channel <-chan T, timeout time.Duration) (T, error) {
 		return empty, errors.New("timeout")
 	}
 }
+
+func TrySend[T any](channel chan<- T, value T) bool {
+	select {
+	case channel <- value:
+		return true
+	default:
+		return false
+	}
+}

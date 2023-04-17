@@ -3,6 +3,7 @@ package data_transfer
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -63,22 +64,23 @@ func (dataTransfer *DataTransfer) Run() {
 	dataTransfer.trace.Info().Msg("run")
 	for {
 		<-dataTransfer.ticker.C
-		dataTransfer.bufMx.Lock()
-
-		if len(dataTransfer.packetBuf) == 0 {
-			continue
-		}
-
-		dataTransfer.bufMx.Unlock()
-
-		dataTransfer.sendBuf()
+		dataTransfer.trySend()
+		fmt.Println("DATA")
 	}
 }
 
-func (dataTransfer *DataTransfer) sendBuf() {
+func (dataTransfer *DataTransfer) trySend() {
 	dataTransfer.bufMx.Lock()
 	defer dataTransfer.bufMx.Unlock()
 
+	if len(dataTransfer.packetBuf) == 0 {
+		return
+	}
+
+	dataTransfer.sendBuf()
+}
+
+func (dataTransfer *DataTransfer) sendBuf() {
 	dataTransfer.trace.Trace().Msg("send buffer")
 	if err := dataTransfer.sendMessage(dataTransfer.updateTopic, dataTransfer.packetBuf); err != nil {
 		dataTransfer.trace.Error().Stack().Err(err).Msg("")
@@ -91,6 +93,7 @@ func (dataTransfer *DataTransfer) sendBuf() {
 func (dataTransfer *DataTransfer) Update(update models.Update) {
 	dataTransfer.bufMx.Lock()
 	defer dataTransfer.bufMx.Unlock()
+
 	dataTransfer.trace.Trace().Uint16("id", update.ID).Msg("update")
 	dataTransfer.packetBuf[update.ID] = update
 }
