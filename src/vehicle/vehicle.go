@@ -2,6 +2,7 @@ package vehicle
 
 import (
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
@@ -80,12 +81,16 @@ func (vehicle *Vehicle) SendOrder(order models.Order) error {
 		return err
 	}
 
-	fields := order.Fields
-	fields = vehicle.displayConverter.Convert(fields)
-	fields = vehicle.podConverter.Revert(fields)
-	raw := vehicle.parser.Encode(order.ID, fields)
+	valuesMap := fieldsValuesToMap(order.Fields)
+	valuesMap = vehicle.displayConverter.Revert(valuesMap)
+	valuesMap = vehicle.podConverter.Convert(valuesMap)
 
-	_, err := common.WriteAll(pipe, raw)
+	valuesRaw := vehicle.parser.Encode(order.ID, valuesMap)
+	bitArray := vehicle.parser.CreateBitArray(order.ID, fieldsEnableToMap(order.Fields))
+	fullRaw := append(valuesRaw, bitArray...)
+	log.Println("fullRaw", fullRaw)
+
+	_, err := common.WriteAll(pipe, fullRaw)
 
 	vehicle.statsMx.Lock()
 	defer vehicle.statsMx.Unlock()
@@ -98,4 +103,24 @@ func (vehicle *Vehicle) SendOrder(order models.Order) error {
 	}
 
 	return err
+}
+
+func fieldsValuesToMap(fields map[string]models.Field) map[string]any {
+	valuesMap := make(map[string]any)
+
+	for name, field := range fields {
+		valuesMap[name] = field.Value
+	}
+
+	return valuesMap
+}
+
+func fieldsEnableToMap(fields map[string]models.Field) map[string]bool {
+	enableMap := make(map[string]bool)
+
+	for name, field := range fields {
+		enableMap[name] = field.IsEnabled
+	}
+
+	return enableMap
 }
