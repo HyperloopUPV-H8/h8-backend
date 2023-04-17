@@ -116,12 +116,10 @@ func (logger *Logger) UpdateMessage(topic string, payload json.RawMessage, sourc
 			Enable: enable,
 		}
 	}
-	logger.notifyState()
 }
 
+// logger.isRunningMx must be locked
 func (logger *Logger) notifyState() {
-	logger.isRunningMx.Lock()
-	defer logger.isRunningMx.Unlock()
 	logger.trace.Trace().Bool("running", logger.isRunning).Msg("notify state")
 	if err := logger.sendMessage(logger.topics.State, logger.isRunning); err != nil {
 		logger.trace.Error().Stack().Err(err).Msg("")
@@ -189,6 +187,7 @@ func (logger *Logger) start(client string) {
 	logger.buffer = make(map[string][]models.Value)
 	logger.client = client
 	logger.isRunning = true
+	logger.notifyState()
 	go logger.run()
 }
 
@@ -196,6 +195,7 @@ func (logger *Logger) stop() {
 	logger.trace.Debug().Msg("stop logger")
 	logger.client = ""
 	logger.isRunning = false
+	logger.notifyState()
 	logger.done <- struct{}{}
 	logger.flush()
 	logger.Close()
