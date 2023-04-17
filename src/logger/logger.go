@@ -27,13 +27,16 @@ type Logger struct {
 	buffer   map[string][]models.Value
 	autosave *time.Ticker
 
-	done    chan struct{}
-	updates chan vehicle_models.Update
+	done         chan struct{}
+	innerUpdates chan vehicle_models.Update
+
+	Updates chan vehicle_models.Update
+	Enable  chan EnableMsg
 
 	isRunning   bool
 	isRunningMx sync.Mutex
 
-	session string
+	client string
 
 	topics struct {
 		Enable string
@@ -59,6 +62,11 @@ type LoggerTopics struct {
 	State  string
 }
 
+type EnableMsg struct {
+	Client string
+	Enable bool
+}
+
 func New(config LoggerConfig) Logger {
 	trace.Info().Msg("new log handle")
 
@@ -72,12 +80,16 @@ func New(config LoggerConfig) Logger {
 		buffer:   make(map[string][]models.Value),
 		autosave: time.NewTicker(autosaveDelay),
 
-		done:    make(chan struct{}),
-		updates: make(chan vehicle_models.Update, UPDATE_CHAN_BUF),
+		done: make(chan struct{}),
+
+		Updates:      make(chan vehicle_models.Update, UPDATE_CHAN_BUF),
+		innerUpdates: make(chan vehicle_models.Update, UPDATE_CHAN_BUF),
+
+		Enable: make(chan EnableMsg),
 
 		isRunning:   false,
 		isRunningMx: sync.Mutex{},
-		session:     "",
+		client:      "",
 
 		topics:      LoggerTopics{Enable: config.Topics.Enable, State: config.Topics.State},
 		sendMessage: defaultSendMessage,
@@ -93,35 +105,18 @@ func (logger *Logger) UpdateMessage(topic string, payload json.RawMessage, sourc
 	logger.trace.Debug().Str("topic", topic).Str("source", source).Msg("update message")
 	switch topic {
 	case logger.topics.Enable:
-		logger.handleEnableRequest(topic, payload, source)
+		var enable bool
+		if err := json.Unmarshal(payload, &enable); err != nil {
+			logger.trace.Error().Stack().Err(err).Msg("")
+			return
+		}
+
+		logger.Enable <- EnableMsg{
+			Client: source,
+			Enable: enable,
+		}
 	}
 	logger.notifyState()
-}
-
-func (logger *Logger) handleEnableRequest(topic string, payload json.RawMessage, source string) {
-	if logger.session != "" && source != logger.session {
-		logger.trace.Warn().Str("source", source).Msg("tried to change running log session")
-		return
-	}
-
-	var enable bool
-	if err := json.Unmarshal(payload, &enable); err != nil {
-		logger.trace.Error().Stack().Err(err).Msg("")
-		return
-	}
-
-	logger.handleEnable(enable)
-
-	// This can cause locks if the client managing the session disconnects. We should talk how this should work
-	logger.isRunningMx.Lock()
-	defer logger.isRunningMx.Unlock()
-	if logger.isRunning {
-		logger.session = source
-	} else {
-		logger.session = ""
-	}
-
-	logger.trace.Debug().Str("session", logger.session).Msg("set log session")
 }
 
 func (logger *Logger) notifyState() {
@@ -133,31 +128,36 @@ func (logger *Logger) notifyState() {
 	}
 }
 
-func (logger *Logger) handleEnable(enable bool) {
-	logger.isRunningMx.Lock()
-	defer logger.isRunningMx.Unlock()
-	logger.trace.Trace().Bool("enable", enable).Msg("handle enable")
-	if enable && !logger.isRunning {
-		logger.start()
-	} else {
-		logger.stop()
+func (logger *Logger) Listen() {
+	for {
+		select {
+		case enableMsg := <-logger.Enable:
+			if logger.client != "" && enableMsg.Client != logger.client {
+				logger.trace.Warn().Str("source", enableMsg.Client).Msg("tried to change running log session")
+				return
+			}
+
+			logger.isRunningMx.Lock()
+
+			if enableMsg.Enable && !logger.isRunning {
+				logger.start(enableMsg.Client)
+			} else if !enableMsg.Enable && logger.isRunning {
+				logger.stop()
+			}
+
+			logger.isRunningMx.Unlock()
+
+		case update := <-logger.Updates:
+			common.TrySend(logger.innerUpdates, update)
+		}
 	}
-}
-
-func (logger *Logger) SetSendMessage(sendMessage func(topic string, payload any, target ...string) error) {
-	logger.trace.Debug().Msg("set message")
-	logger.sendMessage = sendMessage
-}
-
-func (logger *Logger) HandlerName() string {
-	return LOG_HANDLE_HANDLER_NAME
 }
 
 func (logger *Logger) run() {
 	logger.trace.Info().Msg("run")
 	for {
 		select {
-		case update := <-logger.updates:
+		case update := <-logger.innerUpdates:
 			for name, value := range update.Fields {
 				logger.buffer[name] = append(logger.buffer[name], models.Value{
 					Value:     value,
@@ -169,7 +169,6 @@ func (logger *Logger) run() {
 		case <-logger.autosave.C:
 			logger.flush()
 		case <-logger.done:
-			logger.trace.Info().Msg("run stop")
 			return
 		}
 	}
@@ -185,26 +184,19 @@ func (logger *Logger) checkDump() {
 	}
 }
 
-func (logger *Logger) Update(update vehicle_models.Update) {
-	logger.isRunningMx.Lock()
-	defer logger.isRunningMx.Unlock()
-	if logger.isRunning {
-		logger.trace.Trace().Uint16("id", update.ID).Msg("update")
-		logger.updates <- update
-	}
-}
-
-func (logger *Logger) start() {
+func (logger *Logger) start(client string) {
 	logger.trace.Debug().Msg("start logger")
 	logger.buffer = make(map[string][]models.Value)
+	logger.client = client
 	logger.isRunning = true
 	go logger.run()
 }
 
 func (logger *Logger) stop() {
 	logger.trace.Debug().Msg("stop logger")
+	logger.client = ""
 	logger.isRunning = false
-	common.TrySend(logger.done, struct{}{})
+	logger.done <- struct{}{}
 	logger.flush()
 	logger.Close()
 }
@@ -271,6 +263,15 @@ func (logger *Logger) Close() error {
 	}
 	logger.files = make(map[string]*os.File, len(logger.files))
 	return err
+}
+
+func (logger *Logger) SetSendMessage(sendMessage func(topic string, payload any, target ...string) error) {
+	logger.trace.Debug().Msg("set message")
+	logger.sendMessage = sendMessage
+}
+
+func (logger *Logger) HandlerName() string {
+	return LOG_HANDLE_HANDLER_NAME
 }
 
 func defaultSendMessage(string, any, ...string) error {
