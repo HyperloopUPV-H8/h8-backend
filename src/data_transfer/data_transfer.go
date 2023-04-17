@@ -3,7 +3,6 @@ package data_transfer
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -65,7 +64,6 @@ func (dataTransfer *DataTransfer) Run() {
 	for {
 		<-dataTransfer.ticker.C
 		dataTransfer.trySend()
-		fmt.Println("DATA")
 	}
 }
 
