@@ -62,6 +62,6 @@ func (blcu *BLCU) UpdateMessage(topic string, payload json.RawMessage, source st
 	}
 }
 
-func (blcu *BLCU) HandleACK() {
+func (blcu *BLCU) NotifyAck() {
 	blcu.ackChannel <- struct{}{}
 }

@@ -37,38 +37,41 @@ type Vehicle struct {
 	trace zerolog.Logger
 }
 
-func (vehicle *Vehicle) Listen(updateChan chan<- models.Update, messagesChan chan<- interface{}) {
+func (vehicle *Vehicle) Listen(updateChan chan<- models.Update, messagesChan chan<- any) {
 	vehicle.trace.Info().Msg("start listening")
-	go func() {
-		for raw := range vehicle.updateChan {
-			rawCopy := make([]byte, len(raw))
-			copy(rawCopy, raw)
+	go vehicle.listenData(updateChan)
 
-			id, fields := vehicle.parser.Decode(rawCopy)
-			fields = vehicle.podConverter.Revert(fields)
-			fields = vehicle.displayConverter.Convert(fields)
+	go vehicle.listenMessages(messagesChan)
+}
 
-			update := vehicle.packetFactory.NewUpdate(id, rawCopy, fields)
-			vehicle.statsMx.Lock()
-			vehicle.stats.recv++
-			vehicle.statsMx.Unlock()
+func (vehicle *Vehicle) listenData(dataChan chan<- models.Update) {
+	for raw := range vehicle.updateChan {
+		rawCopy := make([]byte, len(raw))
+		copy(rawCopy, raw)
 
-			vehicle.trace.Trace().Msg("read")
-			updateChan <- update
+		id, fields := vehicle.parser.Decode(rawCopy)
+		fields = vehicle.podConverter.Revert(fields)
+		fields = vehicle.displayConverter.Convert(fields)
+
+		update := vehicle.packetFactory.NewUpdate(id, rawCopy, fields)
+		vehicle.statsMx.Lock()
+		vehicle.stats.recv++
+		vehicle.statsMx.Unlock()
+
+		vehicle.trace.Trace().Uint16("id", id).Msg("read data")
+		dataChan <- update
+	}
+}
+
+func (vehicle *Vehicle) listenMessages(messageChan chan<- any) {
+	for raw := range vehicle.messageChan {
+		msg, err := vehicle.messageParser.Parse(raw)
+		if err != nil {
+			vehicle.trace.Error().Stack().Err(err).Str("raw", fmt.Sprintf("%#v", string(raw))).Msg("parse message")
+			continue
 		}
-	}()
-
-	go func() {
-		for raw := range vehicle.messageChan {
-			msg, err := vehicle.messageParser.Parse(raw)
-			if err != nil {
-				vehicle.trace.Error().Stack().Err(err).Str("raw", fmt.Sprintf("%#v", string(raw))).Msg("parse message")
-				continue
-			}
-			messagesChan <- msg
-		}
-	}()
-
+		messageChan <- msg
+	}
 }
 
 func (vehicle *Vehicle) SendOrder(order models.Order) error {

@@ -1,7 +1,6 @@
 package message_parser
 
 import (
-	"bytes"
 	"errors"
 	"strconv"
 	"strings"
@@ -58,7 +57,7 @@ func New(globalInfo excel_adapter_models.GlobalInfo, config MessageParserConfig)
 }
 
 func (parser MessageParser) Parse(raw []byte) (interface{}, error) {
-	rawStr := bytes.NewBuffer(raw).String()
+	rawStr := string(raw)
 	messageParts := strings.Split(rawStr, "\n")
 	id, err := strconv.Atoi(messageParts[0])
 
@@ -70,11 +69,11 @@ func (parser MessageParser) Parse(raw []byte) (interface{}, error) {
 	if uint16(id) == parser.faultId {
 		//TODO: pasar la messageParts sin el primer elemento es confuso,
 		// sobre todo dentro de ParseProtectionMessage
-		return models.ParseProtectionMessage("fault", messageParts[1:])
+		return models.ParseProtectionMessage("fault", messageParts[1:], rawStr)
 	} else if uint16(id) == parser.warningId {
-		return models.ParseProtectionMessage("warning", messageParts[1:])
+		return models.ParseProtectionMessage("warning", messageParts[1:], rawStr)
 	} else if uint16(id) == parser.blcuAckId {
-		return models.BLCU_ACK{}, nil
+		return models.BlcuAck{Raw: rawStr}, nil
 	} else {
 		err = errors.New("unidentified message")
 		trace.Fatal().Err(err).Stack().Msg("")

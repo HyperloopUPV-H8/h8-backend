@@ -1,3 +1,5 @@
 package models
 
-type BLCU_ACK struct{}
+type BlcuAck struct {
+	Raw string `json:"-"`
+}

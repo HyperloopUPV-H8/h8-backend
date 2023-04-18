@@ -14,7 +14,7 @@ import (
 type Config struct {
 	Excel        excel_adapter.ExcelAdapterConfig
 	Connections  connection_transfer.ConnectionTransferConfig
-	Logger       logger.LoggerConfig
+	Logger       logger.Config
 	Vehicle      vehicle.VehicleConfig
 	DataTransfer data_transfer.DataTransferConfig `toml:"data_transfer"`
 	Orders       struct {

@@ -15,6 +15,7 @@ type ProtectionMessage struct {
 	Value     string              `json:"value"`
 	Violation any                 `json:"violation"`
 	Timestamp ProtectionTimestamp `json:"timestamp"`
+	Raw       string              `json:"-"`
 }
 
 type ProtectionTimestamp struct {
@@ -57,7 +58,7 @@ type NotEqualsViolation struct {
 	Got  float64 `json:"got"`
 }
 
-func ParseProtectionMessage(kind string, messageParts []string) (ProtectionMessage, error) {
+func ParseProtectionMessage(kind string, messageParts []string, raw string) (ProtectionMessage, error) {
 	violation, err := getViolation(messageParts[2:])
 
 	if err != nil {
@@ -78,6 +79,7 @@ func ParseProtectionMessage(kind string, messageParts []string) (ProtectionMessa
 		Value:     messageParts[1],
 		Violation: violation,
 		Timestamp: timestamp,
+		Raw:       raw,
 	}, nil
 }
 

@@ -58,7 +58,7 @@ func main() {
 	messageTransfer := message_transfer.New(config.Messages)
 	orderTransfer, orderChannel := order_transfer.New()
 	logger := loggerPackage.New(config.Logger)
-	go logger.Listen()
+	defer logger.Close()
 
 	// Communication with front-end
 	websocketBroker := websocket_broker.New()
@@ -74,7 +74,7 @@ func main() {
 	idToType := getIdToType(podData)
 	go func() {
 		for update := range vehicleUpdates {
-			logger.Updates <- update
+			logger.UpdateData(update)
 			if idToType[update.ID] == "data" {
 				dataTransfer.Update(update)
 			}
@@ -83,24 +83,24 @@ func main() {
 
 	go func() {
 		for id := range websocketBroker.CloseChan {
-			logger.Enable <- loggerPackage.EnableMsg{
-				Client: id,
-				Enable: false,
-			}
+			logger.NotifyDisconnect(id)
 		}
 	}()
 
 	go func() {
 		for message := range vehicleMessages {
-			switch m := message.(type) {
+			switch message := message.(type) {
 			case message_parser_models.ProtectionMessage:
-				err := messageTransfer.SendMessage(m)
+				logger.UpdateMsg(message.Raw)
+
+				err := messageTransfer.SendMessage(message)
 
 				if err != nil {
 					trace.Error().Err(err).Stack().Msg("error sending message")
 				}
-			case message_parser_models.BLCU_ACK:
-				blcu.HandleACK()
+			case message_parser_models.BlcuAck:
+				logger.UpdateMsg(message.Raw)
+				blcu.NotifyAck()
 			}
 		}
 	}()
