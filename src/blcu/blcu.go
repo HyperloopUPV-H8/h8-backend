@@ -65,3 +65,15 @@ func (blcu *BLCU) UpdateMessage(topic string, payload json.RawMessage, source st
 func (blcu *BLCU) NotifyAck() {
 	blcu.ackChannel <- struct{}{}
 }
+
+func GetUploadableBoards(globalInfo excel_models.GlobalInfo, blcuName string) []string {
+	uploadableBoards := make([]string, 0)
+
+	for board := range globalInfo.BoardToIP {
+		if board != blcuName {
+			uploadableBoards = append(uploadableBoards, board)
+		}
+	}
+
+	return uploadableBoards
+}

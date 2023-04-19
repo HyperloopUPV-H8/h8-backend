@@ -7,8 +7,9 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strings"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/blcu"
+	blcuPackage "github.com/HyperloopUPV-H8/Backend-H8/blcu"
 	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter"
@@ -48,7 +49,8 @@ func main() {
 
 	podData := vehicle_models.NewPodData(boards)
 	orderData := vehicle_models.NewOrderData(boards)
-	blcu := blcu.NewBLCU(globalInfo, config.BLCU)
+	blcu := blcuPackage.NewBLCU(globalInfo, config.BLCU)
+	uploadableBoards := blcuPackage.GetUploadableBoards(globalInfo, config.Excel.Parse.Global.BLCUAddressKey)
 
 	vehicle := vehicle.New(vehicle.VehicleConstructorArgs{
 		Config:             config.Vehicle,
@@ -129,6 +131,7 @@ func main() {
 
 	httpServer.ServeData("/backend"+config.Server.Endpoints.PodData, podData)
 	httpServer.ServeData("/backend"+config.Server.Endpoints.OrderData, orderData)
+	httpServer.ServeData("/backend"+config.Server.Endpoints.UploadableBoards, uploadableBoards)
 
 	httpServer.HandleFunc(config.Server.Endpoints.Websocket, websocketBroker.HandleConn)
 
@@ -172,11 +175,13 @@ func getConfig(path string) Config {
 		trace.Fatal().Stack().Err(fileErr).Msg("error reading config file")
 	}
 
-	var config Config
-	unmarshalErr := toml.Unmarshal(configFile, &config)
+	reader := strings.NewReader(string(configFile))
 
-	if unmarshalErr != nil {
-		trace.Fatal().Stack().Err(unmarshalErr).Msg("error unmarshaling toml file")
+	var config Config
+	decodeErr := toml.NewDecoder(reader).DisallowUnknownFields().Decode(&config)
+
+	if decodeErr != nil {
+		trace.Fatal().Stack().Err(decodeErr).Msg("error unmarshaling toml file")
 	}
 
 	return config
