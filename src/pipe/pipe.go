@@ -3,7 +3,9 @@ package pipe
 import (
 	"errors"
 	"net"
+	"time"
 
+	"github.com/HyperloopUPV-H8/Backend-H8/packet"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
@@ -17,13 +19,13 @@ type Pipe struct {
 	isClosed bool
 	mtu      int
 
-	output             chan<- []byte
+	output             chan<- packet.Raw
 	onConnectionChange func(bool)
 
 	trace zerolog.Logger
 }
 
-func New(laddr string, raddr string, mtu uint, outputChan chan []byte, onConnectionChange func(bool)) (*Pipe, error) {
+func New(laddr string, raddr string, mtu uint, outputChan chan<- packet.Raw, onConnectionChange func(bool)) (*Pipe, error) {
 	trace.Info().Str("laddr", laddr).Str("raddr", raddr).Msg("new pipe")
 	localAddr, err := net.ResolveTCPAddr("tcp", laddr)
 	if err != nil {
@@ -95,7 +97,20 @@ func (pipe *Pipe) listen() {
 		}
 
 		pipe.trace.Trace().Msg("new message")
-		pipe.output <- buffer[:n]
+
+		raw := pipe.getRaw(buffer[:n])
+
+		pipe.output <- raw
+	}
+}
+
+var syntheticSeqNum uint32 = 0
+
+func (pipe *Pipe) getRaw(payload []byte) packet.Raw {
+	syntheticSeqNum++
+	return packet.Raw{
+		Metadata: packet.NewMetaData(pipe.raddr.String(), pipe.laddr.String(), 0, syntheticSeqNum, time.Now()),
+		Payload:  payload,
 	}
 }
 

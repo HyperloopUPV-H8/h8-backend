@@ -7,6 +7,7 @@ type Packet struct {
 
 type Payload interface {
 	Kind() Kind
+	Raw() []byte
 }
 
 type Kind int

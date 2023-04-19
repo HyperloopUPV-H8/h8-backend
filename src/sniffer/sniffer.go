@@ -1,7 +1,12 @@
 package sniffer
 
 import (
+	"errors"
+	"time"
+
+	"github.com/HyperloopUPV-H8/Backend-H8/packet"
 	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
@@ -20,10 +25,10 @@ type SnifferConfig struct {
 	SnifferInterface string `toml:"sniffer_interface"`
 }
 
-func New(filter string, config SnifferConfig) (*Sniffer, error) {
+func New(filter string, config Config) (*Sniffer, error) {
 	trace.Info().Msg("new sniffer")
 
-	source, err := obtainSource(config.SnifferInterface, filter, config.Mtu)
+	source, err := obtainSource(config.Interface, filter, config.Mtu)
 	if err != nil {
 		trace.Error().Stack().Err(err).Msg("")
 		return nil, err
@@ -32,7 +37,7 @@ func New(filter string, config SnifferConfig) (*Sniffer, error) {
 	return &Sniffer{
 		source: source,
 		filter: filter,
-		trace:  trace.With().Str("component", "sniffer").Str("dev", config.SnifferInterface).Logger(),
+		trace:  trace.With().Str("component", "sniffer").Str("dev", config.Interface).Logger(),
 	}, nil
 }
 
@@ -51,7 +56,7 @@ func obtainSource(dev string, filter string, mtu uint) (*pcap.Handle, error) {
 	return source, nil
 }
 
-func (sniffer *Sniffer) Listen(output chan<- []byte) <-chan error {
+func (sniffer *Sniffer) Listen(output chan<- packet.Raw) <-chan error {
 	sniffer.trace.Info().Msg("start listening")
 	errorChan := make(chan error)
 
@@ -60,7 +65,7 @@ func (sniffer *Sniffer) Listen(output chan<- []byte) <-chan error {
 	return errorChan
 }
 
-func (sniffer *Sniffer) read(output chan<- []byte, errorChan chan<- error) {
+func (sniffer *Sniffer) read(output chan<- packet.Raw, errorChan chan<- error) {
 	for {
 		raw, _, err := sniffer.source.ReadPacketData()
 		if err != nil {
@@ -72,9 +77,56 @@ func (sniffer *Sniffer) read(output chan<- []byte, errorChan chan<- error) {
 
 		sniffer.trace.Trace().Msg("read")
 
-		output <- gopacket.NewPacket(raw, sniffer.source.LinkType(), gopacket.DecodeOptions{
-			Lazy:   true,
+		packet := gopacket.NewPacket(raw, sniffer.source.LinkType(), gopacket.DecodeOptions{
 			NoCopy: true,
-		}).ApplicationLayer().Payload()
+		})
+
+		rawPacket, err := sniffer.parseLayers(packet.Layers())
+		if err != nil {
+			sniffer.trace.Error().Stack().Err(err).Msg("")
+			errorChan <- err
+			continue
+		}
+
+		output <- rawPacket
 	}
+}
+
+var syntheticSeqNum uint32 = 0
+
+func (sniffer *Sniffer) parseLayers(packetLayers []gopacket.Layer) (packet.Raw, error) {
+	timestamp := time.Now()
+	from := ""
+	to := ""
+	seqNum := syntheticSeqNum
+	var payload []byte
+
+layerLoop:
+	for _, layer := range packetLayers {
+		switch layer := layer.(type) {
+		case *layers.IPv4:
+			if layer.Protocol == 4 {
+				continue layerLoop
+			}
+			from = layer.SrcIP.String()
+			to = layer.DstIP.String()
+		case *layers.TCP:
+			seqNum = layer.Seq
+			payload = layer.Payload
+			break layerLoop
+		case *layers.UDP:
+			syntheticSeqNum++
+			payload = layer.Payload
+			break layerLoop
+		}
+	}
+
+	if from == "" || to == "" {
+		return packet.Raw{}, errors.New("failed to get flow")
+	}
+
+	return packet.Raw{
+		Metadata: packet.NewMetaData(from, to, 0, seqNum, timestamp),
+		Payload:  payload,
+	}, nil
 }

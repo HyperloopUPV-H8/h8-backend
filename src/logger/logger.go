@@ -6,7 +6,7 @@ import (
 
 	"github.com/HyperloopUPV-H8/Backend-H8/logger/data_logger"
 	"github.com/HyperloopUPV-H8/Backend-H8/logger/message_logger"
-	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
+	update_factory_models "github.com/HyperloopUPV-H8/Backend-H8/update_factory/models"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
@@ -123,7 +123,7 @@ func (logger *Logger) NotifyDisconnect(session string) {
 	}
 }
 
-func (logger *Logger) UpdateData(data vehicle_models.Update) {
+func (logger *Logger) UpdateData(data update_factory_models.Update) {
 	logger.trace.Trace().Msg("update data")
 	logger.data.Update(data)
 }

@@ -15,7 +15,7 @@ type Config struct {
 	Excel        excel_adapter.ExcelAdapterConfig
 	Connections  connection_transfer.ConnectionTransferConfig
 	Logger       logger.Config
-	Vehicle      vehicle.VehicleConfig
+	Vehicle      vehicle.Config
 	DataTransfer data_transfer.DataTransferConfig `toml:"data_transfer"`
 	Orders       struct {
 		SendTopic string `toml:"send_topic"`

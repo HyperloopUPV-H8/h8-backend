@@ -2,21 +2,24 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"runtime"
-	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/blcu"
 	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter"
 	loggerPackage "github.com/HyperloopUPV-H8/Backend-H8/logger"
-	message_parser_models "github.com/HyperloopUPV-H8/Backend-H8/message_parser/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/message_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/order_transfer"
+	"github.com/HyperloopUPV-H8/Backend-H8/packet"
+	"github.com/HyperloopUPV-H8/Backend-H8/packet/data"
+	"github.com/HyperloopUPV-H8/Backend-H8/packet/message"
 	"github.com/HyperloopUPV-H8/Backend-H8/server"
+	"github.com/HyperloopUPV-H8/Backend-H8/update_factory"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle"
 	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/websocket_broker"
@@ -47,10 +50,16 @@ func main() {
 	orderData := vehicle_models.NewOrderData(boards)
 	blcu := blcu.NewBLCU(globalInfo, config.BLCU)
 
-	vehicle := vehicle.NewVehicle(boards, globalInfo, config.Vehicle, connectionTransfer.Update)
-	vehicleUpdates := make(chan vehicle_models.Update)
-	vehicleMessages := make(chan interface{})
-	go vehicle.Listen(vehicleUpdates, vehicleMessages)
+	vehicle := vehicle.New(vehicle.VehicleConstructorArgs{
+		Config:             config.Vehicle,
+		Boards:             boards,
+		GlobalInfo:         globalInfo,
+		OnConnectionChange: connectionTransfer.Update,
+	})
+	vehicleUpdates := make(chan packet.Packet)
+	vehicleMessages := make(chan packet.Packet)
+	vehicleOrders := make(chan packet.Packet)
+	go vehicle.Listen(vehicleUpdates, vehicleMessages, vehicleOrders)
 
 	dataTransfer := data_transfer.New(config.DataTransfer)
 	go dataTransfer.Run()
@@ -71,37 +80,41 @@ func main() {
 	websocketBroker.RegisterHandle(&messageTransfer)
 	websocketBroker.RegisterHandle(&orderTransfer, config.Orders.SendTopic)
 
-	idToType := getIdToType(podData)
+	updateFactory := update_factory.NewFactory()
 	go func() {
-		for update := range vehicleUpdates {
-			logger.UpdateData(update)
-			if idToType[update.ID] == "data" {
-				dataTransfer.Update(update)
+		for packet := range vehicleUpdates {
+			payload, ok := packet.Payload.(data.Payload)
+			if !ok {
+				// TODO: handle error
+				continue
 			}
+			update := updateFactory.NewUpdate(packet.Metadata, payload)
+			logger.UpdateData(update)
+			dataTransfer.Update(update)
+		}
+	}()
+
+	go func() {
+		for packet := range vehicleMessages {
+			payload, ok := packet.Payload.(message.Payload)
+			if !ok {
+				// TODO: handle error
+				continue
+			}
+			logger.UpdateMsg(payload.Data.String())
+			messageTransfer.SendMessage(payload.Data)
+		}
+	}()
+
+	go func() {
+		for packet := range vehicleOrders {
+			fmt.Println(packet)
 		}
 	}()
 
 	go func() {
 		for id := range websocketBroker.CloseChan {
 			logger.NotifyDisconnect(id)
-		}
-	}()
-
-	go func() {
-		for message := range vehicleMessages {
-			switch message := message.(type) {
-			case message_parser_models.ProtectionMessage:
-				logger.UpdateMsg(message.Raw)
-
-				err := messageTransfer.SendMessage(message)
-
-				if err != nil {
-					trace.Error().Err(err).Stack().Msg("error sending message")
-				}
-			case message_parser_models.BlcuAck:
-				logger.UpdateMsg(message.Raw)
-				blcu.NotifyAck()
-			}
 		}
 	}()
 
@@ -128,15 +141,7 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-loop:
-	for {
-		select {
-		case <-time.After(time.Second * 10):
-			trace.Trace().Any("stats", vehicle.Stats()).Msg("stats")
-		case <-interrupt:
-			break loop
-		}
-	}
+	<-interrupt
 }
 
 func getIdToType(podData vehicle_models.PodData) map[uint16]string {

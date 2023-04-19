@@ -2,8 +2,6 @@ package vehicle
 
 import (
 	"fmt"
-	"log"
-	"sync"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet"
@@ -29,8 +27,6 @@ type Vehicle struct {
 
 	idToBoard map[uint16]string
 
-	stats              Stats
-	statsMx            *sync.Mutex
 	onConnectionChange func(string, bool)
 
 	trace zerolog.Logger
@@ -74,47 +70,51 @@ func (vehicle *Vehicle) handleOrder(metadata packet.Metadata, payload order.Payl
 	output <- packet.New(metadata, payload)
 }
 
-func (vehicle *Vehicle) SendOrder(order models.Order) error {
-	vehicle.trace.Info().Uint16("id", order.ID).Msg("send order")
-	pipe, ok := vehicle.pipes[vehicle.idToBoard[order.ID]]
-	if !ok {
-		err := fmt.Errorf("%s pipe for %d not found", vehicle.idToBoard[order.ID], order.ID)
-		vehicle.trace.Error().Stack().Err(err).Msg("")
+func (vehicle *Vehicle) SendOrder(vehicleOrder models.Order) error {
+	vehicle.trace.Info().Uint16("id", vehicleOrder.ID).Msg("send order")
+	pipe, err := vehicle.getPipe(vehicleOrder.ID)
+	if err != nil {
 		return err
 	}
 
-	valuesMap := fieldsValuesToMap(order.Fields)
-	valuesMap = vehicle.displayConverter.Revert(valuesMap)
-	valuesMap = vehicle.podConverter.Convert(valuesMap)
+	fields, enabled := unzipFields(vehicleOrder.Fields)
+	fields = vehicle.displayConverter.Revert(fields)
+	fields = vehicle.podConverter.Convert(fields)
 
-	valuesRaw := vehicle.parser.Encode(order.ID, valuesMap)
-	bitArray := vehicle.parser.CreateBitArray(order.ID, fieldsEnableToMap(order.Fields))
-	fullRaw := append(valuesRaw, bitArray...)
-	log.Println("fullRaw", fullRaw)
+	data, err := vehicle.parser.Encode(vehicleOrder.ID, order.Payload{Values: fields, Enabled: enabled})
 
-	_, err := common.WriteAll(pipe, fullRaw)
-
-	vehicle.statsMx.Lock()
-	defer vehicle.statsMx.Unlock()
-
-	if err == nil {
-		vehicle.stats.sent++
-	} else {
-		vehicle.trace.Error().Stack().Err(err).Msg("")
-		vehicle.stats.sentFail++
+	_, err = common.WriteAll(pipe, data)
+	if err != nil {
+		return err
 	}
 
 	return err
 }
 
-func fieldsValuesToMap(fields map[string]models.Field) map[string]any {
-	valuesMap := make(map[string]any)
-
-	for name, field := range fields {
-		valuesMap[name] = field.Value
+func (vehicle *Vehicle) getPipe(id uint16) (*pipe.Pipe, error) {
+	board, ok := vehicle.idToBoard[id]
+	if !ok {
+		return nil, fmt.Errorf("board for id %d not found", id)
 	}
 
-	return valuesMap
+	pipe, ok := vehicle.pipes[board]
+	if !ok {
+		return nil, fmt.Errorf("pipe for board %s not found", board)
+	}
+
+	return pipe, nil
+}
+
+func unzipFields(fields map[string]models.Field) (map[string]packet.Value, map[string]bool) {
+	fieldsMap := make(map[string]packet.Value)
+	enabledMap := make(map[string]bool)
+
+	for name, field := range fields {
+		fieldsMap[name] = field.Value
+		enabledMap[name] = field.IsEnabled
+	}
+
+	return fieldsMap, enabledMap
 }
 
 func fieldsEnableToMap(fields map[string]models.Field) map[string]bool {

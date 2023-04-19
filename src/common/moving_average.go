@@ -5,8 +5,8 @@ type MovingAverage[N Numeric] struct {
 	currAvg N
 }
 
-func NewMovingAverage[N Numeric](order uint) MovingAverage[N] {
-	return MovingAverage[N]{
+func NewMovingAverage[N Numeric](order uint) *MovingAverage[N] {
+	return &MovingAverage[N]{
 		buf:     NewRingBuf[N]((int)(order)),
 		currAvg: 0,
 	}

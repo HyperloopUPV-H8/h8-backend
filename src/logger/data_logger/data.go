@@ -7,7 +7,7 @@ import (
 
 	"github.com/HyperloopUPV-H8/Backend-H8/logger/data_logger/models"
 	logger_models "github.com/HyperloopUPV-H8/Backend-H8/logger/models"
-	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
+	update_factory_models "github.com/HyperloopUPV-H8/Backend-H8/update_factory/models"
 )
 
 type DataLogger struct {
@@ -42,15 +42,15 @@ func (logger *DataLogger) Stop() {
 	logger.isRunning = false
 }
 
-func (logger *DataLogger) Update(update vehicle_models.Update) error {
+func (logger *DataLogger) Update(update update_factory_models.Update) error {
 	if !logger.IsRunning() {
 		return nil
 	}
 
-	return logger.writeValues(update.ID, update.Fields)
+	return logger.writeValues(update.ID, update.Values)
 }
 
-func (logger *DataLogger) writeValues(id uint16, fields map[string]any) error {
+func (logger *DataLogger) writeValues(id uint16, fields map[string]update_factory_models.UpdateValue) error {
 	for name, field := range fields {
 		err := logger.writeValue(id, name, field)
 		if err != nil {
@@ -61,7 +61,7 @@ func (logger *DataLogger) writeValues(id uint16, fields map[string]any) error {
 	return nil
 }
 
-func (logger *DataLogger) writeValue(id uint16, name string, field any) error {
+func (logger *DataLogger) writeValue(id uint16, name string, field update_factory_models.UpdateValue) error {
 	value := models.NewValue(field)
 	file, err := logger.getFile(id, name)
 	if err != nil {

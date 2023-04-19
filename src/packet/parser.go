@@ -33,6 +33,7 @@ func (parser *Parser) Decode(metadata Metadata, packet []byte) (Packet, error) {
 	if err != nil {
 		return Packet{}, err
 	}
+	metadata.ID = id
 
 	decoder, err := parser.getDecoder(id)
 	if err != nil {
