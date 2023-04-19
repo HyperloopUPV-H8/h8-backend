@@ -150,7 +150,7 @@ func getDesciptor(values []excel_models.Value) []packet.ValueDescriptor {
 	descriptor := make([]packet.ValueDescriptor, len(values))
 	for i, value := range values {
 		descriptor[i] = packet.ValueDescriptor{
-			Name: value.Name,
+			Name: value.ID,
 			Type: getValueType(value.Type),
 		}
 	}
@@ -202,7 +202,7 @@ func getNames(global excel_models.GlobalInfo, boards map[string]excel_models.Boa
 func getNamesFromValues(values []excel_models.Value) []string {
 	names := make([]string, len(values))
 	for i, value := range values {
-		names[i] = value.Name
+		names[i] = value.ID
 	}
 	return names
 }

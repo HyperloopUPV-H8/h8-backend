@@ -13,7 +13,7 @@ type UpdateValue interface {
 }
 
 type NumericValue struct {
-	Value   float64 `json:"value"`
+	Value   float64 `json:"last"`
 	Average float64 `json:"average"`
 }
 

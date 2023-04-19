@@ -3,16 +3,19 @@ package message
 import "strconv"
 
 type Violation interface {
-	Kind() string
+	Type() string
 }
 
 type OutOfBoundsViolation struct {
-	Want [2]float64
-	Got  float64
+	Kind string     `json:"kind"`
+	Want [2]float64 `json:"want"`
+	Got  float64    `json:"got"`
 }
 
 func parseOutOfBounds(parts []string) (Violation, error) {
-	var violation OutOfBoundsViolation
+	violation := OutOfBoundsViolation{
+		Kind: "OUT_OF_BOUNDS",
+	}
 	var err error
 
 	violation.Got, err = strconv.ParseFloat(parts[0], 64)
@@ -33,17 +36,20 @@ func parseOutOfBounds(parts []string) (Violation, error) {
 	return violation, nil
 }
 
-func (violation OutOfBoundsViolation) Kind() string {
-	return "OUT_OF_BOUNDS"
+func (violation OutOfBoundsViolation) Type() string {
+	return violation.Kind
 }
 
 type UpperBoundViolation struct {
+	Kind string `json:"kind"`
 	Want float64
 	Got  float64
 }
 
 func parseUpperBound(parts []string) (Violation, error) {
-	var violation UpperBoundViolation
+	violation := UpperBoundViolation{
+		Kind: "UPPER_BOUND",
+	}
 	var err error
 
 	violation.Got, err = strconv.ParseFloat(parts[0], 64)
@@ -59,17 +65,20 @@ func parseUpperBound(parts []string) (Violation, error) {
 	return violation, nil
 }
 
-func (violation UpperBoundViolation) Kind() string {
+func (violation UpperBoundViolation) Type() string {
 	return "UPPER_BOUND"
 }
 
 type LowerBoundViolation struct {
+	Kind string `json:"kind"`
 	Want float64
 	Got  float64
 }
 
 func parseLowerBound(parts []string) (Violation, error) {
-	var violation LowerBoundViolation
+	violation := LowerBoundViolation{
+		Kind: "LOWER_BOUND",
+	}
 	var err error
 
 	violation.Got, err = strconv.ParseFloat(parts[0], 64)
@@ -85,17 +94,20 @@ func parseLowerBound(parts []string) (Violation, error) {
 	return violation, nil
 }
 
-func (violation LowerBoundViolation) Kind() string {
+func (violation LowerBoundViolation) Type() string {
 	return "LOWER_BOUND"
 }
 
 type EqualsViolation struct {
 	// FIXME: do we need to parse the wanted value? is it included in the violation?
-	Got float64
+	Kind string `json:"kind"`
+	Got  float64
 }
 
 func parseEquals(parts []string) (Violation, error) {
-	var violation EqualsViolation
+	violation := EqualsViolation{
+		Kind: "EQUALS",
+	}
 	var err error
 
 	violation.Got, err = strconv.ParseFloat(parts[0], 64)
@@ -106,17 +118,20 @@ func parseEquals(parts []string) (Violation, error) {
 	return violation, nil
 }
 
-func (violation EqualsViolation) Kind() string {
+func (violation EqualsViolation) Type() string {
 	return "EQUALS"
 }
 
 type NotEqualsViolation struct {
+	Kind string `json:"kind"`
 	Want float64
 	Got  float64
 }
 
 func parseNotEquals(parts []string) (Violation, error) {
-	var violation NotEqualsViolation
+	violation := NotEqualsViolation{
+		Kind: "NOT_EQUALS",
+	}
 	var err error
 
 	violation.Got, err = strconv.ParseFloat(parts[0], 64)
@@ -132,7 +147,7 @@ func parseNotEquals(parts []string) (Violation, error) {
 	return violation, nil
 }
 
-func (violation NotEqualsViolation) Kind() string {
+func (violation NotEqualsViolation) Type() string {
 	return "NOT_EQUALS"
 }
 

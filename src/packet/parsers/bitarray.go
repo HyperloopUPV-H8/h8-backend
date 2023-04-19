@@ -3,6 +3,7 @@ package parsers
 import (
 	"fmt"
 	"io"
+	"log"
 )
 
 type BitarrayParser struct {
@@ -64,6 +65,10 @@ func (parser *BitarrayParser) Encode(id uint16, enabled map[string]bool, data io
 		return fmt.Errorf("value names for packet %d not found", id)
 	}
 
+	if len(names) == 0 {
+		return nil
+	}
+
 	if len(enabled) != len(names) {
 		return fmt.Errorf("invalid value count %d/%d", len(enabled), len(names))
 	}
@@ -89,6 +94,7 @@ func (encoder *BitarrayParser) encodeBitarray(enabled map[string]bool, names []s
 func writeBits(enabled map[string]bool, names []string) []byte {
 	buf := make([]byte, (len(enabled)/8)+1)
 	for i, name := range names {
+		log.Println(name)
 		if enabled[name] {
 			buf[i/8] |= 0b10000000 >> (i % 8)
 		}

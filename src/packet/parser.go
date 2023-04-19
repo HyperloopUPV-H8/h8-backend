@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+
+	"github.com/rs/zerolog/log"
 )
 
 type Parser struct {
@@ -78,7 +80,15 @@ func (parser *Parser) Encode(id uint16, payload Payload) ([]byte, error) {
 		return nil, err
 	}
 
-	return encoder.Encode(id, payload)
+	idBytes := bytes.NewBuffer(nil)
+	err = binary.Write(idBytes, binary.LittleEndian, id)
+	if err != nil {
+		return nil, err
+	}
+	log.Info().Msgf("idBytes: %v, id: %v", id, idBytes.Bytes())
+
+	payloadBytes, err := encoder.Encode(id, payload)
+	return append(idBytes.Bytes(), payloadBytes...), err
 }
 
 func (parser *Parser) getEncoder(id uint16) (Encoder, error) {
@@ -86,6 +96,7 @@ func (parser *Parser) getEncoder(id uint16) (Encoder, error) {
 	if !ok {
 		return nil, fmt.Errorf("unknown packet %d", id)
 	}
+	log.Info().Msgf("kind: %v", kind)
 
 	encoder, ok := parser.encoders[kind]
 	if !ok {

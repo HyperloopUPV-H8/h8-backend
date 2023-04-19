@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -123,6 +124,7 @@ func main() {
 
 	go func() {
 		for order := range orderChannel {
+			log.Println(order)
 			vehicle.SendOrder(order)
 		}
 	}()
@@ -178,7 +180,7 @@ func getConfig(path string) Config {
 	reader := strings.NewReader(string(configFile))
 
 	var config Config
-	decodeErr := toml.NewDecoder(reader).DisallowUnknownFields().Decode(&config)
+	decodeErr := toml.NewDecoder(reader).Decode(&config)
 
 	if decodeErr != nil {
 		trace.Fatal().Stack().Err(decodeErr).Msg("error unmarshaling toml file")

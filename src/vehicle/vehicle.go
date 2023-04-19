@@ -2,6 +2,7 @@ package vehicle
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet"
@@ -100,6 +101,8 @@ func (vehicle *Vehicle) SendOrder(vehicleOrder models.Order) error {
 		return err
 	}
 
+	vehicleOrder = convertOrder(vehicleOrder)
+
 	fields, enabled := unzipFields(vehicleOrder.Fields)
 	fields = vehicle.displayConverter.Revert(fields)
 	fields = vehicle.podConverter.Convert(fields)
@@ -117,6 +120,32 @@ func (vehicle *Vehicle) SendOrder(vehicleOrder models.Order) error {
 	}
 
 	return err
+}
+
+func convertOrder(order models.Order) models.Order {
+	fields := make(map[string]models.Field)
+	for name, field := range order.Fields {
+		newField := models.Field{
+			IsEnabled: field.IsEnabled,
+		}
+		switch value := field.Value.(type) {
+		case float64:
+			newField.Value = packet.Numeric{Value: value}
+		case string:
+			newField.Value = packet.Enum{Value: value}
+		case bool:
+			newField.Value = packet.Boolean{Value: value}
+		default:
+			log.Printf("name: %s, type: %T\n", name, field.Value)
+			continue
+		}
+		fields[name] = newField
+	}
+
+	return models.Order{
+		ID:     order.ID,
+		Fields: fields,
+	}
 }
 
 func (vehicle *Vehicle) getPipe(id uint16) (*pipe.Pipe, error) {
