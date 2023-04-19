@@ -47,6 +47,7 @@ func New(args VehicleConstructorArgs) Vehicle {
 		sniffer:            createSniffer(args.GlobalInfo, args.Config, vehicleTrace),
 		pipes:              createPipes(args.GlobalInfo, dataChan, args.OnConnectionChange, args.Config, vehicleTrace),
 		idToBoard:          getIdToBoard(args.Boards, vehicleTrace),
+		dataChan:           dataChan,
 		onConnectionChange: args.OnConnectionChange,
 		trace:              vehicleTrace,
 	}

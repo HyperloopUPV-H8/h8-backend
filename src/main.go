@@ -83,6 +83,7 @@ func main() {
 	updateFactory := update_factory.NewFactory()
 	go func() {
 		for packet := range vehicleUpdates {
+			trace.Debug().Msgf("Received update: %v", packet)
 			payload, ok := packet.Payload.(data.Payload)
 			if !ok {
 				// TODO: handle error

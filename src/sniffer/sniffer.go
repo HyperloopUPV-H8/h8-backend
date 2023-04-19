@@ -88,6 +88,7 @@ func (sniffer *Sniffer) read(output chan<- packet.Raw, errorChan chan<- error) {
 			continue
 		}
 
+		sniffer.trace.Trace().Msg("parsed")
 		output <- rawPacket
 	}
 }

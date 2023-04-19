@@ -7,11 +7,11 @@ import (
 )
 
 type Protection struct {
-	Kind      string
-	Board     string
-	Value     string
-	Violation Violation
-	Timestamp ProtectionTimestamp
+	Kind      string              `json:"kind"`
+	Board     string              `json:"board"`
+	Value     string              `json:"value"`
+	Violation Violation           `json:"violation"`
+	Timestamp ProtectionTimestamp `json:"timestamp"`
 	raw       []byte
 }
 
@@ -43,13 +43,13 @@ func (message Protection) String() string {
 }
 
 type ProtectionTimestamp struct {
-	Counter uint16
-	Seconds uint8
-	Minutes uint8
-	Hours   uint8
-	Day     uint8
-	Month   uint8
-	Year    uint8
+	Counter uint16 `json:"counter"`
+	Seconds uint8  `json:"seconds"`
+	Minutes uint8  `json:"minutes"`
+	Hours   uint8  `json:"hours"`
+	Day     uint8  `json:"day"`
+	Month   uint8  `json:"month"`
+	Year    uint8  `json:"year"`
 }
 
 func parseTimestamp(data []byte) (ProtectionTimestamp, error) {
