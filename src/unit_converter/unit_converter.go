@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	excelAdapterModels "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
+	"github.com/HyperloopUPV-H8/Backend-H8/packet"
 	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter/models"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
@@ -57,11 +58,13 @@ func getCustomOperations(operationsStr string) string {
 	return strings.Split(operationsStr, "#")[1]
 }
 
-func (converter *UnitConverter) Convert(values map[string]any) map[string]any {
-	convertedValues := make(map[string]any, len(values))
+func (converter *UnitConverter) Convert(values map[string]packet.Value) map[string]packet.Value {
+	convertedValues := make(map[string]packet.Value, len(values))
 	for name, value := range values {
-		if ops, ok := converter.operations[name]; ok {
-			convertedValues[name] = ops.Convert(value.(float64))
+		value, isNumeric := value.(packet.Numeric)
+		ops, ok := converter.operations[name]
+		if ok && isNumeric {
+			convertedValues[name] = packet.Numeric{Value: ops.Convert(value.Value)}
 		} else {
 			convertedValues[name] = value
 		}
@@ -70,11 +73,13 @@ func (converter *UnitConverter) Convert(values map[string]any) map[string]any {
 	return convertedValues
 }
 
-func (converter *UnitConverter) Revert(values map[string]any) map[string]any {
-	convertedValues := make(map[string]any, len(values))
+func (converter *UnitConverter) Revert(values map[string]packet.Value) map[string]packet.Value {
+	convertedValues := make(map[string]packet.Value, len(values))
 	for name, value := range values {
-		if ops, ok := converter.operations[name]; ok {
-			convertedValues[name] = ops.Revert(value.(float64))
+		value, isNumeric := value.(packet.Numeric)
+		ops, ok := converter.operations[name]
+		if ok && isNumeric {
+			convertedValues[name] = packet.Numeric{Value: ops.Revert(value.Value)}
 		} else {
 			convertedValues[name] = value
 		}

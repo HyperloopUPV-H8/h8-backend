@@ -78,10 +78,10 @@ func createPipes(global excel_models.GlobalInfo, messageChan chan []byte, onConn
 	pipes := make(map[string]*pipe.Pipe)
 	for board, ip := range global.BoardToIP {
 		raddr := common.AddrWithPort(ip, global.ProtocolToPort[config.TcpServerTag])
+		// FIXME: func(state bool) does not work (closure takes the same board)
 		pipe, err := pipe.New(laddr, raddr, config.Network.Mtu, messageChan, func(state bool) { onConnectionChange(board, state) })
 		if err != nil {
 			trace.Fatal().Stack().Err(err).Msg("error creating pipe")
-
 		}
 
 		pipes[board] = pipe
@@ -90,6 +90,7 @@ func createPipes(global excel_models.GlobalInfo, messageChan chan []byte, onConn
 }
 
 func getFilter(addrs []string, protocolToPort map[string]string, tcpClientTag string, tcpServerTag string, udpTag string) string {
+	// FIXME: IPIP filter
 	udp := fmt.Sprintf("(udp port %s)", protocolToPort[udpTag])
 	udpAddr := ""
 	for _, addr := range addrs {

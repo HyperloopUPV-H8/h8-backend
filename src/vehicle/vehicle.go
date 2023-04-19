@@ -5,28 +5,26 @@ import (
 	"sync"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
-	"github.com/HyperloopUPV-H8/Backend-H8/message_parser"
-	"github.com/HyperloopUPV-H8/Backend-H8/packet_parser"
+	"github.com/HyperloopUPV-H8/Backend-H8/packet"
+	"github.com/HyperloopUPV-H8/Backend-H8/packet/data"
+	"github.com/HyperloopUPV-H8/Backend-H8/packet/message"
+	"github.com/HyperloopUPV-H8/Backend-H8/packet/order"
 	"github.com/HyperloopUPV-H8/Backend-H8/pipe"
 	"github.com/HyperloopUPV-H8/Backend-H8/sniffer"
 	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter"
-	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/internals"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/rs/zerolog"
 )
 
 type Vehicle struct {
-	sniffer          sniffer.Sniffer
-	parser           packet_parser.PacketParser
-	messageParser    message_parser.MessageParser
+	sniffer sniffer.Sniffer
+	pipes   map[string]*pipe.Pipe
+
+	parser           *packet.Parser
 	displayConverter unit_converter.UnitConverter
 	podConverter     unit_converter.UnitConverter
-	pipes            map[string]*pipe.Pipe
 
-	packetFactory internals.UpdateFactory
-
-	updateChan  chan []byte
-	messageChan chan []byte
+	dataChan chan packet.Raw
 
 	idToBoard map[uint16]string
 
@@ -37,41 +35,42 @@ type Vehicle struct {
 	trace zerolog.Logger
 }
 
-func (vehicle *Vehicle) Listen(updateChan chan<- models.Update, messagesChan chan<- any) {
-	vehicle.trace.Info().Msg("start listening")
-	go vehicle.listenData(updateChan)
+func (vehicle *Vehicle) Listen(dataOutput, messageOutput, orderOutput chan<- packet.Packet) {
+	for raw := range vehicle.dataChan {
+		payloadCopy := make([]byte, len(raw.Payload))
+		copy(payloadCopy, raw.Payload)
 
-	go vehicle.listenMessages(messagesChan)
-}
-
-func (vehicle *Vehicle) listenData(dataChan chan<- models.Update) {
-	for raw := range vehicle.updateChan {
-		rawCopy := make([]byte, len(raw))
-		copy(rawCopy, raw)
-
-		id, fields := vehicle.parser.Decode(rawCopy)
-		fields = vehicle.podConverter.Revert(fields)
-		fields = vehicle.displayConverter.Convert(fields)
-
-		update := vehicle.packetFactory.NewUpdate(id, rawCopy, fields)
-		vehicle.statsMx.Lock()
-		vehicle.stats.recv++
-		vehicle.statsMx.Unlock()
-
-		vehicle.trace.Trace().Uint16("id", id).Msg("read data")
-		dataChan <- update
-	}
-}
-
-func (vehicle *Vehicle) listenMessages(messageChan chan<- any) {
-	for raw := range vehicle.messageChan {
-		msg, err := vehicle.messageParser.Parse(raw)
+		decoded, err := vehicle.parser.Decode(raw.Metadata, payloadCopy)
 		if err != nil {
-			vehicle.trace.Error().Stack().Err(err).Str("raw", fmt.Sprintf("%#v", string(raw))).Msg("parse message")
-			continue
+			// FIXME: handle error
+			panic("error decoding packet")
 		}
-		messageChan <- msg
+
+		switch payload := decoded.Payload.(type) {
+		case data.Payload:
+			vehicle.handleData(decoded.Metadata, payload, dataOutput)
+		case message.Payload:
+			vehicle.handleMessage(decoded.Metadata, payload, messageOutput)
+		case order.Payload:
+			vehicle.handleOrder(decoded.Metadata, payload, orderOutput)
+		}
 	}
+}
+
+func (vehicle *Vehicle) handleData(metadata packet.Metadata, payload data.Payload, output chan<- packet.Packet) {
+	payload.Values = vehicle.podConverter.Revert(payload.Values)
+	payload.Values = vehicle.displayConverter.Convert(payload.Values)
+	output <- packet.New(metadata, payload)
+}
+
+func (vehicle *Vehicle) handleMessage(metadata packet.Metadata, payload message.Payload, output chan<- packet.Packet) {
+	output <- packet.New(metadata, payload)
+}
+
+func (vehicle *Vehicle) handleOrder(metadata packet.Metadata, payload order.Payload, output chan<- packet.Packet) {
+	payload.Values = vehicle.podConverter.Revert(payload.Values)
+	payload.Values = vehicle.displayConverter.Convert(payload.Values)
+	output <- packet.New(metadata, payload)
 }
 
 func (vehicle *Vehicle) SendOrder(order models.Order) error {
