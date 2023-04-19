@@ -62,8 +62,11 @@ func (blcu *BLCU) requestUpload(board string) error {
 func (blcu *BLCU) createUploadOrder(board string) models.Order {
 	return models.Order{
 		ID: blcu.config.Packets.Upload.Id,
-		Fields: map[string]any{
-			blcu.config.Packets.Upload.Field: board,
+		Fields: map[string]models.Field{
+			blcu.config.Packets.Upload.Field: {
+				Value:     board,
+				IsEnabled: true,
+			},
 		},
 	}
 }
