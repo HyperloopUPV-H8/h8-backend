@@ -4,8 +4,10 @@ secret.json
 log
 trace.json
 
-# BUILD
-*.exe
+# Windows build
+*.exe 
+# Linux build
+Backend-H8
 
 # EXCEL
 *.xlsx

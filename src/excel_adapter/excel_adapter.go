@@ -36,7 +36,7 @@ func (adapter ExcelAdapter) GetBoards() map[string]models.Board {
 func (adapter ExcelAdapter) GetGlobalInfo() models.GlobalInfo {
 	trace.Trace().Msg("get global info")
 	return models.GlobalInfo{
-		BackendIP:        getBackendIP(adapter.config.Parse.Global.AddressTable, adapter.config.Parse.Global.BackendEntryKey, adapter.document),
+		BackendIP:        getBackendIP(adapter.config.Parse.Global.AddressTable, adapter.config.Parse.Global.BackendAddressKey, adapter.document),
 		BoardToIP:        getInfoTableToMap(adapter.config.Parse.Global.AddressTable, adapter.document),
 		UnitToOperations: getInfoTableToMap(adapter.config.Parse.Global.UnitsTable, adapter.document),
 		ProtocolToPort:   getInfoTableToMap(adapter.config.Parse.Global.PortsTable, adapter.document),
@@ -82,15 +82,6 @@ func getIP(board string, document internalModels.Document, addressTableName stri
 
 	trace.Fatal().Str("board", board).Msg("missing board ip")
 	return ""
-}
-
-type GlobalInfoConfig struct {
-	AddressTable    string
-	BackendEntryKey string
-	UnitsTable      string
-	PortsTable      string
-	BoardIdsTable   string
-	MessageIdsTable string
 }
 
 func getInfoTableToMap(tableName string, document internalModels.Document) map[string]string {

@@ -78,7 +78,11 @@ func createPipes(global excel_models.GlobalInfo, messageChan chan []byte, onConn
 	pipes := make(map[string]*pipe.Pipe)
 	for board, ip := range global.BoardToIP {
 		raddr := common.AddrWithPort(ip, global.ProtocolToPort[config.TcpServerTag])
-		pipe, err := pipe.New(laddr, raddr, config.Network.Mtu, messageChan, func(state bool) { onConnectionChange(board, state) })
+		pipe, err := pipe.New(laddr, raddr, config.Network.Mtu, messageChan, func(board string) func(state bool) {
+			return func(state bool) {
+				onConnectionChange(board, state)
+			}
+		}(board))
 		if err != nil {
 			trace.Fatal().Stack().Err(err).Msg("error creating pipe")
 
