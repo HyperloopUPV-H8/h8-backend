@@ -60,13 +60,13 @@ func getCustomOperations(operationsStr string) string {
 
 func (converter *UnitConverter) Convert(values map[string]packet.Value) map[string]packet.Value {
 	convertedValues := make(map[string]packet.Value, len(values))
-	for name, value := range values {
-		value, isNumeric := value.(packet.Numeric)
+	for name, originalValue := range values {
+		numericValue, isNumeric := originalValue.(packet.Numeric)
 		ops, ok := converter.operations[name]
 		if ok && isNumeric {
-			convertedValues[name] = packet.Numeric{Value: ops.Convert(value.Value)}
+			convertedValues[name] = packet.Numeric{Value: ops.Convert(numericValue.Value)}
 		} else {
-			convertedValues[name] = value
+			convertedValues[name] = originalValue
 		}
 	}
 	converter.trace.Trace().Msg("convert")
@@ -75,13 +75,13 @@ func (converter *UnitConverter) Convert(values map[string]packet.Value) map[stri
 
 func (converter *UnitConverter) Revert(values map[string]packet.Value) map[string]packet.Value {
 	convertedValues := make(map[string]packet.Value, len(values))
-	for name, value := range values {
-		value, isNumeric := value.(packet.Numeric)
+	for name, originalValue := range values {
+		numericValue, isNumeric := originalValue.(packet.Numeric)
 		ops, ok := converter.operations[name]
 		if ok && isNumeric {
-			convertedValues[name] = packet.Numeric{Value: ops.Revert(value.Value)}
+			convertedValues[name] = packet.Numeric{Value: ops.Revert(numericValue.Value)}
 		} else {
-			convertedValues[name] = value
+			convertedValues[name] = originalValue
 		}
 	}
 	converter.trace.Trace().Msg("convert")

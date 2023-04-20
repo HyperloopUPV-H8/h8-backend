@@ -59,9 +59,9 @@ func (factory UpdateFactory) getFields(id uint16, fields map[string]packet.Value
 		case packet.Numeric:
 			updateFields[name] = factory.getNumericField(id, name, value)
 		case packet.Boolean:
-			updateFields[name] = models.BooleanValue{Value: value.Value}
+			updateFields[name] = models.BooleanValue(value.Value)
 		case packet.Enum:
-			updateFields[name] = models.EnumValue{Value: value.Value}
+			updateFields[name] = models.EnumValue(value.Value)
 		}
 	}
 

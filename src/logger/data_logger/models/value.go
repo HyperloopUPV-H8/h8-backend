@@ -18,9 +18,9 @@ func NewValue(value update_factory_models.UpdateValue) Value {
 	case update_factory_models.NumericValue:
 		data = value.Value
 	case update_factory_models.EnumValue:
-		data = value.Value
+		data = value
 	case update_factory_models.BooleanValue:
-		data = value.Value
+		data = value
 	}
 
 	return Value{
