@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -15,11 +14,15 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter"
 	loggerPackage "github.com/HyperloopUPV-H8/Backend-H8/logger"
+	data_logger "github.com/HyperloopUPV-H8/Backend-H8/logger/data"
+	message_logger "github.com/HyperloopUPV-H8/Backend-H8/logger/message"
+	order_logger "github.com/HyperloopUPV-H8/Backend-H8/logger/order"
 	"github.com/HyperloopUPV-H8/Backend-H8/message_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/order_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet/data"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet/message"
+	"github.com/HyperloopUPV-H8/Backend-H8/packet/order"
 	"github.com/HyperloopUPV-H8/Backend-H8/server"
 	"github.com/HyperloopUPV-H8/Backend-H8/update_factory"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle"
@@ -69,7 +72,39 @@ func main() {
 
 	messageTransfer := message_transfer.New(config.Messages)
 	orderTransfer, orderChannel := order_transfer.New()
-	logger := loggerPackage.New(config.Logger)
+
+	dataLogger, err := data_logger.New(data_logger.Config{
+		BasePath: config.Logger.BasePath,
+		FileName: config.Logger.DataFileName,
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	messageLogger, err := message_logger.New(message_logger.Config{
+		BasePath: config.Logger.BasePath,
+		FileName: config.Logger.MessageFileName,
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	orderLogger, err := order_logger.New(order_logger.Config{
+		BasePath: config.Logger.BasePath,
+		FileName: config.Logger.OrderFileName,
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	logger := loggerPackage.New(map[packet.Kind]loggerPackage.SubLogger{
+		packet.Data:    dataLogger,
+		packet.Message: messageLogger,
+		packet.Order:   orderLogger,
+	}, config.Logger)
 	defer logger.Close()
 
 	// Communication with front-end
@@ -86,14 +121,14 @@ func main() {
 	updateFactory := update_factory.NewFactory()
 	go func() {
 		for packet := range vehicleUpdates {
-			trace.Debug().Msgf("Received update: %v", packet)
 			payload, ok := packet.Payload.(data.Payload)
 			if !ok {
 				// TODO: handle error
 				continue
 			}
+			logger.Update(packet)
+
 			update := updateFactory.NewUpdate(packet.Metadata, payload)
-			logger.UpdateData(update)
 			dataTransfer.Update(update)
 		}
 	}()
@@ -105,14 +140,15 @@ func main() {
 				// TODO: handle error
 				continue
 			}
-			logger.UpdateMsg(payload.Data.String())
+			logger.Update(packet)
+
 			messageTransfer.SendMessage(payload.Data)
 		}
 	}()
 
 	go func() {
 		for packet := range vehicleOrders {
-			fmt.Println(packet)
+			logger.Update(packet)
 		}
 	}()
 
@@ -123,9 +159,17 @@ func main() {
 	}()
 
 	go func() {
-		for order := range orderChannel {
-			log.Println(order)
-			vehicle.SendOrder(order)
+		for ord := range orderChannel {
+			log.Println(ord)
+			id, fields := convertOrder(ord)
+			values, enabled := unzipFields(fields)
+			meta, err := vehicle.SendOrder(id, order.Payload{Values: values, Enabled: enabled})
+			if err == nil {
+				logger.Update(packet.Packet{Metadata: meta, Payload: order.Payload{
+					Values:  values,
+					Enabled: enabled,
+				}})
+			}
 		}
 	}()
 
@@ -150,26 +194,6 @@ func main() {
 	<-interrupt
 }
 
-func getIdToType(podData vehicle_models.PodData) map[uint16]string {
-	idToType := make(map[uint16]string)
-	for _, brd := range podData.Boards {
-		for _, pkt := range brd.Packets {
-			idToType[pkt.ID] = "data"
-		measurements_loop:
-			for msr := range pkt.Measurements {
-				if msr == "warning" {
-					idToType[pkt.ID] = "warning"
-					break measurements_loop
-				} else if msr == "fault" {
-					idToType[pkt.ID] = "fault"
-					break measurements_loop
-				}
-			}
-		}
-	}
-	return idToType
-}
-
 func getConfig(path string) Config {
 	configFile, fileErr := os.ReadFile(path)
 
@@ -187,4 +211,39 @@ func getConfig(path string) Config {
 	}
 
 	return config
+}
+
+func unzipFields(fields map[string]vehicle_models.Field) (map[string]packet.Value, map[string]bool) {
+	fieldsMap := make(map[string]packet.Value)
+	enabledMap := make(map[string]bool)
+
+	for name, field := range fields {
+		fieldsMap[name] = field.Value.(packet.Value)
+		enabledMap[name] = field.IsEnabled
+	}
+
+	return fieldsMap, enabledMap
+}
+
+func convertOrder(order vehicle_models.Order) (uint16, map[string]vehicle_models.Field) {
+	fields := make(map[string]vehicle_models.Field)
+	for name, field := range order.Fields {
+		newField := vehicle_models.Field{
+			IsEnabled: field.IsEnabled,
+		}
+		switch value := field.Value.(type) {
+		case float64:
+			newField.Value = packet.Numeric{Value: value}
+		case string:
+			newField.Value = packet.Enum{Value: value}
+		case bool:
+			newField.Value = packet.Boolean{Value: value}
+		default:
+			log.Printf("name: %s, type: %T\n", name, field.Value)
+			continue
+		}
+		fields[name] = newField
+	}
+
+	return order.ID, fields
 }

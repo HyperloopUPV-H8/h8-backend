@@ -43,13 +43,11 @@ message_ids_table = "message_ids"
 
 [logger]
 topics = { enable = "logger/enable", state = "logger/state" }
+base_path = "log"
+data_name = "data.csv"
+message_name = "message.csv"
+order_name = "order.csv"
 
-[logger.data_logger]
-base_path = "log/data"
-
-[logger.message_logger]
-base_path = "log/message"
-file_name = "messages.csv"
 
 [orders]
 send_topic = "order/send"

@@ -1,15 +1,12 @@
 package logger
 
-import (
-	"github.com/HyperloopUPV-H8/Backend-H8/logger/data_logger"
-	"github.com/HyperloopUPV-H8/Backend-H8/logger/message_logger"
-)
-
 type Config struct {
-	MessageLogger message_logger.Config `toml:"message_logger"`
-	DataLogger    data_logger.Config    `toml:"data_logger"`
-	FlushInterval string                `toml:"flush_interval"`
-	Topics        LoggerTopics          `toml:"topics"`
+	BasePath        string       `toml:"base_path"`
+	DataFileName    string       `toml:"data_name"`
+	MessageFileName string       `toml:"message_name"`
+	OrderFileName   string       `toml:"order_name"`
+	FlushInterval   string       `toml:"flush_interval"`
+	Topics          LoggerTopics `toml:"topics"`
 }
 
 type LoggerTopics struct {

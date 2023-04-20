@@ -2,7 +2,7 @@ package vehicle
 
 import (
 	"fmt"
-	"log"
+	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet"
@@ -12,7 +12,6 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/pipe"
 	"github.com/HyperloopUPV-H8/Backend-H8/sniffer"
 	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter"
-	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/rs/zerolog"
 )
 
@@ -93,59 +92,38 @@ func (vehicle *Vehicle) handleOrder(metadata packet.Metadata, payload order.Payl
 	}
 }
 
-func (vehicle *Vehicle) SendOrder(vehicleOrder models.Order) error {
-	vehicle.trace.Info().Uint16("id", vehicleOrder.ID).Msg("send order")
-	pipe, err := vehicle.getPipe(vehicleOrder.ID)
+func (vehicle *Vehicle) SendOrder(id uint16, vehicleOrder packet.Payload) (packet.Metadata, error) {
+	vehicle.trace.Info().Uint16("id", id).Msg("send order")
+	pipe, err := vehicle.getPipe(id)
 	if err != nil {
 		vehicle.trace.Error().Err(err).Msg("error getting pipe")
-		return err
+		return packet.Metadata{}, err
 	}
 
-	vehicleOrder = convertOrder(vehicleOrder)
+	payload, ok := vehicleOrder.(order.Payload)
+	if !ok {
+		vehicle.trace.Error().Msg("payload is not order")
+		return packet.Metadata{}, fmt.Errorf("payload is not order")
+	}
 
-	fields, enabled := unzipFields(vehicleOrder.Fields)
-	fields = vehicle.displayConverter.Revert(fields)
-	fields = vehicle.podConverter.Convert(fields)
+	payload.Values = vehicle.displayConverter.Revert(payload.Values)
+	payload.Values = vehicle.podConverter.Convert(payload.Values)
 
-	data, err := vehicle.parser.Encode(vehicleOrder.ID, order.Payload{Values: fields, Enabled: enabled})
+	data, err := vehicle.parser.Encode(id, payload)
 	if err != nil {
 		vehicle.trace.Error().Err(err).Msg("error encoding order")
-		return err
+		return packet.Metadata{}, err
 	}
 
 	_, err = common.WriteAll(pipe, data)
-	if err != nil {
-		vehicle.trace.Error().Err(err).Msg("error sending order")
-		return err
-	}
 
-	return err
-}
-
-func convertOrder(order models.Order) models.Order {
-	fields := make(map[string]models.Field)
-	for name, field := range order.Fields {
-		newField := models.Field{
-			IsEnabled: field.IsEnabled,
-		}
-		switch value := field.Value.(type) {
-		case float64:
-			newField.Value = packet.Numeric{Value: value}
-		case string:
-			newField.Value = packet.Enum{Value: value}
-		case bool:
-			newField.Value = packet.Boolean{Value: value}
-		default:
-			log.Printf("name: %s, type: %T\n", name, field.Value)
-			continue
-		}
-		fields[name] = newField
-	}
-
-	return models.Order{
-		ID:     order.ID,
-		Fields: fields,
-	}
+	return packet.Metadata{
+		ID:        id,
+		Timestamp: time.Now(),
+		From:      pipe.Laddr(),
+		To:        pipe.Raddr(),
+		SeqNum:    0,
+	}, err
 }
 
 func (vehicle *Vehicle) getPipe(id uint16) (*pipe.Pipe, error) {
@@ -160,16 +138,4 @@ func (vehicle *Vehicle) getPipe(id uint16) (*pipe.Pipe, error) {
 	}
 
 	return pipe, nil
-}
-
-func unzipFields(fields map[string]models.Field) (map[string]packet.Value, map[string]bool) {
-	fieldsMap := make(map[string]packet.Value)
-	enabledMap := make(map[string]bool)
-
-	for name, field := range fields {
-		fieldsMap[name] = field.Value
-		enabledMap[name] = field.IsEnabled
-	}
-
-	return fieldsMap, enabledMap
 }

@@ -1,5 +1,6 @@
-package data_logger
+package message_logger
 
 type Config struct {
 	BasePath string `toml:"base_path"`
+	FileName string `toml:"file_name"`
 }

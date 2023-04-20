@@ -3,10 +3,10 @@ package logger
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"sync"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/logger/data_logger"
-	"github.com/HyperloopUPV-H8/Backend-H8/logger/message_logger"
-	update_factory_models "github.com/HyperloopUPV-H8/Backend-H8/update_factory/models"
+	"github.com/HyperloopUPV-H8/Backend-H8/packet"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
@@ -16,37 +16,28 @@ const (
 )
 
 type Logger struct {
-	data    *data_logger.DataLogger
-	message *message_logger.MessageLogger
-
-	config Config
+	subloggerMx *sync.Mutex
+	subloggers  map[packet.Kind]SubLogger
 
 	currentSession string
+	isRunning      bool
+
+	config Config
 
 	sendMessage func(topic string, payload any, target ...string) error
 
 	trace zerolog.Logger
 }
 
-type EnableMsg struct {
-	Client string
-	Enable bool
-}
-
-func New(config Config) Logger {
+func New(subLoggers map[packet.Kind]SubLogger, config Config) Logger {
 	trace.Info().Msg("new log handle")
 
-	messageLogger, err := message_logger.New(config.MessageLogger)
-	if err != nil {
-		trace.Fatal().Stack().Err(err).Msg("construct message logger")
-
-	}
-
 	return Logger{
-		data:    data_logger.New(config.DataLogger),
-		message: messageLogger,
+		subloggerMx: &sync.Mutex{},
+		subloggers:  subLoggers,
 
 		currentSession: "",
+		isRunning:      false,
 
 		config: config,
 
@@ -60,32 +51,40 @@ func (logger *Logger) UpdateMessage(topic string, payload json.RawMessage, sourc
 	logger.trace.Debug().Str("topic", topic).Str("source", source).Msg("update message")
 	switch topic {
 	case logger.config.Topics.Enable:
-		var enable bool
-		if err := json.Unmarshal(payload, &enable); err != nil {
-			logger.trace.Error().Stack().Err(err).Msg("")
-			return
-		}
-
-		logger.updateState(enable, source)
+		logger.handleEnable(payload, source)
 	}
 
 	logger.notifyState()
 }
 
-func (logger *Logger) updateState(enable bool, source string) {
+func (logger *Logger) handleEnable(payload json.RawMessage, source string) error {
+	var enable bool
+	err := json.Unmarshal(payload, &enable)
+	if err != nil {
+		logger.trace.Error().Stack().Err(err).Msg("unmarshal enable")
+		return err
+	}
+
+	err = logger.updateState(enable, source)
+	return err
+}
+
+func (logger *Logger) updateState(enable bool, source string) error {
 	logger.trace.Debug().Bool("enable", enable).Str("source", source).Msg("update state")
 
 	if !logger.verifySession(source) {
 		logger.trace.Warn().Str("source", source).Msg("tried to change running log session")
-		return
+		return fmt.Errorf("%s tried to change running log session of %s", source, logger.currentSession)
 	}
 
+	var err error
 	if enable {
-		logger.start()
+		err = logger.start()
 	} else {
-		logger.stop()
+		err = logger.stop()
 	}
 
+	return err
 }
 
 func (logger *Logger) verifySession(session string) bool {
@@ -96,14 +95,33 @@ func (logger *Logger) verifySession(session string) bool {
 	return logger.currentSession == session
 }
 
-func (logger *Logger) start() {
-	logger.data.Start()
+func (logger *Logger) start() (err error) {
+	for _, sublogger := range logger.subloggers {
+		startErr := sublogger.Start()
+		if startErr != nil {
+			err = startErr
+		}
+	}
+
+	logger.isRunning = true
+	return err
 }
 
-func (logger *Logger) stop() {
-	logger.data.Stop()
+func (logger *Logger) stop() (err error) {
+	for _, sublogger := range logger.subloggers {
+		stopErr := sublogger.Stop()
+		if stopErr != nil {
+			err = stopErr
+		}
+	}
+
+	logger.isRunning = false
 	logger.resetSession()
-	logger.data.Flush()
+	flushErr := logger.Flush()
+	if flushErr != nil {
+		err = flushErr
+	}
+	return err
 }
 
 func (logger *Logger) resetSession() {
@@ -111,7 +129,7 @@ func (logger *Logger) resetSession() {
 }
 
 func (logger *Logger) notifyState() {
-	if err := logger.sendMessage(logger.config.Topics.State, logger.data.IsRunning()); err != nil {
+	if err := logger.sendMessage(logger.config.Topics.State, logger.isRunning); err != nil {
 		logger.trace.Error().Stack().Err(err).Msg("")
 	}
 }
@@ -123,14 +141,14 @@ func (logger *Logger) NotifyDisconnect(session string) {
 	}
 }
 
-func (logger *Logger) UpdateData(data update_factory_models.Update) {
-	logger.trace.Trace().Msg("update data")
-	logger.data.Update(data)
-}
+func (logger *Logger) Update(packet packet.Packet) error {
+	sublogger, ok := logger.subloggers[packet.Kind()]
+	if !ok {
+		logger.trace.Warn().Int("kind", int(packet.Kind())).Msg("unknown packet kind")
+		return fmt.Errorf("unknown packet kind %d", packet.Kind())
+	}
 
-func (logger *Logger) UpdateMsg(msg string) {
-	logger.trace.Trace().Msg("update message")
-	logger.message.Update(msg)
+	return sublogger.Update(packet)
 }
 
 func (logger *Logger) SetSendMessage(sendMessage func(topic string, payload any, target ...string) error) {
@@ -140,29 +158,23 @@ func (logger *Logger) SetSendMessage(sendMessage func(topic string, payload any,
 
 func (logger *Logger) Flush() (err error) {
 	logger.trace.Debug().Msg("flush")
-	err = logger.data.Flush()
-	if err != nil {
-		logger.trace.Error().Stack().Err(err).Msg("flush data logger")
-	}
 
-	err = logger.message.Flush()
-	if err != nil {
-		logger.trace.Error().Stack().Err(err).Msg("flush message logger")
+	for _, sublogger := range logger.subloggers {
+		flushErr := sublogger.Flush()
+		if flushErr != nil {
+			err = flushErr
+		}
 	}
 
 	return err
 }
 
 func (logger *Logger) Close() (err error) {
-	logger.trace.Debug().Msg("close")
-	err = logger.data.Close()
-	if err != nil {
-		logger.trace.Error().Stack().Err(err).Msg("close data logger")
-	}
-
-	err = logger.message.Close()
-	if err != nil {
-		logger.trace.Error().Stack().Err(err).Msg("close message logger")
+	for _, sublogger := range logger.subloggers {
+		closeErr := sublogger.Close()
+		if closeErr != nil {
+			err = closeErr
+		}
 	}
 
 	return err

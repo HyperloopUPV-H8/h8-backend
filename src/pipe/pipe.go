@@ -137,3 +137,11 @@ func (pipe *Pipe) Close(reconnect bool) error {
 	}
 	return err
 }
+
+func (pipe *Pipe) Laddr() string {
+	return pipe.laddr.String()
+}
+
+func (pipe *Pipe) Raddr() string {
+	return pipe.raddr.String()
+}
