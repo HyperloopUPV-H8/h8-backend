@@ -24,12 +24,12 @@ func (parser Parser) Decode(id uint16, data []byte) (packet.Payload, error) {
 		return Payload{}, err
 	}
 
-	enabled, err := parser.bitarray.Decode(id, reader)
-	if err != nil {
-		return Payload{}, err
-	}
+	// enabled, err := parser.bitarray.Decode(id, reader)
+	// if err != nil {
+	// 	return Payload{}, err
+	// }
 
-	return Payload{Values: values, Enabled: enabled, raw: data}, nil
+	return Payload{Values: values, Enabled: nil, raw: data}, nil
 }
 
 func (parser Parser) Encode(id uint16, payload packet.Payload) ([]byte, error) {
@@ -45,10 +45,10 @@ func (parser Parser) Encode(id uint16, payload packet.Payload) ([]byte, error) {
 		return nil, err
 	}
 
-	err = parser.bitarray.Encode(id, orderPayload.Enabled, buf)
-	if err != nil {
-		return nil, err
-	}
+	// err = parser.bitarray.Encode(id, orderPayload.Enabled, buf)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	return buf.Bytes(), nil
 }
