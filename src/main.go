@@ -59,7 +59,7 @@ func main() {
 		GlobalInfo:         globalInfo,
 		OnConnectionChange: connectionTransfer.Update,
 	})
-	vehicleUpdates := make(chan packet.Packet)
+	vehicleUpdates := make(chan packet.Packet, 100)
 	vehicleMessages := make(chan packet.Packet)
 	vehicleOrders := make(chan packet.Packet)
 	go vehicle.Listen(vehicleUpdates, vehicleMessages, vehicleOrders)
