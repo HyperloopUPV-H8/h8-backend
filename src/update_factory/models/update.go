@@ -21,17 +21,13 @@ func (numeric NumericValue) Kind() string {
 	return "numeric"
 }
 
-type BooleanValue struct {
-	Value bool `json:"value"`
-}
+type BooleanValue bool
 
 func (boolean BooleanValue) Kind() string {
 	return "boolean"
 }
 
-type EnumValue struct {
-	Value string `json:"value"`
-}
+type EnumValue string
 
 func (enum EnumValue) Kind() string {
 	return "enum"

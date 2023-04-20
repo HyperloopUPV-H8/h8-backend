@@ -173,7 +173,7 @@ func getEnums(global excel_models.GlobalInfo, boards map[string]excel_models.Boa
 				if getValueType(value.Type) != "enum" {
 					continue
 				}
-				enums[value.Name] = getEnumDescriptor(value.Type)
+				enums[value.ID] = getEnumDescriptor(value.Type)
 			}
 		}
 	}
@@ -181,7 +181,9 @@ func getEnums(global excel_models.GlobalInfo, boards map[string]excel_models.Boa
 }
 
 func getEnumDescriptor(literal string) packet.EnumDescriptor {
-	return strings.Split(strings.ReplaceAll(strings.TrimSuffix(strings.TrimPrefix("enum(", literal), ")"), " ", ""), ",")
+	withoutSpaceLiteral := strings.ReplaceAll(literal, " ", "")
+	optionsLiteral := strings.TrimSuffix(strings.TrimPrefix(withoutSpaceLiteral, "enum("), ")")
+	return strings.Split(optionsLiteral, ",")
 }
 
 func getNames(global excel_models.GlobalInfo, boards map[string]excel_models.Board) (map[uint16][]string, error) {

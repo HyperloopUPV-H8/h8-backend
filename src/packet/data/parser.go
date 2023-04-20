@@ -17,5 +17,5 @@ func NewParser(valueParser *parsers.ValueParser) Parser {
 
 func (parser Parser) Decode(id uint16, data []byte) (packet.Payload, error) {
 	values, err := parser.value.Decode(id, bytes.NewReader(data))
-	return Payload{Values: values}, err
+	return Payload{Values: values, raw: data}, err
 }

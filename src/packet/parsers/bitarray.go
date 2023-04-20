@@ -37,7 +37,6 @@ func (decoder *BitarrayParser) decodeBitarray(names []string, data io.Reader) (m
 	}
 
 	return zip(names, readBits(buf)), nil
-
 }
 
 func readBits(buf []byte) []bool {
