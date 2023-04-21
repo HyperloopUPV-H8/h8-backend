@@ -10,8 +10,8 @@ type BitarrayParser struct {
 	names map[uint16][]string
 }
 
-func NewBitarrayParser(names map[uint16][]string) *BitarrayParser {
-	return &BitarrayParser{
+func NewBitarrayParser(names map[uint16][]string) BitarrayParser {
+	return BitarrayParser{
 		names: names,
 	}
 }

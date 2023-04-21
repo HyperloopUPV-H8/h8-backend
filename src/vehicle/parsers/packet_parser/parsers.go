@@ -1,4 +1,4 @@
-package parsers
+package packet_parser
 
 import (
 	"encoding/binary"
@@ -20,14 +20,14 @@ func (parser numericParser[T]) decode(descriptor packet.ValueDescriptor, order b
 	var value T
 	err := binary.Read(data, order, &value)
 	if err != nil {
-		return packet.Numeric{}, err
+		return packet.Numeric(0), err
 	}
 
-	return packet.Numeric{Value: (float64)(value)}, nil
+	return packet.Numeric(value), nil
 }
 
 func (parser numericParser[T]) encode(descriptor packet.ValueDescriptor, order binary.ByteOrder, value packet.Value, data io.Writer) error {
-	return binary.Write(data, order, (T)(value.(packet.Numeric).Value))
+	return binary.Write(data, order, (T)((value).(packet.Numeric)))
 }
 
 type booleanParser struct{}
@@ -36,14 +36,14 @@ func (parser booleanParser) decode(descriptor packet.ValueDescriptor, order bina
 	var value bool
 	err := binary.Read(data, order, &value)
 	if err != nil {
-		return packet.Boolean{}, err
+		return packet.Boolean(false), err
 	}
 
-	return packet.Boolean{Value: value}, nil
+	return packet.Boolean(value), nil
 }
 
 func (parser booleanParser) encode(descriptor packet.ValueDescriptor, order binary.ByteOrder, value packet.Value, data io.Writer) error {
-	return binary.Write(data, order, value.(packet.Boolean).Value)
+	return binary.Write(data, order, value)
 }
 
 type enumParser struct {
@@ -53,16 +53,16 @@ type enumParser struct {
 func (parser enumParser) decode(descriptor packet.ValueDescriptor, order binary.ByteOrder, data io.Reader) (packet.Value, error) {
 	enum, ok := parser.descriptors[descriptor.Name]
 	if !ok {
-		return packet.Enum{}, fmt.Errorf("enum descriptor for %s not found", descriptor.Name)
+		return packet.Enum("Default"), fmt.Errorf("enum descriptor for %s not found", descriptor.Name)
 	}
 
 	var value uint8
 	err := binary.Read(data, order, &value)
 	if err != nil {
-		return packet.Enum{}, err
+		return packet.Enum("Default"), err
 	}
 
-	return packet.Enum{Value: enum[value]}, nil
+	return packet.Enum(enum[value]), nil
 }
 
 func (parser enumParser) encode(descriptor packet.ValueDescriptor, order binary.ByteOrder, value packet.Value, data io.Writer) error {
@@ -73,7 +73,7 @@ func (parser enumParser) encode(descriptor packet.ValueDescriptor, order binary.
 
 	var index uint8
 	for i, v := range enum {
-		if v == value.(packet.Enum).Value {
+		if v == string(value.(packet.Enum)) {
 			index = (uint8)(i)
 			break
 		}

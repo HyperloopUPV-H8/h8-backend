@@ -1,4 +1,4 @@
-package message_logger
+package data
 
 type Config struct {
 	BasePath string `toml:"base_path"`

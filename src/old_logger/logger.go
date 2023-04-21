@@ -1,23 +1,18 @@
-package logger
+package old_logger
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sync"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/packet"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
 
-const (
-	LOG_HANDLE_HANDLER_NAME = "logHandle"
-)
+const LOG_HANDLE_HANDLER_NAME = "logHandle"
 
 type Logger struct {
-	subloggerMx *sync.Mutex
-	subloggers  map[packet.Kind]SubLogger
+	subloggers map[string]SubLogger
 
 	currentSession string
 	isRunning      bool
@@ -29,12 +24,11 @@ type Logger struct {
 	trace zerolog.Logger
 }
 
-func New(subLoggers map[packet.Kind]SubLogger, config Config) Logger {
+func New(subloggers map[string]SubLogger, config Config) Logger {
 	trace.Info().Msg("new log handle")
 
 	return Logger{
-		subloggerMx: &sync.Mutex{},
-		subloggers:  subLoggers,
+		subloggers: subloggers,
 
 		currentSession: "",
 		isRunning:      false,
@@ -139,16 +133,6 @@ func (logger *Logger) NotifyDisconnect(session string) {
 	if logger.verifySession(session) {
 		logger.stop()
 	}
-}
-
-func (logger *Logger) Update(packet packet.Packet) error {
-	sublogger, ok := logger.subloggers[packet.Kind()]
-	if !ok {
-		logger.trace.Warn().Int("kind", int(packet.Kind())).Msg("unknown packet kind")
-		return fmt.Errorf("unknown packet kind %d", packet.Kind())
-	}
-
-	return sublogger.Update(packet)
 }
 
 func (logger *Logger) SetSendMessage(sendMessage func(topic string, payload any, target ...string) error) {

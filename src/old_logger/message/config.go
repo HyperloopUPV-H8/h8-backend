@@ -1,4 +1,4 @@
-package data_logger
+package protection
 
 type Config struct {
 	BasePath string `toml:"base_path"`

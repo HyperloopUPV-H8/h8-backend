@@ -13,16 +13,10 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter"
-	loggerPackage "github.com/HyperloopUPV-H8/Backend-H8/logger"
-	data_logger "github.com/HyperloopUPV-H8/Backend-H8/logger/data"
-	message_logger "github.com/HyperloopUPV-H8/Backend-H8/logger/message"
-	order_logger "github.com/HyperloopUPV-H8/Backend-H8/logger/order"
+	"github.com/HyperloopUPV-H8/Backend-H8/logger_handler"
 	"github.com/HyperloopUPV-H8/Backend-H8/message_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/order_transfer"
-	"github.com/HyperloopUPV-H8/Backend-H8/packet"
-	"github.com/HyperloopUPV-H8/Backend-H8/packet/data"
-	"github.com/HyperloopUPV-H8/Backend-H8/packet/message"
-	"github.com/HyperloopUPV-H8/Backend-H8/packet/order"
+	"github.com/HyperloopUPV-H8/Backend-H8/packet_logger"
 	"github.com/HyperloopUPV-H8/Backend-H8/server"
 	"github.com/HyperloopUPV-H8/Backend-H8/update_factory"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle"
@@ -62,10 +56,10 @@ func main() {
 		GlobalInfo:         globalInfo,
 		OnConnectionChange: connectionTransfer.Update,
 	})
-	vehicleUpdates := make(chan packet.Packet, 100)
-	vehicleMessages := make(chan packet.Packet)
-	vehicleOrders := make(chan packet.Packet)
-	go vehicle.Listen(vehicleUpdates, vehicleMessages, vehicleOrders)
+	vehicleUpdates := make(chan vehicle_models.PacketUpdate, 100)
+	vehicleProtections := make(chan vehicle_models.Protection)
+	// vehicleOrders := make(chan packet.Packet)
+	go vehicle.Listen(vehicleUpdates, vehicleProtections)
 
 	dataTransfer := data_transfer.New(config.DataTransfer)
 	go dataTransfer.Run()
@@ -73,39 +67,16 @@ func main() {
 	messageTransfer := message_transfer.New(config.Messages)
 	orderTransfer, orderChannel := order_transfer.New()
 
-	dataLogger, err := data_logger.New(data_logger.Config{
-		BasePath: config.Logger.BasePath,
-		FileName: config.Logger.DataFileName,
-	})
+	packetLogger, err := packet_logger.NewPacketLogger(boards, config.PacketLogger)
 
 	if err != nil {
-		panic(err)
+		//TODO: trace
 	}
 
-	messageLogger, err := message_logger.New(message_logger.Config{
-		BasePath: config.Logger.BasePath,
-		FileName: config.Logger.MessageFileName,
-	})
-
-	if err != nil {
-		panic(err)
-	}
-
-	orderLogger, err := order_logger.New(order_logger.Config{
-		BasePath: config.Logger.BasePath,
-		FileName: config.Logger.OrderFileName,
-	})
-
-	if err != nil {
-		panic(err)
-	}
-
-	logger := loggerPackage.New(map[packet.Kind]loggerPackage.SubLogger{
-		packet.Data:    dataLogger,
-		packet.Message: messageLogger,
-		packet.Order:   orderLogger,
-	}, config.Logger)
-	defer logger.Close()
+	loggableChannel := make(chan logger_handler.Loggable)
+	loggerHandler := logger_handler.NewLoggerHandler([]logger_handler.Logger{packetLogger}, loggableChannel, config.LoggerHandler)
+	go loggerHandler.Listen()
+	defer loggerHandler.Close()
 
 	// Communication with front-end
 	websocketBroker := websocket_broker.New()
@@ -120,37 +91,30 @@ func main() {
 
 	updateFactory := update_factory.NewFactory()
 	go func() {
-		for packet := range vehicleUpdates {
-			payload, ok := packet.Payload.(data.Payload)
-			if !ok {
-				// TODO: handle error
-				continue
-			}
-			logger.Update(packet)
-
-			update := updateFactory.NewUpdate(packet.Metadata, payload)
+		for update := range vehicleUpdates {
+			update := updateFactory.NewUpdate(update)
 			dataTransfer.Update(update)
-		}
-	}()
 
-	go func() {
-		for packet := range vehicleMessages {
-			payload, ok := packet.Payload.(message.Payload)
-			if !ok {
-				// TODO: handle error
-				continue
+			loggableChan <- packet_logger.ToLoggablePacket(update)
+
+			for index, value := range update.Values {
+				loggableChan <- packet_logger.ToLoggableValue(value)
 			}
-			logger.Update(packet)
-
-			messageTransfer.SendMessage(payload.Data)
 		}
 	}()
 
 	go func() {
-		for packet := range vehicleOrders {
+		for protection := range vehicleProtections {
 			logger.Update(packet)
+			messageTransfer.SendMessage(protection)
 		}
 	}()
+
+	// go func() {
+	// 	for packet := range vehicleOrders {
+	// 		logger.Update(packet)
+	// 	}
+	// }()
 
 	go func() {
 		for id := range websocketBroker.CloseChan {
@@ -161,14 +125,14 @@ func main() {
 	go func() {
 		for ord := range orderChannel {
 			log.Println(ord)
-			id, fields := convertOrder(ord)
-			values, enabled := unzipFields(fields)
-			meta, err := vehicle.SendOrder(id, order.Payload{Values: values, Enabled: enabled})
+			// id, fields := convertOrder(ord)
+			// values, enabled := unzipFields(fields)
+			// meta, err := vehicle.SendOrder(id, order.Payload{Values: values, Enabled: enabled})
 			if err == nil {
-				logger.Update(packet.Packet{Metadata: meta, Payload: order.Payload{
-					Values:  values,
-					Enabled: enabled,
-				}})
+				// logger.Update(packet.Packet{Metadata: meta, Payload: order.Payload{
+				// 	Values:  values,
+				// 	Enabled: enabled,
+				// }})
 			}
 		}
 	}()
@@ -204,6 +168,8 @@ func getConfig(path string) Config {
 	reader := strings.NewReader(string(configFile))
 
 	var config Config
+
+	// decodeErr := toml.NewDecoder(reader).DisallowUnknownFields().Decode(&config)
 	decodeErr := toml.NewDecoder(reader).Decode(&config)
 
 	if decodeErr != nil {
@@ -213,12 +179,12 @@ func getConfig(path string) Config {
 	return config
 }
 
-func unzipFields(fields map[string]vehicle_models.Field) (map[string]packet.Value, map[string]bool) {
-	fieldsMap := make(map[string]packet.Value)
+func unzipFields(fields map[string]vehicle_models.Field) (map[string]any, map[string]bool) {
+	fieldsMap := make(map[string]any)
 	enabledMap := make(map[string]bool)
 
 	for name, field := range fields {
-		fieldsMap[name] = field.Value.(packet.Value)
+		fieldsMap[name] = field.Value
 		enabledMap[name] = field.IsEnabled
 	}
 
@@ -233,11 +199,11 @@ func convertOrder(order vehicle_models.Order) (uint16, map[string]vehicle_models
 		}
 		switch value := field.Value.(type) {
 		case float64:
-			newField.Value = packet.Numeric{Value: value}
+			newField.Value = value
 		case string:
-			newField.Value = packet.Enum{Value: value}
+			newField.Value = value
 		case bool:
-			newField.Value = packet.Boolean{Value: value}
+			newField.Value = value
 		default:
 			log.Printf("name: %s, type: %T\n", name, field.Value)
 			continue

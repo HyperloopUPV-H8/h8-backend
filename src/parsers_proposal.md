@@ -132,7 +132,7 @@ Ahora vamos a hablar de como procesa cada modulo la información obtenida de dat
 
 PacketUpdate contiene en `update.Values` un `map[string]any`, donde any es `float64`, `string`, `bool`
 
-Luego se le tiene que añadir el average si la update es numerica.
+Luego se le tiene que añadir el average si la update es numerica. De eso se encarga el update_factory
 
 ## Data -> BoardOrder
 

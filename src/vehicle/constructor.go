@@ -8,13 +8,12 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	excel_models "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet"
-	"github.com/HyperloopUPV-H8/Backend-H8/packet/data"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet/message"
-	"github.com/HyperloopUPV-H8/Backend-H8/packet/order"
-	"github.com/HyperloopUPV-H8/Backend-H8/packet/parsers"
 	"github.com/HyperloopUPV-H8/Backend-H8/pipe"
 	"github.com/HyperloopUPV-H8/Backend-H8/sniffer"
 	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter"
+	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/parsers"
+	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/parsers/packet_parser"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
@@ -31,23 +30,36 @@ type VehicleConstructorArgs struct {
 }
 
 func New(args VehicleConstructorArgs) Vehicle {
-	trace.Trace().Msg("new vehicle builder")
+	trace.Trace().Msg("creating vehicle")
 
 	vehicleTrace := trace.With().Str("component", "vehicle").Logger()
 	dataChan := make(chan packet.Raw, UPDATE_CHAN_BUF_SIZE)
-	parser, err := createParser(args.GlobalInfo, args.Boards)
+
+	packetParser, err := createPacketParser(args.GlobalInfo, args.Boards)
+
 	if err != nil {
-		// FIXME: handle error
-		panic(err)
+		//TODO: trace
 	}
+
+	names, err := getNames(args.GlobalInfo, args.Boards)
+	if err != nil {
+		//TODO: trace
+	}
+
 	vehicle := Vehicle{
-		parser:             parser,
-		podConverter:       unit_converter.NewUnitConverter("pod", args.Boards, args.GlobalInfo.UnitToOperations),
-		displayConverter:   unit_converter.NewUnitConverter("display", args.Boards, args.GlobalInfo.UnitToOperations),
-		sniffer:            createSniffer(args.GlobalInfo, args.Config, vehicleTrace),
-		pipes:              createPipes(args.GlobalInfo, dataChan, args.OnConnectionChange, args.Config, vehicleTrace),
+		podConverter:     unit_converter.NewUnitConverter("pod", args.Boards, args.GlobalInfo.UnitToOperations),
+		displayConverter: unit_converter.NewUnitConverter("display", args.Boards, args.GlobalInfo.UnitToOperations),
+
+		sniffer: createSniffer(args.GlobalInfo, args.Config, vehicleTrace),
+		pipes:   createPipes(args.GlobalInfo, dataChan, args.OnConnectionChange, args.Config, vehicleTrace),
+
+		packetParser:     packetParser,
+		protectionParser: parsers.NewProtectionParser(args.GlobalInfo, args.Config.Protections),
+		bitarrayParser:   parsers.NewBitarrayParser(names),
+
+		dataChan: dataChan,
+
 		idToBoard:          getIdToBoard(args.Boards, vehicleTrace),
-		dataChan:           dataChan,
 		onConnectionChange: args.OnConnectionChange,
 		trace:              vehicleTrace,
 	}
@@ -58,8 +70,8 @@ func New(args VehicleConstructorArgs) Vehicle {
 }
 
 func createSniffer(global excel_models.GlobalInfo, config Config, trace zerolog.Logger) sniffer.Sniffer {
-	filter := getFilter(common.Values(global.BoardToIP), global.ProtocolToPort, config.TcpClientTag, config.TcpServerTag, config.UdpTag)
-	sniffer, err := sniffer.New(filter, config.Network)
+	filter := getFilter(common.Values(global.BoardToIP), global.ProtocolToPort, config.Network.TcpClientTag, config.Network.TcpServerTag, config.Network.UdpTag)
+	sniffer, err := sniffer.New(filter, config.Network.Sniffer)
 
 	if err != nil {
 		trace.Fatal().Stack().Err(err).Msg("error creating sniffer")
@@ -69,12 +81,12 @@ func createSniffer(global excel_models.GlobalInfo, config Config, trace zerolog.
 }
 
 func createPipes(global excel_models.GlobalInfo, dataChan chan<- packet.Raw, onConnectionChange func(string, bool), config Config, trace zerolog.Logger) map[string]*pipe.Pipe {
-	laddr := common.AddrWithPort(global.BackendIP, global.ProtocolToPort[config.TcpClientTag])
+	laddr := common.AddrWithPort(global.BackendIP, global.ProtocolToPort[config.Network.TcpClientTag])
 	pipes := make(map[string]*pipe.Pipe)
 	for board, ip := range global.BoardToIP {
-		raddr := common.AddrWithPort(ip, global.ProtocolToPort[config.TcpServerTag])
+		raddr := common.AddrWithPort(ip, global.ProtocolToPort[config.Network.TcpServerTag])
 		// FIXME: func(state bool) does not work (closure takes the same board)
-		pipe, err := pipe.New(laddr, raddr, config.Network.Mtu, dataChan, getOnConnectionChange(board, onConnectionChange))
+		pipe, err := pipe.New(laddr, raddr, config.Network.Sniffer.Mtu, dataChan, getOnConnectionChange(board, onConnectionChange))
 		if err != nil {
 			trace.Fatal().Stack().Err(err).Msg("error creating pipe")
 		}
@@ -90,63 +102,51 @@ func getOnConnectionChange(board string, onConnectionChange func(string, bool)) 
 	}
 }
 
-func createParser(global excel_models.GlobalInfo, boards map[string]excel_models.Board) (*packet.Parser, error) {
+func createPacketParser(global excel_models.GlobalInfo, boards map[string]excel_models.Board) (packet_parser.PacketParser, error) {
 	structures, err := getStructures(global, boards)
 	if err != nil {
-		return nil, err
+		return packet_parser.PacketParser{}, err
 	}
 
-	valueParser := parsers.NewValueParser(structures, getEnums(global, boards))
+	ids := getDataIds(global, boards)
 
-	names, err := getNames(global, boards)
-	if err != nil {
-		return nil, err
-	}
-	bitarrayParser := parsers.NewBitarrayParser(names)
-
-	dataParser := data.NewParser(valueParser)
-
-	config, err := getMessageConfig(global, boards)
-	if err != nil {
-		return nil, err
-	}
-
-	messageParser := message.NewParser(config)
-	orderParser := order.NewParser(valueParser, bitarrayParser)
-
-	kinds, err := getIdKinds(global, boards)
-	if err != nil {
-		return nil, err
-	}
-
-	return packet.NewParser(
-		kinds,
-		map[packet.Kind]packet.Decoder{
-			packet.Data:    dataParser,
-			packet.Message: messageParser,
-			packet.Order:   orderParser,
-		},
-		map[packet.Kind]packet.Encoder{
-			packet.Order: orderParser,
-		},
-	), nil
+	return packet_parser.NewPacketParser(ids, structures, getEnums(global, boards)), nil
 }
 
 func getStructures(global excel_models.GlobalInfo, boards map[string]excel_models.Board) (map[uint16][]packet.ValueDescriptor, error) {
 	structures := make(map[uint16][]packet.ValueDescriptor)
 	for _, board := range boards {
 		for _, packet := range board.Packets {
-			id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
-			if err != nil {
-				return nil, err
+			if packet.Description.Type == "data" {
+				id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
+				if err != nil {
+					return nil, err
+				}
+				structures[uint16(id)] = getDescriptor(packet.Values)
 			}
-			structures[(uint16)(id)] = getDesciptor(packet.Values)
 		}
 	}
 	return structures, nil
 }
 
-func getDesciptor(values []excel_models.Value) []packet.ValueDescriptor {
+func getDataIds(global excel_models.GlobalInfo, boards map[string]excel_models.Board) common.Set[uint16] {
+	ids := common.NewSet[uint16]()
+	for _, board := range boards {
+		for _, packet := range board.Packets {
+			if packet.Description.Type == "data" {
+				id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
+				if err != nil {
+					//TODO: trace
+					continue
+				}
+				ids.Add(uint16(id))
+			}
+		}
+	}
+	return ids
+}
+
+func getDescriptor(values []excel_models.Value) []packet.ValueDescriptor {
 	descriptor := make([]packet.ValueDescriptor, len(values))
 	for i, value := range values {
 		descriptor[i] = packet.ValueDescriptor{

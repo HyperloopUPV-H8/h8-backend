@@ -5,7 +5,8 @@ import (
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet"
-	"github.com/HyperloopUPV-H8/Backend-H8/packet/data"
+	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
+
 	"github.com/HyperloopUPV-H8/Backend-H8/update_factory/models"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
@@ -32,14 +33,13 @@ func NewFactory() UpdateFactory {
 	}
 }
 
-func (factory UpdateFactory) NewUpdate(metadata packet.Metadata, payload data.Payload) models.Update {
-
+func (factory UpdateFactory) NewUpdate(update vehicle_models.PacketUpdate) models.Update {
 	return models.Update{
-		ID:        metadata.ID,
-		HexValue:  fmt.Sprintf("%x", payload.Raw()),
-		Values:    factory.getFields(metadata.ID, payload.Values),
-		Count:     factory.getCount(metadata.ID),
-		CycleTime: factory.getCycleTime(metadata.ID, uint64(metadata.Timestamp.UnixNano())),
+		ID:        update.Metadata.ID,
+		HexValue:  fmt.Sprintf("%x", update.HexValue),
+		Values:    factory.getFields(update.Metadata.ID, update.Values),
+		Count:     factory.getCount(update.Metadata.ID),
+		CycleTime: factory.getCycleTime(update.Metadata.ID, uint64(update.Metadata.Timestamp.UnixNano())),
 	}
 }
 
@@ -57,21 +57,21 @@ func (factory UpdateFactory) getFields(id uint16, fields map[string]packet.Value
 	for name, value := range fields {
 		switch value := value.(type) {
 		case packet.Numeric:
-			updateFields[name] = factory.getNumericField(id, name, value)
+			updateFields[name] = factory.getNumericField(id, name, float64(value))
 		case packet.Boolean:
-			updateFields[name] = models.BooleanValue(value.Value)
+			updateFields[name] = models.BooleanValue(value)
 		case packet.Enum:
-			updateFields[name] = models.EnumValue(value.Value)
+			updateFields[name] = models.EnumValue(value)
 		}
 	}
 
 	return updateFields
 }
 
-func (factory UpdateFactory) getNumericField(id uint16, name string, value packet.Numeric) models.UpdateValue {
+func (factory UpdateFactory) getNumericField(id uint16, name string, value float64) models.UpdateValue {
 	avg := factory.getAverage(id, name)
 
-	return models.NumericValue{Value: value.Value, Average: avg.Add(value.Value)}
+	return models.NumericValue{Value: value, Average: avg.Add(value)}
 }
 
 func (factory UpdateFactory) getAverage(id uint16, name string) *common.MovingAverage[float64] {

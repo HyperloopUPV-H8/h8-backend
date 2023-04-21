@@ -1,4 +1,4 @@
-package parsers
+package packet_parser
 
 import "encoding/binary"
 

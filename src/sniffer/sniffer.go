@@ -1,6 +1,7 @@
 package sniffer
 
 import (
+	"encoding/binary"
 	"errors"
 	"time"
 
@@ -126,8 +127,11 @@ layerLoop:
 		return packet.Raw{}, errors.New("failed to get flow")
 	}
 
+	//Config endianess from config.toml
+	id := binary.LittleEndian.Uint16(payload[:2])
+
 	return packet.Raw{
-		Metadata: packet.NewMetaData(from, to, 0, seqNum, timestamp),
-		Payload:  payload,
+		Metadata: packet.NewMetaData(from, to, id, seqNum, timestamp),
+		Payload:  payload[2:],
 	}, nil
 }
