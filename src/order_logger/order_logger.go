@@ -1,7 +1,7 @@
 package order_logger
 
 import (
-	"fmt"
+	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	excel_adapter_models "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
@@ -48,24 +48,39 @@ func (ol *OrderLogger) Start(basePath string) (chan<- logger_handler.Loggable, e
 
 func (ol *OrderLogger) startLoggingRoutine(loggableChan <-chan logger_handler.Loggable, basePath string) {
 	file := ol.createFile(basePath)
+	flushTicker := time.NewTicker(time.Second) // PILLAR DE CONF
+	done := make(chan struct{})
+	go ol.startFlushRoutine(flushTicker.C, file, done)
 
 	for loggable := range loggableChan {
 		if ol.ids.Has(loggable.Id()) {
-			logStr := loggable.Log()
-			fmt.Println(logStr)
 			file.Write(loggable.Log())
 		}
 	}
 
+	done <- struct{}{}
+	flushTicker.Stop()
 	file.Close()
 }
 
 func (ol *OrderLogger) createFile(basePath string) logger_handler.CSVFile {
-	orderFile, err := logger_handler.NewCSVFile(basePath, ol.config.FileName)
+	file, err := logger_handler.NewCSVFile(basePath, ol.config.FileName)
 
 	if err != nil {
 		//TODO: trace
 	}
 
-	return orderFile
+	return file
+}
+
+func (ol *OrderLogger) startFlushRoutine(tickerChan <-chan time.Time, file logger_handler.CSVFile, done chan struct{}) {
+loop:
+	for {
+		select {
+		case <-tickerChan:
+			file.Flush()
+		case <-done:
+			break loop
+		}
+	}
 }

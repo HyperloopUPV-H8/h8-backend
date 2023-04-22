@@ -15,7 +15,7 @@ type Timestamp struct {
 	Hours   uint8  `json:"hours"`
 	Day     uint8  `json:"day"`
 	Month   uint8  `json:"month"`
-	Year    uint8  `json:"year"`
+	Year    uint16 `json:"year"`
 }
 
 type Violation interface {

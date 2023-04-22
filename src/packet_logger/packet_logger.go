@@ -106,6 +106,16 @@ func (pl *PacketLogger) startLoggingRoutine(loggableChan <-chan logger_handler.L
 	closeFiles(packetFile, valueFiles)
 }
 
+func (pl *PacketLogger) createPacketFile(basePath string) logger_handler.CSVFile {
+	packetFile, err := logger_handler.NewCSVFile(filepath.Join(basePath, pl.config.FolderName), pl.config.PacketFileName)
+
+	if err != nil {
+		//TODO: trace
+	}
+
+	return packetFile
+}
+
 func (pl *PacketLogger) startFlushRoutine(tickerChan <-chan time.Time, packetFile logger_handler.CSVFile, valueFiles map[string]logger_handler.CSVFile, done chan struct{}) {
 loop:
 	for {
@@ -121,16 +131,6 @@ loop:
 			break loop
 		}
 	}
-}
-
-func (pl *PacketLogger) createPacketFile(basePath string) logger_handler.CSVFile {
-	packetFile, err := logger_handler.NewCSVFile(filepath.Join(basePath, pl.config.FolderName), pl.config.PacketFileName)
-
-	if err != nil {
-		//TODO: trace
-	}
-
-	return packetFile
 }
 
 func getOrAddFile(files map[string]logger_handler.CSVFile, path string, name string) logger_handler.CSVFile {

@@ -11,8 +11,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/sniffer"
 	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
-	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/parsers"
-	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/parsers/packet_parser"
+	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/packet_parser"
 	"github.com/rs/zerolog"
 )
 
@@ -24,8 +23,8 @@ type Vehicle struct {
 	podConverter     unit_converter.UnitConverter
 
 	packetParser     packet_parser.PacketParser
-	protectionParser parsers.ProtectionParser
-	bitarrayParser   parsers.BitarrayParser
+	protectionParser ProtectionParser
+	bitarrayParser   BitarrayParser
 
 	dataChan chan packet.Raw
 
@@ -68,53 +67,8 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, protection
 			fmt.Println("UNEXPECTED VALUE")
 		}
 
-		// switch payload := decoded.Payload.(type) {
-		// case data.Payload:
-		// 	vehicle.handleData(decoded.Metadata, payload, dataOutput)
-		// case message.Payload:
-		// 	vehicle.handleMessage(decoded.Metadata, payload, messageOutput)
-		// case order.Payload:
-		// 	vehicle.handleOrder(decoded.Metadata, payload, orderOutput)
-		// default:
-		// 	vehicle.trace.Error().Msg("unknown payload type")
-		// }
 	}
 }
-
-// func (vehicle *Vehicle) handleData(metadata packet.Metadata, payload data.Payload, output chan<- packet.Packet) {
-// 	vehicle.trace.Trace().Uint16("id", metadata.ID).Msg("handle data")
-// 	payload.Values = vehicle.podConverter.Revert(payload.Values)
-// 	payload.Values = vehicle.displayConverter.Convert(payload.Values)
-
-// 	select {
-// 	case output <- packet.New(metadata, payload):
-// 	default:
-// 		vehicle.trace.Warn().Msg("data channel full")
-// 	}
-// }
-
-// func (vehicle *Vehicle) handleMessage(metadata packet.Metadata, payload message.Payload, output chan<- packet.Packet) {
-// 	vehicle.trace.Trace().Uint16("id", metadata.ID).Msg("handle message")
-
-// 	select {
-// 	case output <- packet.New(metadata, payload):
-// 	default:
-// 		vehicle.trace.Warn().Msg("message channel full")
-// 	}
-// }
-
-// func (vehicle *Vehicle) handleOrder(metadata packet.Metadata, payload order.Payload, output chan<- packet.Packet) {
-// 	vehicle.trace.Trace().Uint16("id", metadata.ID).Msg("handle order")
-
-// 	payload.Values = vehicle.podConverter.Revert(payload.Values)
-// 	payload.Values = vehicle.displayConverter.Convert(payload.Values)
-
-// 	select {
-// 	case output <- packet.New(metadata, payload):
-// 	default:
-// 		vehicle.trace.Warn().Msg("order channel full")
-// 	}
-// }
 
 func (vehicle *Vehicle) SendOrder(order models.Order) error {
 	vehicle.trace.Info().Uint16("id", order.ID).Msg("send order")

@@ -1,4 +1,4 @@
-package parsers
+package vehicle
 
 import (
 	"bytes"
@@ -17,12 +17,7 @@ type ProtectionParser struct {
 	warningId uint16
 }
 
-type ProtectionParserConfig struct {
-	FaultIdKey   string `toml:"fault_id_key"`
-	WarningIdKey string `toml:"warning_id_key"`
-}
-
-func NewProtectionParser(globalInfo excelAdapterModels.GlobalInfo, config ProtectionParserConfig) ProtectionParser {
+func NewProtectionParser(globalInfo excelAdapterModels.GlobalInfo, config ProtectionConfig) ProtectionParser {
 	faultId := getId(globalInfo.MessageToId, config.FaultIdKey)
 	warningId := getId(globalInfo.MessageToId, config.WarningIdKey)
 

@@ -2,7 +2,6 @@ package packet_logger
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/packet"
@@ -15,7 +14,7 @@ type LoggablePacket struct {
 }
 
 func (packet LoggablePacket) Id() string {
-	return strconv.Itoa(int(packet.Metadata.ID))
+	return fmt.Sprint(packet.Metadata.ID)
 }
 
 func (packet LoggablePacket) Log() []string {

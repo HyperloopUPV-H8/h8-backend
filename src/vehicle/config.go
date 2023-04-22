@@ -2,14 +2,13 @@ package vehicle
 
 import (
 	"github.com/HyperloopUPV-H8/Backend-H8/sniffer"
-	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/parsers"
-	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/parsers/packet_parser"
+	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/packet_parser"
 )
 
 type Config struct {
-	Network      NetworkConfig                  `toml:"network"`
-	PacketParser packet_parser.Config           `toml:"packet_parser"`
-	Protections  parsers.ProtectionParserConfig `toml:"protections"`
+	Network      NetworkConfig        `toml:"network"`
+	PacketParser packet_parser.Config `toml:"packet_parser"`
+	Protections  ProtectionConfig     `toml:"protections"`
 }
 
 type NetworkConfig struct {
@@ -17,4 +16,9 @@ type NetworkConfig struct {
 	TcpServerTag string         `toml:"tcp_server_tag"`
 	UdpTag       string         `toml:"udp_tag"`
 	Sniffer      sniffer.Config `toml:"sniffer"`
+}
+
+type ProtectionConfig struct {
+	FaultIdKey   string `toml:"fault_id_key"`
+	WarningIdKey string `toml:"warning_id_key"`
 }

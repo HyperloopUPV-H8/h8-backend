@@ -54,6 +54,9 @@ packet_file_name = "!packets"
 [order_logger]
 file_name = "orders"
 
+[protection_logger]
+file_name = "protections"
+
 [orders]
 send_topic = "order/send"
 

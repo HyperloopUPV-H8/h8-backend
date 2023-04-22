@@ -77,9 +77,9 @@ func (handler *LoggerHandler) updateState(enable bool, source string) error {
 		return fmt.Errorf("%s tried to change running log session of %s", source, handler.currentSession)
 	}
 
-	if enable {
+	if enable && !handler.isRunning {
 		handler.start()
-	} else {
+	} else if !enable && handler.isRunning {
 		handler.stop()
 	}
 
@@ -150,7 +150,7 @@ func (handler *LoggerHandler) stop() {
 
 func (handler *LoggerHandler) NotifyDisconnect(session string) {
 	handler.trace.Debug().Str("session", session).Msg("notify disconnect")
-	if handler.verifySession(session) {
+	if handler.verifySession(session) && handler.isRunning {
 		handler.stop()
 	}
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/order_logger"
 	"github.com/HyperloopUPV-H8/Backend-H8/order_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet_logger"
+	"github.com/HyperloopUPV-H8/Backend-H8/protection_logger"
 	"github.com/HyperloopUPV-H8/Backend-H8/server"
 	"github.com/HyperloopUPV-H8/Backend-H8/update_factory"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle"
@@ -77,9 +78,12 @@ func main() {
 
 	orderLogger := order_logger.NewOrderLogger(boards, config.OrderLogger)
 
+	protectionLogger := protection_logger.NewMessageLogger(config.ProtectionLogger, config.Vehicle.Protections)
+
 	loggers := map[string]logger_handler.Logger{
-		"packet": &packetLogger,
-		"order":  &orderLogger,
+		"packet":     &packetLogger,
+		"order":      &orderLogger,
+		"protection": &protectionLogger,
 	}
 
 	loggerHandler := logger_handler.NewLoggerHandler(loggers, config.LoggerHandler)
@@ -112,6 +116,7 @@ func main() {
 	go func() {
 		for protection := range vehicleProtections {
 			messageTransfer.SendMessage(protection)
+			loggerHandler.Log(protection_logger.LoggableProtection(protection))
 		}
 	}()
 

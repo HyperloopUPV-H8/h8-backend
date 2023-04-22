@@ -12,8 +12,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/pipe"
 	"github.com/HyperloopUPV-H8/Backend-H8/sniffer"
 	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter"
-	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/parsers"
-	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/parsers/packet_parser"
+	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/packet_parser"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
@@ -54,8 +53,8 @@ func New(args VehicleConstructorArgs) Vehicle {
 		pipes:   createPipes(args.GlobalInfo, dataChan, args.OnConnectionChange, args.Config, vehicleTrace),
 
 		packetParser:     packetParser,
-		protectionParser: parsers.NewProtectionParser(args.GlobalInfo, args.Config.Protections),
-		bitarrayParser:   parsers.NewBitarrayParser(names),
+		protectionParser: NewProtectionParser(args.GlobalInfo, args.Config.Protections),
+		bitarrayParser:   NewBitarrayParser(names),
 
 		dataChan: dataChan,
 
