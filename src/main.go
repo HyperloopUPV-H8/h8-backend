@@ -15,6 +15,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter"
 	"github.com/HyperloopUPV-H8/Backend-H8/logger_handler"
 	"github.com/HyperloopUPV-H8/Backend-H8/message_transfer"
+	"github.com/HyperloopUPV-H8/Backend-H8/order_logger"
 	"github.com/HyperloopUPV-H8/Backend-H8/order_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet_logger"
 	"github.com/HyperloopUPV-H8/Backend-H8/server"
@@ -67,16 +68,21 @@ func main() {
 	messageTransfer := message_transfer.New(config.Messages)
 	orderTransfer, orderChannel := order_transfer.New()
 
+	//FIXME: Does the packet logger need to return an error?
 	packetLogger, err := packet_logger.NewPacketLogger(boards, config.PacketLogger)
 
 	if err != nil {
 		//TODO: trace
 	}
 
-	loggableChannel := make(chan logger_handler.Loggable)
-	loggerHandler := logger_handler.NewLoggerHandler([]logger_handler.Logger{packetLogger}, loggableChannel, config.LoggerHandler)
-	go loggerHandler.Listen()
-	defer loggerHandler.Close()
+	orderLogger := order_logger.NewOrderLogger(boards, config.OrderLogger)
+
+	loggers := map[string]logger_handler.Logger{
+		"packet": &packetLogger,
+		"order":  &orderLogger,
+	}
+
+	loggerHandler := logger_handler.NewLoggerHandler(loggers, config.LoggerHandler)
 
 	// Communication with front-end
 	websocketBroker := websocket_broker.New()
@@ -85,27 +91,26 @@ func main() {
 	websocketBroker.RegisterHandle(&blcu, config.BLCU.Topics.Upload, config.BLCU.Topics.Download)
 	websocketBroker.RegisterHandle(&connectionTransfer, config.Connections.UpdateTopic)
 	websocketBroker.RegisterHandle(&dataTransfer)
-	websocketBroker.RegisterHandle(&logger, config.Logger.Topics.Enable, config.Logger.Topics.State)
+	websocketBroker.RegisterHandle(&loggerHandler, config.LoggerHandler.Topics.Enable, config.LoggerHandler.Topics.State)
 	websocketBroker.RegisterHandle(&messageTransfer)
 	websocketBroker.RegisterHandle(&orderTransfer, config.Orders.SendTopic)
 
 	updateFactory := update_factory.NewFactory()
 	go func() {
-		for update := range vehicleUpdates {
-			update := updateFactory.NewUpdate(update)
+		for packetUpdate := range vehicleUpdates {
+			update := updateFactory.NewUpdate(packetUpdate)
 			dataTransfer.Update(update)
 
-			loggableChan <- packet_logger.ToLoggablePacket(update)
+			loggerHandler.Log(packet_logger.ToLoggablePacket(packetUpdate))
 
-			for index, value := range update.Values {
-				loggableChan <- packet_logger.ToLoggableValue(value)
+			for id, value := range packetUpdate.Values {
+				loggerHandler.Log(packet_logger.ToLoggableValue(id, value, packetUpdate.Metadata.Timestamp))
 			}
 		}
 	}()
 
 	go func() {
 		for protection := range vehicleProtections {
-			logger.Update(packet)
 			messageTransfer.SendMessage(protection)
 		}
 	}()
@@ -118,22 +123,19 @@ func main() {
 
 	go func() {
 		for id := range websocketBroker.CloseChan {
-			logger.NotifyDisconnect(id)
+			loggerHandler.NotifyDisconnect(id)
 		}
 	}()
 
 	go func() {
 		for ord := range orderChannel {
-			log.Println(ord)
-			// id, fields := convertOrder(ord)
-			// values, enabled := unzipFields(fields)
-			// meta, err := vehicle.SendOrder(id, order.Payload{Values: values, Enabled: enabled})
-			if err == nil {
-				// logger.Update(packet.Packet{Metadata: meta, Payload: order.Payload{
-				// 	Values:  values,
-				// 	Enabled: enabled,
-				// }})
+			err := vehicle.SendOrder(ord)
+
+			if err != nil {
+				//TODO: trace
 			}
+
+			loggerHandler.Log(order_logger.LoggableOrder(ord))
 		}
 	}()
 

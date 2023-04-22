@@ -117,7 +117,7 @@ func getStructures(global excel_models.GlobalInfo, boards map[string]excel_model
 	structures := make(map[uint16][]packet.ValueDescriptor)
 	for _, board := range boards {
 		for _, packet := range board.Packets {
-			if packet.Description.Type == "data" {
+			if packet.Description.Type == "data" || packet.Description.Type == "order" {
 				id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
 				if err != nil {
 					return nil, err

@@ -22,3 +22,9 @@ func (set *Set[T]) Has(item T) bool {
 	_, ok := set.set[item]
 	return ok
 }
+
+func (set *Set[T]) ForEach(callback func(item T)) {
+	for item := range set.set {
+		callback(item)
+	}
+}

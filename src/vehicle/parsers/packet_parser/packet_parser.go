@@ -63,16 +63,16 @@ func (parser *PacketParser) Decode(id uint16, raw []byte, metadata packet.Metada
 	}, nil
 }
 
-func (parser *PacketParser) decodeValue(descriptor packet.ValueDescriptor, data io.Reader) (packet.Value, error) {
+func (parser *PacketParser) decodeValue(descriptor packet.ValueDescriptor, reader io.Reader) (packet.Value, error) {
 	decoder, ok := parser.valueParsers[descriptor.Type]
 	if !ok {
 		return nil, fmt.Errorf("decoder for type %s not found", descriptor.Type)
 	}
 
-	return decoder.decode(descriptor, parser.config.GetByteOrder(), data)
+	return decoder.decode(descriptor, parser.config.GetByteOrder(), reader)
 }
 
-func (parser *PacketParser) Encode(id uint16, values map[string]packet.Value, data io.Writer) error {
+func (parser *PacketParser) Encode(id uint16, values map[string]packet.Value, writer io.Writer) error {
 	structure, ok := parser.structures[id]
 	if !ok {
 		return fmt.Errorf("structure for packet %d not found", id)
@@ -84,7 +84,7 @@ func (parser *PacketParser) Encode(id uint16, values map[string]packet.Value, da
 			return fmt.Errorf("value for %s not found", descriptor.Name)
 		}
 
-		err := parser.encodeValue(descriptor, value, data)
+		err := parser.encodeValue(descriptor, value, writer)
 		if err != nil {
 			return err
 		}
@@ -93,11 +93,11 @@ func (parser *PacketParser) Encode(id uint16, values map[string]packet.Value, da
 	return nil
 }
 
-func (parser *PacketParser) encodeValue(descriptor packet.ValueDescriptor, value packet.Value, data io.Writer) error {
+func (parser *PacketParser) encodeValue(descriptor packet.ValueDescriptor, value packet.Value, writer io.Writer) error {
 	encoder, ok := parser.valueParsers[descriptor.Type]
 	if !ok {
 		return fmt.Errorf("encoder for type %s not found", descriptor.Type)
 	}
 
-	return encoder.encode(descriptor, parser.config.GetByteOrder(), value, data)
+	return encoder.encode(descriptor, parser.config.GetByteOrder(), value, writer)
 }

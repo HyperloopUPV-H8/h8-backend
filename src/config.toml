@@ -15,8 +15,7 @@ file_server = "/"
 tcp_client_tag = "TCP_CLIENT"
 tcp_server_tag = "TCP_SERVER"
 udp_tag = "UDP"
-# network = { mtu = 1500, sniffer_interface = "\\Device\\NPF_{015224CF-DC7F-4F81-AA58-947027697645}" }
-# network = { mtu = 1500, interface = "lo" }
+# sniffer = { mtu = 1500, interface = "lo" }
 sniffer = { mtu = 1500, interface = "\\Device\\NPF_Loopback" }
 # blcu_ack_id = "blcu_ack"
 
@@ -49,7 +48,11 @@ base_path = "log"
 flush_interval="10s"
 
 [packet_logger]
-base_path = "packets"
+folder_name = "updates"
+packet_file_name = "!packets"
+
+[order_logger]
+file_name = "orders"
 
 [orders]
 send_topic = "order/send"

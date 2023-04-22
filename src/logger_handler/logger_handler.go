@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strconv"
+	"time"
 
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
@@ -14,7 +17,7 @@ const LOG_HANDLER_HANDLER_NAME = "LoggerHandler"
 
 type LoggerHandler struct {
 	loggers        map[string]Logger
-	loggableChan   <-chan Loggable
+	loggableChan   chan Loggable
 	currentSession string
 	isRunning      bool
 	sendMessage    func(topic string, payload any, target ...string) error
@@ -22,14 +25,14 @@ type LoggerHandler struct {
 	trace          zerolog.Logger
 }
 
-func NewLoggerHandler(loggers map[string]Logger, loggableChan <-chan Loggable, config Config) LoggerHandler {
+func NewLoggerHandler(loggers map[string]Logger, config Config) LoggerHandler {
 	trace.Info().Msg("new LoggerHandler")
 
-	os.Mkdir("log", os.ModeDir) //TODO: comprobar si borra la carpeta
+	os.MkdirAll(config.BasePath, os.ModeDir)
 
 	return LoggerHandler{
 		loggers:        loggers,
-		loggableChan:   loggableChan,
+		loggableChan:   make(chan Loggable),
 		currentSession: "",
 		isRunning:      false,
 		sendMessage:    defaultSendMessage,
@@ -38,12 +41,9 @@ func NewLoggerHandler(loggers map[string]Logger, loggableChan <-chan Loggable, c
 	}
 }
 
-func (handler *LoggerHandler) Listen() {
-	for loggable := range handler.loggableChan {
-		//TODO: send only to interested logger instead of all
-		for _, logger := range handler.loggers {
-			logger.Log(loggable)
-		}
+func (handler *LoggerHandler) Log(loggable Loggable) {
+	if handler.isRunning {
+		handler.loggableChan <- loggable
 	}
 }
 
@@ -65,8 +65,8 @@ func (handler *LoggerHandler) handleEnable(payload json.RawMessage, source strin
 		return err
 	}
 
-	err = handler.updateState(enable, source)
-	return err
+	handler.updateState(enable, source)
+	return nil
 }
 
 func (handler *LoggerHandler) updateState(enable bool, source string) error {
@@ -77,14 +77,13 @@ func (handler *LoggerHandler) updateState(enable bool, source string) error {
 		return fmt.Errorf("%s tried to change running log session of %s", source, handler.currentSession)
 	}
 
-	var err error
 	if enable {
-		err = handler.start()
+		handler.start()
 	} else {
-		err = handler.stop()
+		handler.stop()
 	}
 
-	return err
+	return nil
 }
 
 func (handler *LoggerHandler) verifySession(session string) bool {
@@ -95,63 +94,65 @@ func (handler *LoggerHandler) verifySession(session string) bool {
 	return handler.currentSession == session
 }
 
-func (handler *LoggerHandler) start() (err error) {
-	for _, logger := range handler.loggers {
-		startErr := logger.Start()
-		if startErr != nil {
-			err = startErr
-		}
-	}
+func (handler *LoggerHandler) start() {
+	handler.trace.Info().Str("logger session", handler.currentSession).Msg("Started logging")
+	handler.loggableChan = make(chan Loggable)
+	sessionDirName := strconv.Itoa(int(time.Now().Unix()))
+	path := filepath.Join(handler.config.BasePath, sessionDirName)
+	os.MkdirAll(path, os.ModeDir)
+
+	activeLoggers := handler.createActiveLoggers(path)
+
+	go startBroadcastRoutine(activeLoggers, handler.loggableChan)
 
 	handler.isRunning = true
-	return err
 }
 
-func (handler *LoggerHandler) stop() (err error) {
+func (handler *LoggerHandler) createActiveLoggers(path string) []ActiveLogger {
+	activeLoggers := make([]ActiveLogger, 0)
+
 	for _, logger := range handler.loggers {
-		stopErr := logger.Stop()
-		if stopErr != nil {
-			err = stopErr
+		inputChan, err := logger.Start(path)
+
+		if err != nil {
+			//TODO:
+		}
+
+		activeLoggers = append(activeLoggers, ActiveLogger{
+			Ids:   logger.Ids(),
+			Input: inputChan,
+		})
+	}
+
+	return activeLoggers
+}
+
+func startBroadcastRoutine(activeLoggers []ActiveLogger, generalInput <-chan Loggable) {
+	for loggable := range generalInput {
+		for _, logger := range activeLoggers {
+			if logger.Ids.Has(loggable.Id()) {
+				logger.Input <- loggable
+			}
 		}
 	}
 
+	for _, logger := range activeLoggers {
+		close(logger.Input) // loggers should clean up after channel has been closed
+	}
+}
+
+func (handler *LoggerHandler) stop() {
+	handler.trace.Info().Str("logger session", handler.currentSession).Msg("Stoped logging")
+	close(handler.loggableChan) // triggers loggers clean-up
 	handler.isRunning = false
 	handler.currentSession = ""
-	flushErr := handler.Flush()
-	if flushErr != nil {
-		err = flushErr
-	}
-	return err
 }
 
-func (handler *LoggerHandler) Log(loggable Loggable) {
-	for _, logger := range handler.loggers {
-		logger.Log(loggable)
+func (handler *LoggerHandler) NotifyDisconnect(session string) {
+	handler.trace.Debug().Str("session", session).Msg("notify disconnect")
+	if handler.verifySession(session) {
+		handler.stop()
 	}
-}
-
-func (handler *LoggerHandler) Flush() (err error) {
-	handler.trace.Debug().Msg("flush")
-
-	for _, logger := range handler.loggers {
-		flushErr := logger.Flush()
-		if flushErr != nil {
-			err = flushErr
-		}
-	}
-
-	return err
-}
-
-func (handler *LoggerHandler) Close() (err error) {
-	for _, logger := range handler.loggers {
-		closeErr := logger.Close()
-		if closeErr != nil {
-			err = closeErr
-		}
-	}
-
-	return err
 }
 
 func (handler *LoggerHandler) notifyState() {

@@ -47,9 +47,8 @@ func (value LoggableValue) Id() string {
 
 func (value LoggableValue) Log() []string {
 	return []string{
-		value.ValueId,
-		fmt.Sprintf("%v", value.Value),
 		value.Timestamp.String(),
+		fmt.Sprintf("%v", value.Value),
 	}
 }
 
