@@ -52,17 +52,6 @@ func main() {
 	blcu := blcuPackage.NewBLCU(globalInfo, config.BLCU)
 	uploadableBoards := blcuPackage.GetUploadableBoards(globalInfo, config.Excel.Parse.Global.BLCUAddressKey)
 
-	vehicle := vehicle.New(vehicle.VehicleConstructorArgs{
-		Config:             config.Vehicle,
-		Boards:             boards,
-		GlobalInfo:         globalInfo,
-		OnConnectionChange: connectionTransfer.Update,
-	})
-	vehicleUpdates := make(chan vehicle_models.PacketUpdate, 100)
-	vehicleProtections := make(chan vehicle_models.Protection)
-	// vehicleOrders := make(chan packet.Packet)
-	go vehicle.Listen(vehicleUpdates, vehicleProtections)
-
 	dataTransfer := data_transfer.New(config.DataTransfer)
 	go dataTransfer.Run()
 
@@ -92,6 +81,16 @@ func main() {
 	websocketBroker.RegisterHandle(&messageTransfer)
 	websocketBroker.RegisterHandle(&orderTransfer, config.Orders.SendTopic)
 
+	vehicle := vehicle.New(vehicle.VehicleConstructorArgs{
+		Config:             config.Vehicle,
+		Boards:             boards,
+		GlobalInfo:         globalInfo,
+		OnConnectionChange: connectionTransfer.Update,
+	})
+	vehicleUpdates := make(chan vehicle_models.PacketUpdate, 100)
+	vehicleProtections := make(chan vehicle_models.Protection)
+	// vehicleOrders := make(chan packet.Packet)
+	go vehicle.Listen(vehicleUpdates, vehicleProtections)
 	go startPacketUpdateRoutine(vehicleUpdates, &dataTransfer, &loggerHandler)
 	go startProtectionsRoutine(vehicleProtections, &messageTransfer, &loggerHandler)
 	go startOrderRoutine(orderChannel, &vehicle, &loggerHandler)
