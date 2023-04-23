@@ -22,13 +22,13 @@ type Config struct {
 	PacketFileName string `toml:"packet_file_name"`
 }
 
-func NewPacketLogger(boards map[string]excel_adapter_models.Board, config Config) (PacketLogger, error) {
+func NewPacketLogger(boards map[string]excel_adapter_models.Board, config Config) PacketLogger {
 	return PacketLogger{
 		packetIds:    getPacketIds(boards),
 		valueIds:     getValueIds(boards),
 		valueFilesMx: &sync.Mutex{},
 		config:       config,
-	}, nil
+	}
 }
 
 func getPacketIds(boards map[string]excel_adapter_models.Board) common.Set[string] {

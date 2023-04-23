@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -22,6 +21,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/server"
 	"github.com/HyperloopUPV-H8/Backend-H8/update_factory"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle"
+	vehiclePackage "github.com/HyperloopUPV-H8/Backend-H8/vehicle"
 	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/websocket_broker"
 	"github.com/gorilla/mux"
@@ -69,15 +69,8 @@ func main() {
 	messageTransfer := message_transfer.New(config.Messages)
 	orderTransfer, orderChannel := order_transfer.New()
 
-	//FIXME: Does the packet logger need to return an error?
-	packetLogger, err := packet_logger.NewPacketLogger(boards, config.PacketLogger)
-
-	if err != nil {
-		//TODO: trace
-	}
-
+	packetLogger := packet_logger.NewPacketLogger(boards, config.PacketLogger)
 	orderLogger := order_logger.NewOrderLogger(boards, config.OrderLogger)
-
 	protectionLogger := protection_logger.NewMessageLogger(config.ProtectionLogger, config.Vehicle.Protections)
 
 	loggers := map[string]logger_handler.Logger{
@@ -88,7 +81,6 @@ func main() {
 
 	loggerHandler := logger_handler.NewLoggerHandler(loggers, config.LoggerHandler)
 
-	// Communication with front-end
 	websocketBroker := websocket_broker.New()
 	defer websocketBroker.Close()
 
@@ -99,26 +91,9 @@ func main() {
 	websocketBroker.RegisterHandle(&messageTransfer)
 	websocketBroker.RegisterHandle(&orderTransfer, config.Orders.SendTopic)
 
-	updateFactory := update_factory.NewFactory()
-	go func() {
-		for packetUpdate := range vehicleUpdates {
-			update := updateFactory.NewUpdate(packetUpdate)
-			dataTransfer.Update(update)
-
-			loggerHandler.Log(packet_logger.ToLoggablePacket(packetUpdate))
-
-			for id, value := range packetUpdate.Values {
-				loggerHandler.Log(packet_logger.ToLoggableValue(id, value, packetUpdate.Metadata.Timestamp))
-			}
-		}
-	}()
-
-	go func() {
-		for protection := range vehicleProtections {
-			messageTransfer.SendMessage(protection)
-			loggerHandler.Log(protection_logger.LoggableProtection(protection))
-		}
-	}()
+	go startPacketUpdateRoutine(vehicleUpdates, dataTransfer, loggerHandler)
+	go startProtectionsRoutine(vehicleProtections, messageTransfer, loggerHandler)
+	go startOrderRoutine(orderChannel, vehicle, loggerHandler)
 
 	// go func() {
 	// 	for packet := range vehicleOrders {
@@ -129,18 +104,6 @@ func main() {
 	go func() {
 		for id := range websocketBroker.CloseChan {
 			loggerHandler.NotifyDisconnect(id)
-		}
-	}()
-
-	go func() {
-		for ord := range orderChannel {
-			err := vehicle.SendOrder(ord)
-
-			if err != nil {
-				//TODO: trace
-			}
-
-			loggerHandler.Log(order_logger.LoggableOrder(ord))
 		}
 	}()
 
@@ -165,6 +128,40 @@ func main() {
 	<-interrupt
 }
 
+func startPacketUpdateRoutine(vehicleUpdates <-chan vehicle_models.PacketUpdate, dataTransfer data_transfer.DataTransfer, loggerHandler logger_handler.LoggerHandler) {
+	updateFactory := update_factory.NewFactory()
+
+	for packetUpdate := range vehicleUpdates {
+		update := updateFactory.NewUpdate(packetUpdate)
+		dataTransfer.Update(update)
+
+		loggerHandler.Log(packet_logger.ToLoggablePacket(packetUpdate))
+
+		for id, value := range packetUpdate.Values {
+			loggerHandler.Log(packet_logger.ToLoggableValue(id, value, packetUpdate.Metadata.Timestamp))
+		}
+	}
+}
+
+func startProtectionsRoutine(vehicleProtections <-chan vehicle_models.Protection, messageTransfer message_transfer.MessageTransfer, loggerHandler logger_handler.LoggerHandler) {
+	for protection := range vehicleProtections {
+		messageTransfer.SendMessage(protection)
+		loggerHandler.Log(protection_logger.LoggableProtection(protection))
+	}
+}
+
+func startOrderRoutine(orderChannel <-chan vehicle_models.Order, vehicle vehiclePackage.Vehicle, loggerHandler logger_handler.LoggerHandler) {
+	for ord := range orderChannel {
+		err := vehicle.SendOrder(ord)
+
+		if err != nil {
+			trace.Error().Any("order", ord).Msg("error sending order")
+		}
+
+		loggerHandler.Log(order_logger.LoggableOrder(ord))
+	}
+}
+
 func getConfig(path string) Config {
 	configFile, fileErr := os.ReadFile(path)
 
@@ -184,39 +181,4 @@ func getConfig(path string) Config {
 	}
 
 	return config
-}
-
-func unzipFields(fields map[string]vehicle_models.Field) (map[string]any, map[string]bool) {
-	fieldsMap := make(map[string]any)
-	enabledMap := make(map[string]bool)
-
-	for name, field := range fields {
-		fieldsMap[name] = field.Value
-		enabledMap[name] = field.IsEnabled
-	}
-
-	return fieldsMap, enabledMap
-}
-
-func convertOrder(order vehicle_models.Order) (uint16, map[string]vehicle_models.Field) {
-	fields := make(map[string]vehicle_models.Field)
-	for name, field := range order.Fields {
-		newField := vehicle_models.Field{
-			IsEnabled: field.IsEnabled,
-		}
-		switch value := field.Value.(type) {
-		case float64:
-			newField.Value = value
-		case string:
-			newField.Value = value
-		case bool:
-			newField.Value = value
-		default:
-			log.Printf("name: %s, type: %T\n", name, field.Value)
-			continue
-		}
-		fields[name] = newField
-	}
-
-	return order.ID, fields
 }

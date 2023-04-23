@@ -84,7 +84,7 @@ func getIP(board string, document internalModels.Document, addressTableName stri
 	return ""
 }
 
-func getInfoTableToMap(tableName string, document internalModels.Document) map[string]string {
+func getInfoTableToMap(tableName string, document internalModels.Document, backendKeyName string) map[string]string {
 	mapping := make(map[string]string)
 	table, found := document.Info.Tables[tableName]
 	if !found {

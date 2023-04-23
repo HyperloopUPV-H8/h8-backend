@@ -8,7 +8,6 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	excel_models "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet"
-	"github.com/HyperloopUPV-H8/Backend-H8/packet/message"
 	"github.com/HyperloopUPV-H8/Backend-H8/pipe"
 	"github.com/HyperloopUPV-H8/Backend-H8/sniffer"
 	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter"
@@ -32,7 +31,7 @@ func New(args VehicleConstructorArgs) Vehicle {
 	trace.Trace().Msg("creating vehicle")
 
 	vehicleTrace := trace.With().Str("component", "vehicle").Logger()
-	dataChan := make(chan packet.Raw, UPDATE_CHAN_BUF_SIZE)
+	dataChan := make(chan packet.Packet, UPDATE_CHAN_BUF_SIZE)
 
 	packetParser, err := createPacketParser(args.GlobalInfo, args.Boards)
 
@@ -79,12 +78,11 @@ func createSniffer(global excel_models.GlobalInfo, config Config, trace zerolog.
 	return *sniffer
 }
 
-func createPipes(global excel_models.GlobalInfo, dataChan chan<- packet.Raw, onConnectionChange func(string, bool), config Config, trace zerolog.Logger) map[string]*pipe.Pipe {
+func createPipes(global excel_models.GlobalInfo, dataChan chan<- packet.Packet, onConnectionChange func(string, bool), config Config, trace zerolog.Logger) map[string]*pipe.Pipe {
 	laddr := common.AddrWithPort(global.BackendIP, global.ProtocolToPort[config.Network.TcpClientTag])
 	pipes := make(map[string]*pipe.Pipe)
 	for board, ip := range global.BoardToIP {
 		raddr := common.AddrWithPort(ip, global.ProtocolToPort[config.Network.TcpServerTag])
-		// FIXME: func(state bool) does not work (closure takes the same board)
 		pipe, err := pipe.New(laddr, raddr, config.Network.Sniffer.Mtu, dataChan, getOnConnectionChange(board, onConnectionChange))
 		if err != nil {
 			trace.Fatal().Stack().Err(err).Msg("error creating pipe")
@@ -206,78 +204,6 @@ func getNamesFromValues(values []excel_models.Value) []string {
 		names[i] = value.ID
 	}
 	return names
-}
-
-// FIXME: remove hardcoded tags
-func getMessageConfig(global excel_models.GlobalInfo, boards map[string]excel_models.Board) (message.Config, error) {
-	fault, err := strconv.ParseUint(global.MessageToId["fault"], 10, 16)
-	if err != nil {
-		return message.Config{}, err
-	}
-
-	warning, err := strconv.ParseUint(global.MessageToId["warning"], 10, 16)
-	if err != nil {
-		return message.Config{}, err
-	}
-
-	blcuAck, err := strconv.ParseUint(global.MessageToId["blcu_ack"], 10, 16)
-	if err != nil {
-		return message.Config{}, err
-	}
-
-	return message.Config{
-		FaultId:   (uint16)(fault),
-		WarningId: (uint16)(warning),
-		BlcuAckId: (uint16)(blcuAck),
-	}, nil
-}
-
-func getIdKinds(global excel_models.GlobalInfo, boards map[string]excel_models.Board) (map[uint16]packet.Kind, error) {
-	idToKind := make(map[uint16]packet.Kind)
-	for _, board := range boards {
-		for _, packet := range board.Packets {
-			id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
-			if err != nil {
-				return nil, err
-			}
-			idToKind[(uint16)(id)] = getKind(packet.Description.Type)
-		}
-	}
-
-	fault, err := strconv.ParseUint(global.MessageToId["fault"], 10, 16)
-	if err != nil {
-		return nil, err
-	}
-
-	warning, err := strconv.ParseUint(global.MessageToId["warning"], 10, 16)
-	if err != nil {
-		return nil, err
-	}
-
-	blcuAck, err := strconv.ParseUint(global.MessageToId["blcu_ack"], 10, 16)
-	if err != nil {
-		return nil, err
-	}
-
-	idToKind[(uint16)(fault)] = packet.Message
-	idToKind[(uint16)(warning)] = packet.Message
-	idToKind[(uint16)(blcuAck)] = packet.Message
-
-	return idToKind, nil
-}
-
-func getKind(literal string) packet.Kind {
-	switch literal {
-	case "data":
-		return packet.Data
-	case "message":
-		return packet.Message
-	case "order":
-		return packet.Order
-	default:
-		// TODO: handle error
-		panic("unknown kind")
-	}
 }
 
 func getFilter(addrs []string, protocolToPort map[string]string, tcpClientTag string, tcpServerTag string, udpTag string) string {

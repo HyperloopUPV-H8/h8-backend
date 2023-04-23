@@ -53,7 +53,6 @@ func (v LowerBoundViolation) Type() string {
 }
 
 type EqualsViolation struct {
-	// FIXME: do we need to parse the wanted value? is it included in the violation?
 	Kind string `json:"kind"`
 	Got  float64
 }

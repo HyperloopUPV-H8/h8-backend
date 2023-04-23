@@ -57,7 +57,7 @@ func obtainSource(dev string, filter string, mtu uint) (*pcap.Handle, error) {
 	return source, nil
 }
 
-func (sniffer *Sniffer) Listen(output chan<- packet.Raw) <-chan error {
+func (sniffer *Sniffer) Listen(output chan<- packet.Packet) <-chan error {
 	sniffer.trace.Info().Msg("start listening")
 	errorChan := make(chan error)
 
@@ -66,7 +66,7 @@ func (sniffer *Sniffer) Listen(output chan<- packet.Raw) <-chan error {
 	return errorChan
 }
 
-func (sniffer *Sniffer) read(output chan<- packet.Raw, errorChan chan<- error) {
+func (sniffer *Sniffer) read(output chan<- packet.Packet, errorChan chan<- error) {
 	for {
 		raw, _, err := sniffer.source.ReadPacketData()
 		if err != nil {
@@ -96,7 +96,7 @@ func (sniffer *Sniffer) read(output chan<- packet.Raw, errorChan chan<- error) {
 
 var syntheticSeqNum uint32 = 0
 
-func (sniffer *Sniffer) parseLayers(packetLayers []gopacket.Layer) (packet.Raw, error) {
+func (sniffer *Sniffer) parseLayers(packetLayers []gopacket.Layer) (packet.Packet, error) {
 	timestamp := time.Now()
 	from := ""
 	to := ""
@@ -124,13 +124,13 @@ layerLoop:
 	}
 
 	if from == "" || to == "" {
-		return packet.Raw{}, errors.New("failed to get flow")
+		return packet.Packet{}, errors.New("failed to get flow")
 	}
 
 	//Config endianess from config.toml
 	id := binary.LittleEndian.Uint16(payload[:2])
 
-	return packet.Raw{
+	return packet.Packet{
 		Metadata: packet.NewMetaData(from, to, id, seqNum, timestamp),
 		Payload:  payload[2:],
 	}, nil

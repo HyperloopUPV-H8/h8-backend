@@ -26,7 +26,7 @@ type Vehicle struct {
 	protectionParser ProtectionParser
 	bitarrayParser   BitarrayParser
 
-	dataChan chan packet.Raw
+	dataChan chan packet.Packet
 
 	idToBoard map[uint16]string
 

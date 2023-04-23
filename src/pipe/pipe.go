@@ -20,13 +20,13 @@ type Pipe struct {
 	isClosed bool
 	mtu      int
 
-	output             chan<- packet.Raw
+	output             chan<- packet.Packet
 	onConnectionChange func(bool)
 
 	trace zerolog.Logger
 }
 
-func New(laddr string, raddr string, mtu uint, outputChan chan<- packet.Raw, onConnectionChange func(bool)) (*Pipe, error) {
+func New(laddr string, raddr string, mtu uint, outputChan chan<- packet.Packet, onConnectionChange func(bool)) (*Pipe, error) {
 	trace.Info().Str("laddr", laddr).Str("raddr", raddr).Msg("new pipe")
 	localAddr, err := net.ResolveTCPAddr("tcp", laddr)
 	if err != nil {
@@ -58,7 +58,6 @@ func New(laddr string, raddr string, mtu uint, outputChan chan<- packet.Raw, onC
 	return pipe, nil
 }
 
-// FIXME: si las placas no cierran la conexión bien, el back peta (hacer prueba con board_conn)
 func (pipe *Pipe) connect() {
 	pipe.trace.Debug().Msg("connecting")
 	for pipe.isClosed {
@@ -107,9 +106,9 @@ func (pipe *Pipe) listen() {
 
 var syntheticSeqNum uint32 = 0
 
-func (pipe *Pipe) getRaw(payload []byte) packet.Raw {
+func (pipe *Pipe) getRaw(payload []byte) packet.Packet {
 	syntheticSeqNum++
-	return packet.Raw{
+	return packet.Packet{
 		Metadata: packet.NewMetaData(pipe.raddr.String(), pipe.laddr.String(), binary.LittleEndian.Uint16(payload[0:2]), syntheticSeqNum, time.Now()),
 		Payload:  payload[2:],
 	}
