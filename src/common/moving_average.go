@@ -1,7 +1,5 @@
 package common
 
-import "fmt"
-
 type MovingAverage[N Numeric] struct {
 	buf     RingBuf[N]
 	currAvg N
@@ -35,7 +33,6 @@ func (avg *MovingAverage[N]) Resize(order uint) N {
 }
 
 func (avg *MovingAverage[N]) Shrink(amount uint) N {
-	fmt.Println("shrink")
 	avg.currAvg *= N(avg.Order())
 	for _, removed := range avg.buf.Shrink(amount) {
 		avg.currAvg -= removed
@@ -46,7 +43,6 @@ func (avg *MovingAverage[N]) Shrink(amount uint) N {
 }
 
 func (avg *MovingAverage[N]) Grow(amount uint) N {
-	fmt.Println("grow")
 	avg.currAvg *= N(avg.Order())
 	for _, added := range avg.buf.Grow(amount) {
 		avg.currAvg += added

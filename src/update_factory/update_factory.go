@@ -184,6 +184,5 @@ func (factory *UpdateFactory) getCycleTime(id uint16, timestamp uint64) uint64 {
 	factory.timestamp[id] = timestamp
 
 	ctAvg := average.Add(cycleTime)
-	fmt.Println(ctAvg, cycleTime)
 	return ctAvg
 }
