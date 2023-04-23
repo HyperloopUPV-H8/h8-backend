@@ -16,13 +16,13 @@ type ParseConfig struct {
 }
 
 type GlobalParseConfig struct {
-	AddressTable      string `toml:"address_table"`
-	BackendAddressKey string `toml:"backend_address_key"`
-	BLCUAddressKey    string `toml:"blcu_address_key"`
-	UnitsTable        string `toml:"units_table"`
-	PortsTable        string `toml:"ports_table"`
-	BoardIdsTable     string `toml:"board_ids_table"`
-	MessageIdsTable   string `toml:"message_ids_table"`
+	AddressTable    string `toml:"address_table"`
+	BackendKey      string `toml:"backend_key"`
+	BLCUAddressKey  string `toml:"blcu_address_key"`
+	UnitsTable      string `toml:"units_table"`
+	PortsTable      string `toml:"ports_table"`
+	BoardIdsTable   string `toml:"board_ids_table"`
+	MessageIdsTable string `toml:"message_ids_table"`
 }
 
 func GetDocument(file *excelize.File, config ParseConfig) models.Document {

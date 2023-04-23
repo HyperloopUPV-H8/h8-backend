@@ -35,9 +35,18 @@ func (adapter ExcelAdapter) GetBoards() map[string]models.Board {
 
 func (adapter ExcelAdapter) GetGlobalInfo() models.GlobalInfo {
 	trace.Trace().Msg("get global info")
+
+	boardIpTable, found := adapter.document.Info.Tables[adapter.config.Parse.Global.BoardIdsTable]
+
+	if !found {
+		trace.Fatal().Str("table", adapter.config.Parse.Global.BoardIdsTable).Msg("table not found")
+	}
+
+	boardToIp := getBoardIps(boardIpTable)
+
 	return models.GlobalInfo{
-		BackendIP:        getBackendIP(adapter.config.Parse.Global.AddressTable, adapter.config.Parse.Global.BackendAddressKey, adapter.document),
-		BoardToIP:        getInfoTableToMap(adapter.config.Parse.Global.AddressTable, adapter.document),
+		BackendIP:        getBackendIP(adapter.config.Parse.Global.AddressTable, adapter.config.Parse.Global.BackendKey, adapter.document),
+		BoardToIP:        boardToIp,
 		UnitToOperations: getInfoTableToMap(adapter.config.Parse.Global.UnitsTable, adapter.document),
 		ProtocolToPort:   getInfoTableToMap(adapter.config.Parse.Global.PortsTable, adapter.document),
 		BoardToId:        getInfoTableToMap(adapter.config.Parse.Global.BoardIdsTable, adapter.document),
@@ -84,7 +93,19 @@ func getIP(board string, document internalModels.Document, addressTableName stri
 	return ""
 }
 
-func getInfoTableToMap(tableName string, document internalModels.Document, backendKeyName string) map[string]string {
+func getBoardIps(table internalModels.Table) map[string]string {
+	mapping := make(map[string]string)
+
+	for _, row := range table.Rows {
+		if row[0] != "Backend" {
+			mapping[row[0]] = row[1]
+		}
+	}
+
+	return mapping
+}
+
+func getInfoTableToMap(tableName string, document internalModels.Document) map[string]string {
 	mapping := make(map[string]string)
 	table, found := document.Info.Tables[tableName]
 	if !found {
@@ -93,12 +114,9 @@ func getInfoTableToMap(tableName string, document internalModels.Document, backe
 	}
 
 	for _, row := range table.Rows {
-		//TODO: PUT THIS IN TOML
-		if row[0] == "Backend" {
-			continue
-		}
 		mapping[row[0]] = row[1]
 	}
+
 	trace.Trace().Str("table", tableName).Msg("get info table")
 	return mapping
 }

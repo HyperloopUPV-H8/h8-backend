@@ -7,9 +7,9 @@ import (
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet"
-	"github.com/HyperloopUPV-H8/Backend-H8/packet/data"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/update_factory/models"
+	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
@@ -52,18 +52,18 @@ func NewFactory() *UpdateFactory {
 	return factory
 }
 
-func (factory *UpdateFactory) NewUpdate(metadata packet.Metadata, payload data.Payload) models.Update {
-	factory.updateCount(metadata.ID)
+func (factory *UpdateFactory) NewUpdate(packetUpdate vehicle_models.PacketUpdate) models.Update {
+	factory.updateCount(packetUpdate.Metadata.ID)
 
 	factory.averageMx.Lock()
 	defer factory.averageMx.Unlock()
 
 	return models.Update{
-		ID:        metadata.ID,
-		HexValue:  fmt.Sprintf("%x", payload.Raw()),
-		Values:    factory.getFields(metadata.ID, payload.Values),
-		Count:     factory.getCount(metadata.ID),
-		CycleTime: factory.getCycleTime(metadata.ID, uint64(metadata.Timestamp.UnixNano())),
+		ID:        packetUpdate.Metadata.ID,
+		HexValue:  fmt.Sprintf("%x", packetUpdate.HexValue),
+		Values:    factory.getFields(packetUpdate.Metadata.ID, packetUpdate.Values),
+		Count:     factory.getCount(packetUpdate.Metadata.ID),
+		CycleTime: factory.getCycleTime(packetUpdate.Metadata.ID, uint64(packetUpdate.Metadata.Timestamp.UnixNano())),
 	}
 }
 
