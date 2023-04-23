@@ -50,12 +50,15 @@ flush_interval="10s"
 [packet_logger]
 folder_name = "updates"
 packet_file_name = "!packets"
+flush_interval="10s"
 
 [order_logger]
 file_name = "orders"
+flush_interval="10s"
 
 [protection_logger]
 file_name = "protections"
+flush_interval="10s"
 
 [orders]
 send_topic = "order/send"

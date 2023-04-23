@@ -8,26 +8,42 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	excel_adapter_models "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/logger_handler"
+	"github.com/rs/zerolog"
+	trace "github.com/rs/zerolog/log"
 )
 
 type PacketLogger struct {
-	packetIds    common.Set[string]
-	valueIds     common.Set[string]
-	valueFilesMx *sync.Mutex
-	config       Config
+	packetIds     common.Set[string]
+	valueIds      common.Set[string]
+	valueFilesMx  *sync.Mutex
+	flushInterval time.Duration
+	config        Config
+	trace         zerolog.Logger
 }
 
 type Config struct {
 	FolderName     string `toml:"folder_name"`
 	PacketFileName string `toml:"packet_file_name"`
+	FlushInterval  string `toml:"flush_interval"`
 }
 
 func NewPacketLogger(boards map[string]excel_adapter_models.Board, config Config) PacketLogger {
+
+	packetTrace := trace.With().Str("component", "packetLogger").Logger()
+
+	flushInterval, err := time.ParseDuration(config.FlushInterval)
+
+	if err != nil {
+		packetTrace.Fatal().Err(err).Msg("error parsing flush interval")
+	}
+
 	return PacketLogger{
-		packetIds:    getPacketIds(boards),
-		valueIds:     getValueIds(boards),
-		valueFilesMx: &sync.Mutex{},
-		config:       config,
+		packetIds:     getPacketIds(boards),
+		valueIds:      getValueIds(boards),
+		valueFilesMx:  &sync.Mutex{},
+		flushInterval: flushInterval,
+		config:        config,
+		trace:         packetTrace,
 	}
 }
 
@@ -71,18 +87,18 @@ func (pl *PacketLogger) Ids() common.Set[string] {
 	return allIds
 }
 
-func (pl *PacketLogger) Start(basePath string) (chan<- logger_handler.Loggable, error) {
+func (pl *PacketLogger) Start(basePath string) chan<- logger_handler.Loggable {
 	loggableChan := make(chan logger_handler.Loggable)
 
 	go pl.startLoggingRoutine(loggableChan, basePath)
 
-	return loggableChan, nil //TODO: change error to something that makes sense
+	return loggableChan
 }
 
 func (pl *PacketLogger) startLoggingRoutine(loggableChan <-chan logger_handler.Loggable, basePath string) {
 	packetFile := pl.createPacketFile(basePath)
 	valueFiles := make(map[string]logger_handler.CSVFile)
-	flushTicker := time.NewTicker(time.Second) // PILLAR DE CONF
+	flushTicker := time.NewTicker(pl.flushInterval)
 	done := make(chan struct{})
 	go pl.startFlushRoutine(flushTicker.C, packetFile, valueFiles, done)
 
@@ -92,25 +108,25 @@ func (pl *PacketLogger) startLoggingRoutine(loggableChan <-chan logger_handler.L
 			packetFile.Write(loggable.Log())
 		case pl.valueIds.Has(id):
 			pl.valueFilesMx.Lock()
-			file := getOrAddFile(valueFiles, filepath.Join(basePath, pl.config.FolderName), id)
+			file := getOrAddFile(valueFiles, filepath.Join(basePath, pl.config.FolderName), id, pl.trace)
 			file.Write(loggable.Log())
 			pl.valueFilesMx.Unlock()
 		default:
-			//TODO: trace
+			pl.trace.Warn().Str("id", id).Msg("unrecognized id")
 		}
 	}
 
 	done <- struct{}{}
 	flushTicker.Stop()
 
-	closeFiles(packetFile, valueFiles)
+	closeFiles(packetFile, valueFiles, pl.trace)
 }
 
 func (pl *PacketLogger) createPacketFile(basePath string) logger_handler.CSVFile {
 	packetFile, err := logger_handler.NewCSVFile(filepath.Join(basePath, pl.config.FolderName), pl.config.PacketFileName)
 
 	if err != nil {
-		//TODO: trace
+		pl.trace.Fatal().Err(err).Msg("error creating file")
 	}
 
 	return packetFile
@@ -133,13 +149,13 @@ loop:
 	}
 }
 
-func getOrAddFile(files map[string]logger_handler.CSVFile, path string, name string) logger_handler.CSVFile {
+func getOrAddFile(files map[string]logger_handler.CSVFile, path string, name string, trace zerolog.Logger) logger_handler.CSVFile {
 	file, ok := files[name]
 	if !ok {
 		newFile, err := logger_handler.NewCSVFile(path, name)
 
 		if err != nil {
-			//TODO: TRACE
+			trace.Fatal().Err(err).Msg("error creating file")
 		}
 		files[name] = newFile
 		return newFile
@@ -148,18 +164,18 @@ func getOrAddFile(files map[string]logger_handler.CSVFile, path string, name str
 	return file
 }
 
-func closeFiles(packetFile logger_handler.CSVFile, valueFiles map[string]logger_handler.CSVFile) {
+func closeFiles(packetFile logger_handler.CSVFile, valueFiles map[string]logger_handler.CSVFile, trace zerolog.Logger) {
 	err := packetFile.Close()
 
 	if err != nil {
-		//TODO: trace
+		trace.Error().Err(err).Msg("error closing file")
 	}
 
 	for _, file := range valueFiles {
 		err := file.Close()
 
 		if err != nil {
-			//TODO: trace
+			trace.Error().Err(err).Msg("error closing file")
 		}
 	}
 }

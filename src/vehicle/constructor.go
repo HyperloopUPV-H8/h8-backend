@@ -33,15 +33,16 @@ func New(args VehicleConstructorArgs) Vehicle {
 	vehicleTrace := trace.With().Str("component", "vehicle").Logger()
 	dataChan := make(chan packet.Packet, UPDATE_CHAN_BUF_SIZE)
 
-	packetParser, err := createPacketParser(args.GlobalInfo, args.Boards)
+	packetParser, err := createPacketParser(args.GlobalInfo, args.Boards, vehicleTrace)
 
 	if err != nil {
-		//TODO: trace
+		vehicleTrace.Fatal().Err(err).Msg("error creating packetParser")
 	}
 
-	names, err := getNames(args.GlobalInfo, args.Boards)
+	names, err := getPacketToValuesNames(args.GlobalInfo, args.Boards)
+
 	if err != nil {
-		//TODO: trace
+		vehicleTrace.Error().Err(err).Msg("error getting packet to values names")
 	}
 
 	vehicle := Vehicle{
@@ -99,13 +100,13 @@ func getOnConnectionChange(board string, onConnectionChange func(string, bool)) 
 	}
 }
 
-func createPacketParser(global excel_models.GlobalInfo, boards map[string]excel_models.Board) (packet_parser.PacketParser, error) {
+func createPacketParser(global excel_models.GlobalInfo, boards map[string]excel_models.Board, trace zerolog.Logger) (packet_parser.PacketParser, error) {
 	structures, err := getStructures(global, boards)
 	if err != nil {
 		return packet_parser.PacketParser{}, err
 	}
 
-	ids := getDataIds(global, boards)
+	ids := getDataIds(global, boards, trace)
 
 	return packet_parser.NewPacketParser(ids, structures, getEnums(global, boards)), nil
 }
@@ -126,14 +127,14 @@ func getStructures(global excel_models.GlobalInfo, boards map[string]excel_model
 	return structures, nil
 }
 
-func getDataIds(global excel_models.GlobalInfo, boards map[string]excel_models.Board) common.Set[uint16] {
+func getDataIds(global excel_models.GlobalInfo, boards map[string]excel_models.Board, trace zerolog.Logger) common.Set[uint16] {
 	ids := common.NewSet[uint16]()
 	for _, board := range boards {
 		for _, packet := range board.Packets {
 			if packet.Description.Type == "data" {
 				id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
 				if err != nil {
-					//TODO: trace
+					trace.Error().Err(err).Msg("error parsing packet id")
 					continue
 				}
 				ids.Add(uint16(id))
@@ -183,7 +184,7 @@ func getEnumDescriptor(literal string) packet.EnumDescriptor {
 	return strings.Split(optionsLiteral, ",")
 }
 
-func getNames(global excel_models.GlobalInfo, boards map[string]excel_models.Board) (map[uint16][]string, error) {
+func getPacketToValuesNames(global excel_models.GlobalInfo, boards map[string]excel_models.Board) (map[uint16][]string, error) {
 	names := make(map[uint16][]string)
 	for _, board := range boards {
 		for _, packet := range board.Packets {

@@ -64,7 +64,7 @@ func (converter *UnitConverter) Convert(name string, value float64) (float64, er
 		converter.trace.Trace().Msg("convert")
 		return ops.Convert(value), nil
 	} else {
-		//TODO: TRACE
+		converter.trace.Error().Str("name", name).Msg("operations not found")
 		return 0, fmt.Errorf("couldn't find operations for %s", name)
 	}
 }

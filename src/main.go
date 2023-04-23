@@ -71,7 +71,7 @@ func main() {
 
 	packetLogger := packet_logger.NewPacketLogger(boards, config.PacketLogger)
 	orderLogger := order_logger.NewOrderLogger(boards, config.OrderLogger)
-	protectionLogger := protection_logger.NewMessageLogger(config.ProtectionLogger, config.Vehicle.Protections)
+	protectionLogger := protection_logger.NewProtectionLogger(config.ProtectionLogger, config.Vehicle.Protections)
 
 	loggers := map[string]logger_handler.Logger{
 		"packet":     &packetLogger,

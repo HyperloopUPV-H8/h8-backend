@@ -79,7 +79,7 @@ func (vehicle *Vehicle) SendOrder(order models.Order) error {
 		return err
 	}
 
-	values := getOrderValues(order)
+	values := getOrderValues(order, vehicle.trace)
 	convertedValues := vehicle.applyUnitConversion(values)
 
 	buf := new(bytes.Buffer)
@@ -109,13 +109,14 @@ func (vehicle *Vehicle) applyUnitConversion(values map[string]packet.Value) map[
 			valueInSIUnits, podErr := vehicle.podConverter.Revert(name, float64(typedValue))
 
 			if podErr != nil {
-				//TODO: trace
+				vehicle.trace.Error().Err(podErr).Msg("error reverting podUnits")
 			}
 
 			valueInDisplayUnits, displayErr := vehicle.displayConverter.Convert(name, valueInSIUnits)
 
 			if displayErr != nil {
-				//TODO: trace
+				vehicle.trace.Error().Err(displayErr).Msg("error converting to displayUnits")
+
 			}
 
 			newValues[name] = packet.Numeric(valueInDisplayUnits)
@@ -141,7 +142,7 @@ func (vehicle *Vehicle) getPipe(id uint16) (*pipe.Pipe, error) {
 	return pipe, nil
 }
 
-func getOrderValues(order models.Order) map[string]packet.Value {
+func getOrderValues(order models.Order, trace zerolog.Logger) map[string]packet.Value {
 	values := make(map[string]packet.Value)
 
 	for name, field := range order.Fields {
@@ -153,7 +154,7 @@ func getOrderValues(order models.Order) map[string]packet.Value {
 		case string:
 			values[name] = packet.Enum(value)
 		default:
-			//TODO: trace
+			trace.Error().Msg("order field value not recognized")
 		}
 	}
 

@@ -112,11 +112,7 @@ func (handler *LoggerHandler) createActiveLoggers(path string) []ActiveLogger {
 	activeLoggers := make([]ActiveLogger, 0)
 
 	for _, logger := range handler.loggers {
-		inputChan, err := logger.Start(path)
-
-		if err != nil {
-			//TODO:
-		}
+		inputChan := logger.Start(path)
 
 		activeLoggers = append(activeLoggers, ActiveLogger{
 			Ids:   logger.Ids(),

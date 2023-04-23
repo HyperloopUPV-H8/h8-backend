@@ -9,17 +9,23 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	excelAdapterModels "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
+	"github.com/rs/zerolog"
+	trace "github.com/rs/zerolog/log"
 )
 
 type ProtectionParser struct {
 	Ids       common.Set[uint16]
 	faultId   uint16
 	warningId uint16
+	trace     zerolog.Logger
 }
 
 func NewProtectionParser(globalInfo excelAdapterModels.GlobalInfo, config ProtectionConfig) ProtectionParser {
-	faultId := getId(globalInfo.MessageToId, config.FaultIdKey)
-	warningId := getId(globalInfo.MessageToId, config.WarningIdKey)
+
+	parserLogger := trace.With().Str("component", "protection parser").Logger()
+
+	faultId := getId(globalInfo.MessageToId, config.FaultIdKey, parserLogger)
+	warningId := getId(globalInfo.MessageToId, config.WarningIdKey, parserLogger)
 
 	ids := common.NewSet[uint16]()
 
@@ -27,23 +33,24 @@ func NewProtectionParser(globalInfo excelAdapterModels.GlobalInfo, config Protec
 	ids.Add(warningId)
 
 	return ProtectionParser{
-		ids,
-		faultId,
-		warningId,
+		Ids:       ids,
+		faultId:   faultId,
+		warningId: warningId,
+		trace:     parserLogger,
 	}
 }
 
-func getId(kindToId map[string]string, key string) uint16 {
+func getId(kindToId map[string]string, key string, trace zerolog.Logger) uint16 {
 	idStr, ok := kindToId[key]
 
 	if !ok {
-		//TODO: trace
+		trace.Error().Str("key", key).Msg("key not found")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 16)
 
 	if err != nil {
-		//TODO: trace
+		trace.Error().Str("id", idStr).Msg("error parsing id")
 	}
 
 	return uint16(id)
