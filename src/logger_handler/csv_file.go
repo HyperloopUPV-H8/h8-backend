@@ -57,7 +57,7 @@ func (file *CSVFile) Flush() error {
 }
 
 func (file *CSVFile) flushUnsafe() error {
-	trace.Info().Msg("flushing save file")
+	trace.Debug().Msg("flushing save file")
 	file.writer.Flush()
 	return file.writer.Error()
 }
@@ -76,7 +76,7 @@ func (file *CSVFile) Close() error {
 	file.fileMx.Lock()
 	defer file.fileMx.Unlock()
 
-	trace.Info().Msg("closing save file")
+	trace.Debug().Msg("closing save file")
 
 	if err := file.flushUnsafe(); err != nil {
 		trace.Error().Stack().Err(err).Msg("failed to flush writer")
