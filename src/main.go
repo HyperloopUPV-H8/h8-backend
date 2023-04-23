@@ -58,7 +58,7 @@ func main() {
 		GlobalInfo:         globalInfo,
 		OnConnectionChange: connectionTransfer.Update,
 	})
-	vehicleUpdates := make(chan vehicle_models.PacketUpdate, 100)
+	vehicleUpdates := make(chan vehicle_models.PacketUpdate, 1)
 	vehicleProtections := make(chan vehicle_models.Protection)
 	// vehicleOrders := make(chan packet.Packet)
 	go vehicle.Listen(vehicleUpdates, vehicleProtections)
