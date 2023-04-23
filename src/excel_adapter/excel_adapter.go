@@ -36,10 +36,10 @@ func (adapter ExcelAdapter) GetBoards() map[string]models.Board {
 func (adapter ExcelAdapter) GetGlobalInfo() models.GlobalInfo {
 	trace.Trace().Msg("get global info")
 
-	boardIpTable, found := adapter.document.Info.Tables[adapter.config.Parse.Global.BoardIdsTable]
+	boardIpTable, found := adapter.document.Info.Tables[adapter.config.Parse.Global.AddressTable]
 
 	if !found {
-		trace.Fatal().Str("table", adapter.config.Parse.Global.BoardIdsTable).Msg("table not found")
+		trace.Fatal().Str("table", adapter.config.Parse.Global.AddressTable).Msg("table not found")
 	}
 
 	boardToIp := getBoardIps(boardIpTable)
