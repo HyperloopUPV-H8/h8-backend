@@ -207,7 +207,8 @@ func getNamesFromValues(values []excel_models.Value) []string {
 }
 
 func getFilter(addrs []string, protocolToPort map[string]string, tcpClientTag string, tcpServerTag string, udpTag string) string {
-	// FIXME: IPIP filter
+	ipip := "ip[9] == 4"
+
 	udp := fmt.Sprintf("(udp port %s)", protocolToPort[udpTag])
 	udpAddr := ""
 	for _, addr := range addrs {
@@ -227,7 +228,7 @@ func getFilter(addrs []string, protocolToPort map[string]string, tcpClientTag st
 	tcpAddrDst = strings.TrimPrefix(tcpAddrDst, " or ")
 	tcp = fmt.Sprintf("%s and (%s) and (%s)", tcp, tcpAddrSrc, tcpAddrDst)
 
-	filter := fmt.Sprintf("(%s) or (%s)", udp, tcp)
+	filter := fmt.Sprintf("(%s) or (%s) or (%s)", ipip, udp, tcp)
 	trace.Trace().Strs("addrs", addrs).Str("filter", filter).Msg("new filter")
 	return filter
 }
