@@ -21,7 +21,6 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/server"
 	"github.com/HyperloopUPV-H8/Backend-H8/update_factory"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle"
-	vehiclePackage "github.com/HyperloopUPV-H8/Backend-H8/vehicle"
 	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/websocket_broker"
 	"github.com/gorilla/mux"
@@ -70,8 +69,9 @@ func main() {
 	orderTransfer, orderChannel := order_transfer.New()
 
 	packetLogger := packet_logger.NewPacketLogger(boards, config.PacketLogger)
+
 	orderLogger := order_logger.NewOrderLogger(boards, config.OrderLogger)
-	protectionLogger := protection_logger.NewProtectionLogger(config.ProtectionLogger, config.Vehicle.Protections)
+	protectionLogger := protection_logger.NewProtectionLogger(config.Vehicle.Protections.FaultIdKey, config.Vehicle.Protections.WarningIdKey, config.ProtectionLogger)
 
 	loggers := map[string]logger_handler.Logger{
 		"packet":     &packetLogger,
@@ -150,7 +150,7 @@ func startProtectionsRoutine(vehicleProtections <-chan vehicle_models.Protection
 	}
 }
 
-func startOrderRoutine(orderChannel <-chan vehicle_models.Order, vehicle *vehiclePackage.Vehicle, loggerHandler *logger_handler.LoggerHandler) {
+func startOrderRoutine(orderChannel <-chan vehicle_models.Order, vehicle *vehicle.Vehicle, loggerHandler *logger_handler.LoggerHandler) {
 	for ord := range orderChannel {
 		err := vehicle.SendOrder(ord)
 

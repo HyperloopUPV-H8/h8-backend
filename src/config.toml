@@ -45,20 +45,20 @@ message_ids_table = "message_ids"
 [logger_handler]
 topics = { enable = "logger/enable", state = "logger/state" }
 base_path = "log"
-flush_interval="10s"
+flush_interval="5s"
 
 [packet_logger]
 folder_name = "updates"
 packet_file_name = "!packets"
-flush_interval="10s"
+flush_interval="5s"
 
 [order_logger]
 file_name = "orders"
-flush_interval="10s"
+flush_interval="5s"
 
 [protection_logger]
 file_name = "protections"
-flush_interval="10s"
+flush_interval="5s"
 
 [orders]
 send_topic = "order/send"
