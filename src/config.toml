@@ -11,17 +11,17 @@ uploadable_boards = "/uploadableBoards"
 websocket = "/backend"
 file_server = "/"
 
-[vehicle]
+[vehicle.network]
 tcp_client_tag = "TCP_CLIENT"
 tcp_server_tag = "TCP_SERVER"
 udp_tag = "UDP"
-# network = { mtu = 1500, sniffer_interface = "\\Device\\NPF_{015224CF-DC7F-4F81-AA58-947027697645}" }
-# network = { mtu = 1500, interface = "lo" }
-network = { mtu = 1500, interface = "\\Device\\NPF_Loopback" }
-[vehicle.messages]
+# sniffer = { mtu = 1500, interface = "lo" }
+sniffer = { mtu = 1500, interface = "\\Device\\NPF_Loopback" }
+# blcu_ack_id = "blcu_ack"
+
+[vehicle.protections]
 fault_id_key = "fault"
 warning_id_key = "warning"
-blcu_ack_id = "blcu_ack"
 
 [excel.download]
 id = "1BEwASubu0el9oQA6PSwVKaNU-Q6gbJ40JR6kgqguKYE"
@@ -42,13 +42,20 @@ ports_table = "ports"
 board_ids_table = "board_ids"
 message_ids_table = "message_ids"
 
-[logger]
+[logger_handler]
 topics = { enable = "logger/enable", state = "logger/state" }
 base_path = "log"
-data_name = "data.csv"
-message_name = "message.csv"
-order_name = "order.csv"
+flush_interval="10s"
 
+[packet_logger]
+folder_name = "updates"
+packet_file_name = "!packets"
+
+[order_logger]
+file_name = "orders"
+
+[protection_logger]
+file_name = "protections"
 
 [orders]
 send_topic = "order/send"

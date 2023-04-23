@@ -1,10 +1,10 @@
 package unit_converter
 
 import (
+	"fmt"
 	"strings"
 
 	excelAdapterModels "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
-	"github.com/HyperloopUPV-H8/Backend-H8/packet"
 	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter/models"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
@@ -58,32 +58,24 @@ func getCustomOperations(operationsStr string) string {
 	return strings.Split(operationsStr, "#")[1]
 }
 
-func (converter *UnitConverter) Convert(values map[string]packet.Value) map[string]packet.Value {
-	convertedValues := make(map[string]packet.Value, len(values))
-	for name, originalValue := range values {
-		numericValue, isNumeric := originalValue.(packet.Numeric)
-		ops, ok := converter.operations[name]
-		if ok && isNumeric {
-			convertedValues[name] = packet.Numeric{Value: ops.Convert(numericValue.Value)}
-		} else {
-			convertedValues[name] = originalValue
-		}
+func (converter *UnitConverter) Convert(name string, value float64) (float64, error) {
+	ops, ok := converter.operations[name]
+	if ok {
+		converter.trace.Trace().Msg("convert")
+		return ops.Convert(value), nil
+	} else {
+		//TODO: TRACE
+		return 0, fmt.Errorf("couldn't find operations for %s", name)
 	}
-	converter.trace.Trace().Msg("convert")
-	return convertedValues
 }
 
-func (converter *UnitConverter) Revert(values map[string]packet.Value) map[string]packet.Value {
-	convertedValues := make(map[string]packet.Value, len(values))
-	for name, originalValue := range values {
-		numericValue, isNumeric := originalValue.(packet.Numeric)
-		ops, ok := converter.operations[name]
-		if ok && isNumeric {
-			convertedValues[name] = packet.Numeric{Value: ops.Revert(numericValue.Value)}
-		} else {
-			convertedValues[name] = originalValue
-		}
+func (converter *UnitConverter) Revert(name string, value float64) (float64, error) {
+	ops, ok := converter.operations[name]
+	if ok {
+		converter.trace.Trace().Msg("convert")
+
+		return ops.Revert(value), nil
+	} else {
+		return 0, fmt.Errorf("couldn't find operations for %s", name)
 	}
-	converter.trace.Trace().Msg("convert")
-	return convertedValues
 }

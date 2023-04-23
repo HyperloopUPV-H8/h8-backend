@@ -1,6 +1,7 @@
 package pipe
 
 import (
+	"encoding/binary"
 	"errors"
 	"net"
 	"time"
@@ -109,8 +110,8 @@ var syntheticSeqNum uint32 = 0
 func (pipe *Pipe) getRaw(payload []byte) packet.Raw {
 	syntheticSeqNum++
 	return packet.Raw{
-		Metadata: packet.NewMetaData(pipe.raddr.String(), pipe.laddr.String(), 0, syntheticSeqNum, time.Now()),
-		Payload:  payload,
+		Metadata: packet.NewMetaData(pipe.raddr.String(), pipe.laddr.String(), binary.LittleEndian.Uint16(payload[0:2]), syntheticSeqNum, time.Now()),
+		Payload:  payload[2:],
 	}
 }
 

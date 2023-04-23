@@ -4,26 +4,20 @@ type Value interface {
 	Inner() any
 }
 
-type Numeric struct {
-	Value float64
-}
+type Numeric float64
 
 func (n Numeric) Inner() any {
-	return n.Value
+	return float64(n)
 }
 
-type Boolean struct {
-	Value bool
-}
+type Boolean bool
 
 func (b Boolean) Inner() any {
-	return b.Value
+	return bool(b)
 }
 
-type Enum struct {
-	Value string
-}
+type Enum string
 
 func (e Enum) Inner() any {
-	return e.Value
+	return string(e)
 }

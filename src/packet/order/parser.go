@@ -1,54 +1,46 @@
 package order
 
-import (
-	"bytes"
-	"fmt"
+// type Parser struct {
+// 	value    *parsers.ValueParser
+// 	bitarray *parsers.BitarrayParser
+// }
 
-	"github.com/HyperloopUPV-H8/Backend-H8/packet"
-	"github.com/HyperloopUPV-H8/Backend-H8/packet/parsers"
-)
+// func NewParser(valueParser *parsers.ValueParser, bitarrayParser *parsers.BitarrayParser) Parser {
+// 	return Parser{value: valueParser, bitarray: bitarrayParser}
+// }
 
-type Parser struct {
-	value    *parsers.ValueParser
-	bitarray *parsers.BitarrayParser
-}
+// func (parser Parser) Decode(id uint16, data []byte) (packet.Payload, error) {
+// 	reader := bytes.NewReader(data)
+// 	values, err := parser.value.Decode(id, reader)
+// 	if err != nil {
+// 		return Payload{}, err
+// 	}
 
-func NewParser(valueParser *parsers.ValueParser, bitarrayParser *parsers.BitarrayParser) Parser {
-	return Parser{value: valueParser, bitarray: bitarrayParser}
-}
+// 	// enabled, err := parser.bitarray.Decode(id, reader)
+// 	// if err != nil {
+// 	// 	return Payload{}, err
+// 	// }
 
-func (parser Parser) Decode(id uint16, data []byte) (packet.Payload, error) {
-	reader := bytes.NewReader(data)
-	values, err := parser.value.Decode(id, reader)
-	if err != nil {
-		return Payload{}, err
-	}
+// 	return Payload{Values: values, Enabled: nil, raw: data}, nil
+// }
 
-	// enabled, err := parser.bitarray.Decode(id, reader)
-	// if err != nil {
-	// 	return Payload{}, err
-	// }
+// func (parser Parser) Encode(id uint16, payload packet.Payload) ([]byte, error) {
+// 	orderPayload, ok := payload.(Payload)
+// 	if !ok {
+// 		return nil, fmt.Errorf("invalid order payload type %T", payload)
+// 	}
 
-	return Payload{Values: values, Enabled: nil, raw: data}, nil
-}
+// 	buf := bytes.NewBuffer(nil)
 
-func (parser Parser) Encode(id uint16, payload packet.Payload) ([]byte, error) {
-	orderPayload, ok := payload.(Payload)
-	if !ok {
-		return nil, fmt.Errorf("invalid order payload type %T", payload)
-	}
+// 	err := parser.value.Encode(id, orderPayload.Values, buf)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	buf := bytes.NewBuffer(nil)
+// 	// err = parser.bitarray.Encode(id, orderPayload.Enabled, buf)
+// 	// if err != nil {
+// 	// 	return nil, err
+// 	// }
 
-	err := parser.value.Encode(id, orderPayload.Values, buf)
-	if err != nil {
-		return nil, err
-	}
-
-	// err = parser.bitarray.Encode(id, orderPayload.Enabled, buf)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	return buf.Bytes(), nil
-}
+// 	return buf.Bytes(), nil
+// }

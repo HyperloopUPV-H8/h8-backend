@@ -7,7 +7,7 @@ import (
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet"
-	"github.com/HyperloopUPV-H8/Backend-H8/packet/data"
+
 	"github.com/HyperloopUPV-H8/Backend-H8/update_factory/models"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
@@ -129,11 +129,11 @@ func (factory *UpdateFactory) getFields(id uint16, fields map[string]packet.Valu
 	for name, value := range fields {
 		switch value := value.(type) {
 		case packet.Numeric:
-			updateFields[name] = factory.getNumericField(id, name, value)
+			updateFields[name] = factory.getNumericField(id, name, float64(value))
 		case packet.Boolean:
-			updateFields[name] = models.BooleanValue(value.Value)
+			updateFields[name] = models.BooleanValue(value)
 		case packet.Enum:
-			updateFields[name] = models.EnumValue(value.Value)
+			updateFields[name] = models.EnumValue(value)
 		}
 	}
 

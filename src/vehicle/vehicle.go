@@ -1,17 +1,17 @@
 package vehicle
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
-	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet"
-	"github.com/HyperloopUPV-H8/Backend-H8/packet/data"
-	"github.com/HyperloopUPV-H8/Backend-H8/packet/message"
-	"github.com/HyperloopUPV-H8/Backend-H8/packet/order"
 	"github.com/HyperloopUPV-H8/Backend-H8/pipe"
 	"github.com/HyperloopUPV-H8/Backend-H8/sniffer"
 	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter"
+	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
+	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/packet_parser"
 	"github.com/rs/zerolog"
 )
 
@@ -19,9 +19,12 @@ type Vehicle struct {
 	sniffer sniffer.Sniffer
 	pipes   map[string]*pipe.Pipe
 
-	parser           *packet.Parser
 	displayConverter unit_converter.UnitConverter
 	podConverter     unit_converter.UnitConverter
+
+	packetParser     packet_parser.PacketParser
+	protectionParser ProtectionParser
+	bitarrayParser   BitarrayParser
 
 	dataChan chan packet.Raw
 
@@ -32,98 +35,96 @@ type Vehicle struct {
 	trace zerolog.Logger
 }
 
-func (vehicle *Vehicle) Listen(dataOutput, messageOutput, orderOutput chan<- packet.Packet) {
+func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, protectionChan chan<- models.Protection) {
 	vehicle.trace.Debug().Msg("vehicle listening")
 	for raw := range vehicle.dataChan {
 		payloadCopy := make([]byte, len(raw.Payload))
 		copy(payloadCopy, raw.Payload)
 
-		decoded, err := vehicle.parser.Decode(raw.Metadata, payloadCopy)
-		if err != nil {
-			vehicle.trace.Error().Err(err).Msg("error decoding packet")
-			continue
-		}
+		switch id := raw.Metadata.ID; {
+		case vehicle.packetParser.Ids.Has(id):
+			update, err := vehicle.packetParser.Decode(id, raw.Payload, raw.Metadata)
 
-		switch payload := decoded.Payload.(type) {
-		case data.Payload:
-			vehicle.handleData(decoded.Metadata, payload, dataOutput)
-		case message.Payload:
-			vehicle.handleMessage(decoded.Metadata, payload, messageOutput)
-		case order.Payload:
-			vehicle.handleOrder(decoded.Metadata, payload, orderOutput)
+			if err != nil {
+				vehicle.trace.Error().Err(err).Msg("error decoding packet")
+				continue
+			}
+
+			convertedValues := vehicle.applyUnitConversion(update.Values)
+			update.Values = convertedValues
+
+			updateChan <- update
+
+		case vehicle.protectionParser.Ids.Has(id):
+			protection, err := vehicle.protectionParser.Parse(id, raw.Payload)
+
+			if err != nil {
+				vehicle.trace.Error().Err(err).Msg("error decoding protection")
+				continue
+			}
+			protectionChan <- protection
 		default:
-			vehicle.trace.Error().Msg("unknown payload type")
+			fmt.Println("UNEXPECTED VALUE")
 		}
+
 	}
 }
 
-func (vehicle *Vehicle) handleData(metadata packet.Metadata, payload data.Payload, output chan<- packet.Packet) {
-	vehicle.trace.Trace().Uint16("id", metadata.ID).Msg("handle data")
-	payload.Values = vehicle.podConverter.Revert(payload.Values)
-	payload.Values = vehicle.displayConverter.Convert(payload.Values)
+func (vehicle *Vehicle) SendOrder(order models.Order) error {
+	vehicle.trace.Info().Uint16("id", order.ID).Msg("send order")
+	pipe, err := vehicle.getPipe(order.ID)
 
-	select {
-	case output <- packet.New(metadata, payload):
-	default:
-		vehicle.trace.Warn().Msg("data channel full")
-	}
-}
-
-func (vehicle *Vehicle) handleMessage(metadata packet.Metadata, payload message.Payload, output chan<- packet.Packet) {
-	vehicle.trace.Trace().Uint16("id", metadata.ID).Msg("handle message")
-
-	select {
-	case output <- packet.New(metadata, payload):
-	default:
-		vehicle.trace.Warn().Msg("message channel full")
-	}
-}
-
-func (vehicle *Vehicle) handleOrder(metadata packet.Metadata, payload order.Payload, output chan<- packet.Packet) {
-	vehicle.trace.Trace().Uint16("id", metadata.ID).Msg("handle order")
-
-	payload.Values = vehicle.podConverter.Revert(payload.Values)
-	payload.Values = vehicle.displayConverter.Convert(payload.Values)
-
-	select {
-	case output <- packet.New(metadata, payload):
-	default:
-		vehicle.trace.Warn().Msg("order channel full")
-	}
-}
-
-func (vehicle *Vehicle) SendOrder(id uint16, vehicleOrder packet.Payload) (packet.Metadata, error) {
-	vehicle.trace.Info().Uint16("id", id).Msg("send order")
-	pipe, err := vehicle.getPipe(id)
 	if err != nil {
 		vehicle.trace.Error().Err(err).Msg("error getting pipe")
-		return packet.Metadata{}, err
+		return err
 	}
 
-	payload, ok := vehicleOrder.(order.Payload)
-	if !ok {
-		vehicle.trace.Error().Msg("payload is not order")
-		return packet.Metadata{}, fmt.Errorf("payload is not order")
-	}
+	values := getOrderValues(order)
+	convertedValues := vehicle.applyUnitConversion(values)
 
-	payload.Values = vehicle.displayConverter.Revert(payload.Values)
-	payload.Values = vehicle.podConverter.Convert(payload.Values)
+	buf := new(bytes.Buffer)
 
-	data, err := vehicle.parser.Encode(id, payload)
+	idBuf := make([]byte, 2)
+	binary.LittleEndian.PutUint16(idBuf, order.ID)
+
+	err = vehicle.packetParser.Encode(order.ID, convertedValues, buf)
 	if err != nil {
 		vehicle.trace.Error().Err(err).Msg("error encoding order")
-		return packet.Metadata{}, err
+		return err
 	}
 
-	_, err = common.WriteAll(pipe, data)
+	fullBuf := append(idBuf, buf.Bytes()...)
 
-	return packet.Metadata{
-		ID:        id,
-		Timestamp: time.Now(),
-		From:      pipe.Laddr(),
-		To:        pipe.Raddr(),
-		SeqNum:    0,
-	}, err
+	_, err = common.WriteAll(pipe, fullBuf)
+
+	return err
+}
+
+func (vehicle *Vehicle) applyUnitConversion(values map[string]packet.Value) map[string]packet.Value {
+	newValues := make(map[string]packet.Value)
+
+	for name, value := range values {
+		switch typedValue := value.(type) {
+		case packet.Numeric:
+			valueInSIUnits, podErr := vehicle.podConverter.Revert(name, float64(typedValue))
+
+			if podErr != nil {
+				//TODO: trace
+			}
+
+			valueInDisplayUnits, displayErr := vehicle.displayConverter.Convert(name, valueInSIUnits)
+
+			if displayErr != nil {
+				//TODO: trace
+			}
+
+			newValues[name] = packet.Numeric(valueInDisplayUnits)
+		default:
+			newValues[name] = typedValue
+		}
+	}
+
+	return newValues
 }
 
 func (vehicle *Vehicle) getPipe(id uint16) (*pipe.Pipe, error) {
@@ -138,4 +139,33 @@ func (vehicle *Vehicle) getPipe(id uint16) (*pipe.Pipe, error) {
 	}
 
 	return pipe, nil
+}
+
+func getOrderValues(order models.Order) map[string]packet.Value {
+	values := make(map[string]packet.Value)
+
+	for name, field := range order.Fields {
+		switch value := field.Value.(type) {
+		case float64:
+			values[name] = packet.Numeric(value)
+		case bool:
+			values[name] = packet.Boolean(value)
+		case string:
+			values[name] = packet.Enum(value)
+		default:
+			//TODO: trace
+		}
+	}
+
+	return values
+}
+
+func getOrderEnables(order models.Order) []bool {
+	enables := make([]bool, 0)
+
+	for _, field := range order.Fields {
+		enables = append(enables, field.IsEnabled)
+	}
+
+	return enables
 }
