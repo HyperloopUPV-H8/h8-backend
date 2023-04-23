@@ -91,9 +91,9 @@ func main() {
 	websocketBroker.RegisterHandle(&messageTransfer)
 	websocketBroker.RegisterHandle(&orderTransfer, config.Orders.SendTopic)
 
-	go startPacketUpdateRoutine(vehicleUpdates, dataTransfer, loggerHandler)
-	go startProtectionsRoutine(vehicleProtections, messageTransfer, loggerHandler)
-	go startOrderRoutine(orderChannel, vehicle, loggerHandler)
+	go startPacketUpdateRoutine(vehicleUpdates, &dataTransfer, &loggerHandler)
+	go startProtectionsRoutine(vehicleProtections, &messageTransfer, &loggerHandler)
+	go startOrderRoutine(orderChannel, &vehicle, &loggerHandler)
 
 	// go func() {
 	// 	for packet := range vehicleOrders {
@@ -128,7 +128,7 @@ func main() {
 	<-interrupt
 }
 
-func startPacketUpdateRoutine(vehicleUpdates <-chan vehicle_models.PacketUpdate, dataTransfer data_transfer.DataTransfer, loggerHandler logger_handler.LoggerHandler) {
+func startPacketUpdateRoutine(vehicleUpdates <-chan vehicle_models.PacketUpdate, dataTransfer *data_transfer.DataTransfer, loggerHandler *logger_handler.LoggerHandler) {
 	updateFactory := update_factory.NewFactory()
 
 	for packetUpdate := range vehicleUpdates {
@@ -143,14 +143,14 @@ func startPacketUpdateRoutine(vehicleUpdates <-chan vehicle_models.PacketUpdate,
 	}
 }
 
-func startProtectionsRoutine(vehicleProtections <-chan vehicle_models.Protection, messageTransfer message_transfer.MessageTransfer, loggerHandler logger_handler.LoggerHandler) {
+func startProtectionsRoutine(vehicleProtections <-chan vehicle_models.Protection, messageTransfer *message_transfer.MessageTransfer, loggerHandler *logger_handler.LoggerHandler) {
 	for protection := range vehicleProtections {
 		messageTransfer.SendMessage(protection)
 		loggerHandler.Log(protection_logger.LoggableProtection(protection))
 	}
 }
 
-func startOrderRoutine(orderChannel <-chan vehicle_models.Order, vehicle vehiclePackage.Vehicle, loggerHandler logger_handler.LoggerHandler) {
+func startOrderRoutine(orderChannel <-chan vehicle_models.Order, vehicle *vehiclePackage.Vehicle, loggerHandler *logger_handler.LoggerHandler) {
 	for ord := range orderChannel {
 		err := vehicle.SendOrder(ord)
 
