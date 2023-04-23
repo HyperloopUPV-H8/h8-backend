@@ -59,7 +59,7 @@ func (buf *RingBuf[T]) Grow(amount uint) []T {
 	added := make([]T, 0, amount)
 
 	for i := (uint)(0); i < amount; i++ {
-		var new T
+		var new T = buf.buf[buf.curr]
 		added = append(added, new)
 		buf.push(new)
 	}
