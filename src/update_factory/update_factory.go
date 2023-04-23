@@ -82,16 +82,19 @@ func (factory *UpdateFactory) adjustOrder() {
 func (factory *UpdateFactory) updateOrders() {
 	factory.averageMx.Lock()
 	defer factory.averageMx.Unlock()
-	for id := range factory.packetCount {
-		factory.updateOrder(id, factory.packetCount[id], factory.lastPacketCount[id])
-		factory.resetCount(id)
-	}
-}
-
-func (factory *UpdateFactory) resetCount(id uint16) {
 	factory.countMx.Lock()
 	defer factory.countMx.Unlock()
-	factory.packetCount[id] = 0
+
+	for id := range factory.packetCount {
+		factory.updateOrder(id, factory.packetCount[id], factory.lastPacketCount[id])
+	}
+	factory.resetCount()
+}
+
+func (factory *UpdateFactory) resetCount() {
+	for id := range factory.packetCount {
+		factory.packetCount[id] = 0
+	}
 }
 
 func (factory *UpdateFactory) updateOrder(id uint16, count uint, prev float64) {
