@@ -7,6 +7,7 @@ import (
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet"
+	"github.com/HyperloopUPV-H8/Backend-H8/packet/data"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/update_factory/models"
 	"github.com/rs/zerolog"
@@ -129,7 +130,7 @@ func (factory *UpdateFactory) getFields(id uint16, fields map[string]packet.Valu
 	for name, value := range fields {
 		switch value := value.(type) {
 		case packet.Numeric:
-			updateFields[name] = factory.getNumericField(id, name, float64(value))
+			updateFields[name] = factory.getNumericField(id, name, packet.Numeric(value))
 		case packet.Boolean:
 			updateFields[name] = models.BooleanValue(value)
 		case packet.Enum:
@@ -143,8 +144,8 @@ func (factory *UpdateFactory) getFields(id uint16, fields map[string]packet.Valu
 func (factory *UpdateFactory) getNumericField(id uint16, name string, value packet.Numeric) models.UpdateValue {
 	avg := factory.getAverage(id, name)
 
-	numAvg := avg.Add(value.Value)
-	return models.NumericValue{Value: value.Value, Average: numAvg}
+	numAvg := avg.Add(float64(value))
+	return models.NumericValue{Value: float64(value), Average: numAvg}
 }
 
 func (factory *UpdateFactory) getAverage(id uint16, name string) *common.MovingAverage[float64] {
