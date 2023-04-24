@@ -47,21 +47,45 @@ func NewPodData(excelBoards map[string]excelAdapterModels.Board) PodData {
 	}
 }
 
-func getMeasurements(values []excelAdapterModels.Value) map[string]Measurement {
-	measurements := make(map[string]Measurement, len(values))
+func getMeasurements(values []excelAdapterModels.Value) map[string]any {
+	measurements := make(map[string]any, len(values))
 	for _, value := range values {
-		measurements[value.ID] = Measurement{
-			ID:   value.ID,
-			Name: value.Name,
-			Type: value.Type,
-			//TODO: make sure added property (Value) doesn't break stuff
-			Value:        getDefaultValue(value.Type),
-			Units:        value.DisplayUnits,
-			SafeRange:    parseRange(value.SafeRange),
-			WarningRange: parseRange(value.WarningRange),
+		if IsNumeric(value.Type) {
+			measurements[value.ID] = getNumericMeasurement(value)
+		} else if value.Type == "bool" {
+			measurements[value.ID] = getBooleanMeasurement(value)
+		} else {
+			measurements[value.ID] = getEnumMeasurement(value)
 		}
 	}
 	return measurements
+}
+
+func getNumericMeasurement(value excelAdapterModels.Value) NumericMeasurement {
+	return NumericMeasurement{
+		ID:           value.ID,
+		Name:         value.Name,
+		Type:         value.Type,
+		Units:        value.DisplayUnits,
+		SafeRange:    parseRange(value.SafeRange),
+		WarningRange: parseRange(value.WarningRange),
+	}
+}
+
+func getEnumMeasurement(value excelAdapterModels.Value) EnumMeasurement {
+	return EnumMeasurement{
+		ID:   value.ID,
+		Name: value.Name,
+		Type: "Enum",
+	}
+}
+
+func getBooleanMeasurement(value excelAdapterModels.Value) BooleanMeasurement {
+	return BooleanMeasurement{
+		ID:   value.ID,
+		Name: value.Name,
+		Type: value.Type,
+	}
 }
 
 func parseRange(literal string) []*float64 {
@@ -104,37 +128,37 @@ func parseRange(literal string) []*float64 {
 	return numRange
 }
 
-func getDefaultValue(valueType string) any {
-	switch valueType {
-	case "uint8", "uint16", "uint32", "uint64", "int8", "int16", "int32", "int64", "float32", "float64":
-		return 0
-	case "bool":
-		return false
-	default:
-		return "Default"
-	}
-}
-
 type Board struct {
 	Name    string            `json:"name"`
 	Packets map[uint16]Packet `json:"packets"`
 }
 
 type Packet struct {
-	ID           uint16                 `json:"id"`
-	Name         string                 `json:"name"`
-	HexValue     string                 `json:"hexValue"`
-	Count        uint16                 `json:"count"`
-	CycleTime    int64                  `json:"cycleTime"`
-	Measurements map[string]Measurement `json:"measurements"`
+	ID           uint16         `json:"id"`
+	Name         string         `json:"name"`
+	HexValue     string         `json:"hexValue"`
+	Count        uint16         `json:"count"`
+	CycleTime    int64          `json:"cycleTime"`
+	Measurements map[string]any `json:"measurements"`
 }
 
-type Measurement struct {
+type NumericMeasurement struct {
 	ID           string     `json:"id"`
 	Name         string     `json:"name"`
 	Type         string     `json:"type"`
-	Value        any        `json:"value"`
 	Units        string     `json:"units"`
 	SafeRange    []*float64 `json:"safeRange"`
 	WarningRange []*float64 `json:"warningRange"`
+}
+
+type BooleanMeasurement struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
+type EnumMeasurement struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Type string `json:"type"`
 }
