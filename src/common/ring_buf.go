@@ -56,18 +56,10 @@ func (buf *RingBuf[T]) pop() (removed T) {
 }
 
 func (buf *RingBuf[T]) Grow(amount uint) []T {
-	added := make([]T, 0, amount)
+	added := make([]T, amount)
 
-	for i := (uint)(0); i < amount; i++ {
-		var new T = buf.buf[buf.curr]
-		added = append(added, new)
-		buf.push(new)
-	}
+	head := append(added, buf.buf[buf.curr:]...)
+	buf.buf = append(buf.buf[:buf.curr], head...)
 
 	return added
-}
-
-func (buf *RingBuf[T]) push(new T) {
-	head := append(buf.buf[:buf.next()], new)
-	buf.buf = append(head, buf.buf[buf.next():]...)
 }

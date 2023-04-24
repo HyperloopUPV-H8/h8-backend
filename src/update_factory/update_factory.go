@@ -24,7 +24,7 @@ const ORDER_LO_LIMIT = 1
 type UpdateFactory struct {
 	count           map[uint16]uint64
 	averageMx       *sync.Mutex
-	cycleTimeAvg    map[uint16]*common.MovingAverage[uint64]
+	cycleTimeAvg    map[uint16]*common.MovingAverage[float64]
 	timestamp       map[uint16]uint64
 	fieldAvg        map[uint16]map[string]*common.MovingAverage[float64]
 	countMx         *sync.Mutex
@@ -38,7 +38,7 @@ func NewFactory() *UpdateFactory {
 	factory := &UpdateFactory{
 		count:           make(map[uint16]uint64),
 		averageMx:       &sync.Mutex{},
-		cycleTimeAvg:    make(map[uint16]*common.MovingAverage[uint64]),
+		cycleTimeAvg:    make(map[uint16]*common.MovingAverage[float64]),
 		timestamp:       make(map[uint16]uint64),
 		fieldAvg:        make(map[uint16]map[string]*common.MovingAverage[float64]),
 		countMx:         &sync.Mutex{},
@@ -170,7 +170,7 @@ func (factory *UpdateFactory) getAverage(id uint16, name string) *common.MovingA
 func (factory *UpdateFactory) getCycleTime(id uint16, timestamp uint64) uint64 {
 	average, ok := factory.cycleTimeAvg[id]
 	if !ok {
-		average = common.NewMovingAverage[uint64](DEFAULT_ORDER)
+		average = common.NewMovingAverage[float64](DEFAULT_ORDER)
 		factory.cycleTimeAvg[id] = average
 	}
 
@@ -183,7 +183,6 @@ func (factory *UpdateFactory) getCycleTime(id uint16, timestamp uint64) uint64 {
 	cycleTime := timestamp - last
 	factory.timestamp[id] = timestamp
 
-	ctAvg := average.Add(cycleTime)
-	fmt.Println(ctAvg, cycleTime)
-	return ctAvg
+	ctAvg := average.Add((float64)(cycleTime))
+	return uint64(ctAvg)
 }
