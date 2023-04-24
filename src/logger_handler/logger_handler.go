@@ -132,9 +132,11 @@ func startBroadcastRoutine(activeLoggers []ActiveLogger, generalInput <-chan Log
 		}
 	}
 
-	for _, logger := range activeLoggers {
-		close(logger.Input) // loggers should clean up after channel has been closed
-	}
+	defer func() {
+		for _, logger := range activeLoggers {
+			close(logger.Input)
+		}
+	}()
 }
 
 func (handler *LoggerHandler) stop() {
@@ -151,10 +153,13 @@ func (handler *LoggerHandler) NotifyDisconnect(session string) {
 	}
 }
 
-func (handler *LoggerHandler) notifyState() {
+func (handler *LoggerHandler) notifyState() error {
 	if err := handler.sendMessage(handler.config.Topics.State, handler.isRunning); err != nil {
 		handler.trace.Error().Stack().Err(err).Msg("")
+		return err
 	}
+
+	return nil
 }
 
 func (handler *LoggerHandler) SetSendMessage(sendMessage func(topic string, payload any, target ...string) error) {

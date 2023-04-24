@@ -2,7 +2,6 @@ package packet_logger
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/packet"
 	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
@@ -31,30 +30,5 @@ func ToLoggablePacket(update vehicle_models.PacketUpdate) LoggablePacket {
 	return LoggablePacket{
 		Metadata: update.Metadata,
 		HexValue: update.HexValue,
-	}
-}
-
-type LoggableValue struct {
-	ValueId   string
-	Value     packet.Value
-	Timestamp time.Time // la del PacketUpdate
-}
-
-func (value LoggableValue) Id() string {
-	return value.ValueId
-}
-
-func (value LoggableValue) Log() []string {
-	return []string{
-		value.Timestamp.String(),
-		fmt.Sprintf("%v", value.Value),
-	}
-}
-
-func ToLoggableValue(id string, value packet.Value, timestamp time.Time) LoggableValue {
-	return LoggableValue{
-		ValueId:   id,
-		Value:     value,
-		Timestamp: timestamp,
 	}
 }

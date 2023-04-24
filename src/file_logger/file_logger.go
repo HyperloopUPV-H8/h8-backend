@@ -22,7 +22,6 @@ type Config struct {
 }
 
 func NewFileLogger(name string, ids common.Set[string], config Config) FileLogger {
-
 	trace := trace.With().Str("component", name).Logger()
 
 	flushInterval, err := time.ParseDuration(config.FlushInterval)
