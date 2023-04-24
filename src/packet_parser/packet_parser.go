@@ -3,6 +3,7 @@ package packet_parser
 import (
 	"bytes"
 	"io"
+	"math"
 	"strconv"
 	"strings"
 
@@ -144,5 +145,35 @@ func (parser PacketParser) encodeValue(desc models.ValueDescriptor, value any, w
 		internals.EncodeString(writer, value.(string))
 	default:
 		internals.EncodeNumber(writer, desc.Type, value.(float64))
+	}
+}
+
+func (parser PacketParser) CreateBitArray(id uint16, enableMap map[string]bool) []byte {
+	mapLength := float64(len(enableMap))
+	bitArray := make([]byte, int(math.Ceil(mapLength/8)))
+
+	i := 0
+	for _, valueDescriptor := range parser.descriptors[id] {
+		var value int
+
+		if enableMap[valueDescriptor.ID] {
+			value = 1
+		} else {
+			value = 0
+		}
+
+		bitArray[i/8] = setBit(bitArray[i/8], i%8, value)
+		i++
+	}
+
+	return bitArray
+}
+
+func setBit(word byte, bit int, value int) byte {
+	// FIXME: this might not work, we need to test the bit order
+	if value == 1 {
+		return word | (0b10000000 >> bit)
+	} else {
+		return word & ^(0b10000000 >> bit)
 	}
 }
