@@ -9,3 +9,6 @@ type Field struct {
 	Value     any  `json:"value"`
 	IsEnabled bool `json:"isEnabled"`
 }
+
+type EmittedOrder struct {
+}

@@ -1,12 +1,12 @@
 package common
 
 type Set[T comparable] struct {
-	set map[T]any
+	set map[T]struct{}
 }
 
 func NewSet[T comparable]() Set[T] {
 	return Set[T]{
-		set: make(map[T]any),
+		set: make(map[T]struct{}),
 	}
 }
 

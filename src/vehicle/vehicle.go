@@ -1,126 +1,189 @@
 package vehicle
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
-	"log"
-	"sync"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
-	"github.com/HyperloopUPV-H8/Backend-H8/message_parser"
-	"github.com/HyperloopUPV-H8/Backend-H8/packet_parser"
+	"github.com/HyperloopUPV-H8/Backend-H8/packet"
 	"github.com/HyperloopUPV-H8/Backend-H8/pipe"
 	"github.com/HyperloopUPV-H8/Backend-H8/sniffer"
 	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter"
-	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/internals"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
+	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/packet_parser"
 	"github.com/rs/zerolog"
 )
 
 type Vehicle struct {
-	sniffer          sniffer.Sniffer
-	parser           packet_parser.PacketParser
-	messageParser    message_parser.MessageParser
+	sniffer sniffer.Sniffer
+	pipes   map[string]*pipe.Pipe
+
 	displayConverter unit_converter.UnitConverter
 	podConverter     unit_converter.UnitConverter
-	pipes            map[string]*pipe.Pipe
 
-	packetFactory internals.UpdateFactory
+	packetParser     packet_parser.PacketParser
+	protectionParser ProtectionParser
+	bitarrayParser   BitarrayParser
 
-	updateChan  chan []byte
-	messageChan chan []byte
+	dataChan chan packet.Packet
 
 	idToBoard map[uint16]string
 
-	stats              Stats
-	statsMx            *sync.Mutex
 	onConnectionChange func(string, bool)
 
 	trace zerolog.Logger
 }
 
-func (vehicle *Vehicle) Listen(updateChan chan<- models.Update, messagesChan chan<- interface{}) {
-	vehicle.trace.Info().Msg("start listening")
-	go func() {
-		for raw := range vehicle.updateChan {
-			rawCopy := make([]byte, len(raw))
-			copy(rawCopy, raw)
+func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, protectionChan chan<- models.Protection) {
+	vehicle.trace.Debug().Msg("vehicle listening")
+	for packet := range vehicle.dataChan {
+		payloadCopy := make([]byte, len(packet.Payload))
+		copy(payloadCopy, packet.Payload)
 
-			id, fields := vehicle.parser.Decode(rawCopy)
-			fields = vehicle.podConverter.Revert(fields)
-			fields = vehicle.displayConverter.Convert(fields)
+		//TODO: add order decoding
+		switch id := packet.Metadata.ID; {
+		case vehicle.packetParser.Ids.Has(id):
+			update, err := vehicle.getUpdate(packet)
 
-			update := vehicle.packetFactory.NewUpdate(id, rawCopy, fields)
-			vehicle.statsMx.Lock()
-			vehicle.stats.recv++
-			vehicle.statsMx.Unlock()
-
-			vehicle.trace.Trace().Msg("read")
-			updateChan <- update
-		}
-	}()
-
-	go func() {
-		for raw := range vehicle.messageChan {
-			msg, err := vehicle.messageParser.Parse(raw)
 			if err != nil {
-				vehicle.trace.Error().Stack().Err(err).Str("raw", fmt.Sprintf("%#v", string(raw))).Msg("parse message")
+				vehicle.trace.Error().Err(err).Msg("error decoding packet")
 				continue
 			}
-			messagesChan <- msg
-		}
-	}()
+			updateChan <- update
+		case vehicle.protectionParser.Ids.Has(id):
+			protection, err := vehicle.protectionParser.Parse(id, packet.Payload)
 
+			if err != nil {
+				vehicle.trace.Error().Err(err).Msg("error decoding protection")
+				continue
+			}
+			protectionChan <- protection
+		default:
+			vehicle.trace.Error().Uint16("id", packet.Metadata.ID).Msg("raw id not recognized")
+		}
+
+	}
 }
 
 func (vehicle *Vehicle) SendOrder(order models.Order) error {
 	vehicle.trace.Info().Uint16("id", order.ID).Msg("send order")
-	pipe, ok := vehicle.pipes[vehicle.idToBoard[order.ID]]
-	if !ok {
-		err := fmt.Errorf("%s pipe for %d not found", vehicle.idToBoard[order.ID], order.ID)
-		vehicle.trace.Error().Stack().Err(err).Msg("")
+	pipe, err := vehicle.getPipe(order.ID)
+
+	if err != nil {
+		vehicle.trace.Error().Err(err).Msg("error getting pipe")
 		return err
 	}
 
-	valuesMap := fieldsValuesToMap(order.Fields)
-	valuesMap = vehicle.displayConverter.Revert(valuesMap)
-	valuesMap = vehicle.podConverter.Convert(valuesMap)
+	values := getOrderValues(order, vehicle.trace)
+	convertedValues := vehicle.applyUnitConversion(values)
 
-	valuesRaw := vehicle.parser.Encode(order.ID, valuesMap)
-	bitArray := vehicle.parser.CreateBitArray(order.ID, fieldsEnableToMap(order.Fields))
-	fullRaw := append(valuesRaw, bitArray...)
-	log.Println("fullRaw", fullRaw)
+	buf := new(bytes.Buffer)
 
-	_, err := common.WriteAll(pipe, fullRaw)
+	idBuf := make([]byte, 2)
+	binary.LittleEndian.PutUint16(idBuf, order.ID)
 
-	vehicle.statsMx.Lock()
-	defer vehicle.statsMx.Unlock()
-
-	if err == nil {
-		vehicle.stats.sent++
-	} else {
-		vehicle.trace.Error().Stack().Err(err).Msg("")
-		vehicle.stats.sentFail++
+	err = vehicle.packetParser.Encode(order.ID, convertedValues, buf)
+	if err != nil {
+		vehicle.trace.Error().Err(err).Msg("error encoding order")
+		return err
 	}
+
+	enableBuf := new(bytes.Buffer)
+	vehicle.bitarrayParser.encodeBitarray(getOrderEnables(order), enableBuf)
+
+	bufWithoutBitarray := append(idBuf, buf.Bytes()...)
+	// fullBuf := append(bufWithoutBitarray, enableBuf.Bytes()...)
+
+	_, err = common.WriteAll(pipe, bufWithoutBitarray)
 
 	return err
 }
 
-func fieldsValuesToMap(fields map[string]models.Field) map[string]any {
-	valuesMap := make(map[string]any)
+func (vehicle *Vehicle) getUpdate(packet packet.Packet) (models.PacketUpdate, error) {
+	update, err := vehicle.packetParser.Decode(packet.Metadata.ID, packet.Payload, packet.Metadata)
 
-	for name, field := range fields {
-		valuesMap[name] = field.Value
+	if err != nil {
+		return models.PacketUpdate{}, nil
 	}
 
-	return valuesMap
+	convertedValues := vehicle.applyUnitConversion(update.Values)
+	update.Values = convertedValues
+
+	return update, nil
 }
 
-func fieldsEnableToMap(fields map[string]models.Field) map[string]bool {
-	enableMap := make(map[string]bool)
+func (vehicle *Vehicle) applyUnitConversion(values map[string]packet.Value) map[string]packet.Value {
+	newValues := make(map[string]packet.Value)
 
-	for name, field := range fields {
-		enableMap[name] = field.IsEnabled
+	for name, value := range values {
+		switch typedValue := value.(type) {
+		case packet.Numeric:
+			newValues[name] = vehicle.applyNumericConversion(name, float64(typedValue))
+		default:
+			newValues[name] = typedValue
+		}
 	}
 
-	return enableMap
+	return newValues
+}
+
+func (vehicle *Vehicle) applyNumericConversion(name string, value float64) packet.Numeric {
+	valueInSIUnits, podErr := vehicle.podConverter.Revert(name, value)
+
+	if podErr != nil {
+		vehicle.trace.Error().Err(podErr).Msg("error reverting podUnits")
+	}
+
+	valueInDisplayUnits, displayErr := vehicle.displayConverter.Convert(name, valueInSIUnits)
+
+	if displayErr != nil {
+		vehicle.trace.Error().Err(displayErr).Msg("error converting to displayUnits")
+
+	}
+
+	return packet.Numeric(valueInDisplayUnits)
+}
+
+func (vehicle *Vehicle) getPipe(id uint16) (*pipe.Pipe, error) {
+	board, ok := vehicle.idToBoard[id]
+	if !ok {
+		return nil, fmt.Errorf("board for id %d not found", id)
+	}
+
+	pipe, ok := vehicle.pipes[board]
+	if !ok {
+		return nil, fmt.Errorf("pipe for board %s not found", board)
+	}
+
+	return pipe, nil
+}
+
+func getOrderValues(order models.Order, trace zerolog.Logger) map[string]packet.Value {
+	values := make(map[string]packet.Value)
+
+	for name, field := range order.Fields {
+		switch value := field.Value.(type) {
+		case float64:
+			values[name] = packet.Numeric(value)
+		case bool:
+			values[name] = packet.Boolean(value)
+		case string:
+			values[name] = packet.Enum(value)
+		default:
+			trace.Error().Str("name", name).Type("type", field.Value).Msg("order field value not recognized")
+		}
+	}
+
+	return values
+}
+
+func getOrderEnables(order models.Order) map[string]bool {
+	enables := make(map[string]bool, 0)
+
+	for name, field := range order.Fields {
+		enables[name] = field.IsEnabled
+	}
+
+	return enables
 }
