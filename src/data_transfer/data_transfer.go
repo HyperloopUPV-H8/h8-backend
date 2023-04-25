@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
+	"github.com/HyperloopUPV-H8/Backend-H8/update_factory/models"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )

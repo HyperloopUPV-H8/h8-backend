@@ -2,20 +2,38 @@ package common
 
 type MovingAverage[N Numeric] struct {
 	buf     RingBuf[N]
+	elems   int
 	currAvg N
 }
 
-func NewMovingAverage[N Numeric](order uint) MovingAverage[N] {
-	return MovingAverage[N]{
+func NewMovingAverage[N Numeric](order uint) *MovingAverage[N] {
+	return &MovingAverage[N]{
 		buf:     NewRingBuf[N]((int)(order)),
+		elems:   0,
 		currAvg: 0,
 	}
 }
 
 func (avg *MovingAverage[N]) Add(value N) N {
-	avg.currAvg += value / N(avg.buf.Len())
-	avg.currAvg -= avg.buf.Add(value) / N(avg.buf.Len())
+	if avg.elems > avg.Order() {
+		avg.elems = avg.Order()
+	}
+
+	if avg.elems == avg.Order() {
+		rem := avg.buf.Add(value)
+		avg.currAvg -= rem / N(avg.Order())
+		avg.currAvg += value / N(avg.Order())
+	} else {
+		avg.addElem(value)
+	}
 	return avg.currAvg
+}
+
+func (avg *MovingAverage[N]) addElem(value N) {
+	prevElems := avg.elems
+	avg.elems += 1
+	avg.buf.Add(value)
+	avg.currAvg = (N(prevElems)*avg.currAvg + value) / N(avg.elems)
 }
 
 func (avg *MovingAverage[N]) Order() int {
@@ -43,11 +61,7 @@ func (avg *MovingAverage[N]) Shrink(amount uint) N {
 }
 
 func (avg *MovingAverage[N]) Grow(amount uint) N {
-	avg.currAvg *= N(avg.Order())
-	for _, added := range avg.buf.Grow(amount) {
-		avg.currAvg += added
-	}
-	avg.currAvg /= N(avg.Order())
+	avg.buf.Grow(amount)
 
 	return avg.currAvg
 }

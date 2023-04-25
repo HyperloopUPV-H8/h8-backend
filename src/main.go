@@ -6,17 +6,21 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
-	"time"
+	"strings"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/blcu"
+	blcuPackage "github.com/HyperloopUPV-H8/Backend-H8/blcu"
 	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter"
-	loggerPackage "github.com/HyperloopUPV-H8/Backend-H8/logger"
-	message_parser_models "github.com/HyperloopUPV-H8/Backend-H8/message_parser/models"
+	"github.com/HyperloopUPV-H8/Backend-H8/logger_handler"
 	"github.com/HyperloopUPV-H8/Backend-H8/message_transfer"
+	"github.com/HyperloopUPV-H8/Backend-H8/order_logger"
 	"github.com/HyperloopUPV-H8/Backend-H8/order_transfer"
+	"github.com/HyperloopUPV-H8/Backend-H8/packet_logger"
+	"github.com/HyperloopUPV-H8/Backend-H8/protection_logger"
 	"github.com/HyperloopUPV-H8/Backend-H8/server"
+	"github.com/HyperloopUPV-H8/Backend-H8/update_factory"
+	"github.com/HyperloopUPV-H8/Backend-H8/value_logger"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle"
 	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/websocket_broker"
@@ -45,69 +49,63 @@ func main() {
 
 	podData := vehicle_models.NewPodData(boards)
 	orderData := vehicle_models.NewOrderData(boards)
-	blcu := blcu.NewBLCU(globalInfo, config.BLCU)
+	blcu := blcuPackage.NewBLCU(globalInfo, config.BLCU)
+	uploadableBoards := blcuPackage.GetUploadableBoards(globalInfo, config.Excel.Parse.Global.BLCUAddressKey)
 
-	vehicle := vehicle.NewVehicle(boards, globalInfo, config.Vehicle, connectionTransfer.Update)
-	vehicleUpdates := make(chan vehicle_models.Update)
-	vehicleMessages := make(chan interface{})
-	go vehicle.Listen(vehicleUpdates, vehicleMessages)
+	vehicle := vehicle.New(vehicle.VehicleConstructorArgs{
+		Config:             config.Vehicle,
+		Boards:             boards,
+		GlobalInfo:         globalInfo,
+		OnConnectionChange: connectionTransfer.Update,
+	})
+	vehicleUpdates := make(chan vehicle_models.PacketUpdate, 1)
+	vehicleProtections := make(chan vehicle_models.Protection)
+	// vehicleOrders := make(chan packet.Packet)
+	go vehicle.Listen(vehicleUpdates, vehicleProtections)
 
 	dataTransfer := data_transfer.New(config.DataTransfer)
 	go dataTransfer.Run()
 
 	messageTransfer := message_transfer.New(config.Messages)
 	orderTransfer, orderChannel := order_transfer.New()
-	logger := loggerPackage.New(config.Logger)
-	go logger.Listen()
 
-	// Communication with front-end
+	packetLogger := packet_logger.NewPacketLogger(boards, config.PacketLogger)
+	valueLogger := value_logger.NewValueLogger(boards, config.ValueLogger)
+	orderLogger := order_logger.NewOrderLogger(boards, config.OrderLogger)
+	protectionLogger := protection_logger.NewProtectionLogger(config.Vehicle.Protections.FaultIdKey, config.Vehicle.Protections.WarningIdKey, config.ProtectionLogger)
+
+	loggers := map[string]logger_handler.Logger{
+		"packets":     &packetLogger,
+		"values":      &valueLogger,
+		"orders":      &orderLogger,
+		"protections": &protectionLogger,
+	}
+
+	loggerHandler := logger_handler.NewLoggerHandler(loggers, config.LoggerHandler)
+
 	websocketBroker := websocket_broker.New()
 	defer websocketBroker.Close()
 
 	websocketBroker.RegisterHandle(&blcu, config.BLCU.Topics.Upload, config.BLCU.Topics.Download)
 	websocketBroker.RegisterHandle(&connectionTransfer, config.Connections.UpdateTopic)
 	websocketBroker.RegisterHandle(&dataTransfer)
-	websocketBroker.RegisterHandle(&logger, config.Logger.Topics.Enable, config.Logger.Topics.State)
+	websocketBroker.RegisterHandle(&loggerHandler, config.LoggerHandler.Topics.Enable, config.LoggerHandler.Topics.State)
 	websocketBroker.RegisterHandle(&messageTransfer)
 	websocketBroker.RegisterHandle(&orderTransfer, config.Orders.SendTopic)
 
-	idToType := getIdToType(podData)
-	go func() {
-		for update := range vehicleUpdates {
-			logger.Updates <- update
-			if idToType[update.ID] == "data" {
-				dataTransfer.Update(update)
-			}
-		}
-	}()
+	go startPacketUpdateRoutine(vehicleUpdates, &dataTransfer, &loggerHandler)
+	go startProtectionsRoutine(vehicleProtections, &messageTransfer, &loggerHandler)
+	go startOrderRoutine(orderChannel, &vehicle, &loggerHandler)
+
+	// go func() {
+	// 	for packet := range vehicleOrders {
+	// 		logger.Update(packet)
+	// 	}
+	// }()
 
 	go func() {
 		for id := range websocketBroker.CloseChan {
-			logger.Enable <- loggerPackage.EnableMsg{
-				Client: id,
-				Enable: false,
-			}
-		}
-	}()
-
-	go func() {
-		for message := range vehicleMessages {
-			switch m := message.(type) {
-			case message_parser_models.ProtectionMessage:
-				err := messageTransfer.SendMessage(m)
-
-				if err != nil {
-					trace.Error().Err(err).Stack().Msg("error sending message")
-				}
-			case message_parser_models.BLCU_ACK:
-				blcu.HandleACK()
-			}
-		}
-	}()
-
-	go func() {
-		for order := range orderChannel {
-			vehicle.SendOrder(order)
+			loggerHandler.NotifyDisconnect(id)
 		}
 	}()
 
@@ -115,6 +113,7 @@ func main() {
 
 	httpServer.ServeData("/backend"+config.Server.Endpoints.PodData, podData)
 	httpServer.ServeData("/backend"+config.Server.Endpoints.OrderData, orderData)
+	httpServer.ServeData("/backend"+config.Server.Endpoints.UploadableBoards, uploadableBoards)
 
 	httpServer.HandleFunc(config.Server.Endpoints.Websocket, websocketBroker.HandleConn)
 
@@ -128,35 +127,41 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-loop:
-	for {
-		select {
-		case <-time.After(time.Second * 10):
-			trace.Trace().Any("stats", vehicle.Stats()).Msg("stats")
-		case <-interrupt:
-			break loop
+	<-interrupt
+}
+
+func startPacketUpdateRoutine(vehicleUpdates <-chan vehicle_models.PacketUpdate, dataTransfer *data_transfer.DataTransfer, loggerHandler *logger_handler.LoggerHandler) {
+	updateFactory := update_factory.NewFactory()
+
+	for packetUpdate := range vehicleUpdates {
+		update := updateFactory.NewUpdate(packetUpdate)
+		dataTransfer.Update(update)
+
+		loggerHandler.Log(packet_logger.ToLoggablePacket(packetUpdate))
+
+		for id, value := range packetUpdate.Values {
+			loggerHandler.Log(value_logger.ToLoggableValue(id, value, packetUpdate.Metadata.Timestamp))
 		}
 	}
 }
 
-func getIdToType(podData vehicle_models.PodData) map[uint16]string {
-	idToType := make(map[uint16]string)
-	for _, brd := range podData.Boards {
-		for _, pkt := range brd.Packets {
-			idToType[pkt.ID] = "data"
-		measurements_loop:
-			for msr := range pkt.Measurements {
-				if msr == "warning" {
-					idToType[pkt.ID] = "warning"
-					break measurements_loop
-				} else if msr == "fault" {
-					idToType[pkt.ID] = "fault"
-					break measurements_loop
-				}
-			}
-		}
+func startProtectionsRoutine(vehicleProtections <-chan vehicle_models.Protection, messageTransfer *message_transfer.MessageTransfer, loggerHandler *logger_handler.LoggerHandler) {
+	for protection := range vehicleProtections {
+		messageTransfer.SendMessage(protection)
+		loggerHandler.Log(protection_logger.LoggableProtection(protection))
 	}
-	return idToType
+}
+
+func startOrderRoutine(orderChannel <-chan vehicle_models.Order, vehicle *vehicle.Vehicle, loggerHandler *logger_handler.LoggerHandler) {
+	for ord := range orderChannel {
+		err := vehicle.SendOrder(ord)
+
+		if err != nil {
+			trace.Error().Any("order", ord).Msg("error sending order")
+		}
+
+		loggerHandler.Log(order_logger.LoggableOrder(ord))
+	}
 }
 
 func getConfig(path string) Config {
@@ -166,11 +171,15 @@ func getConfig(path string) Config {
 		trace.Fatal().Stack().Err(fileErr).Msg("error reading config file")
 	}
 
-	var config Config
-	unmarshalErr := toml.Unmarshal(configFile, &config)
+	reader := strings.NewReader(string(configFile))
 
-	if unmarshalErr != nil {
-		trace.Fatal().Stack().Err(unmarshalErr).Msg("error unmarshaling toml file")
+	var config Config
+
+	// decodeErr := toml.NewDecoder(reader).DisallowUnknownFields().Decode(&config)
+	decodeErr := toml.NewDecoder(reader).Decode(&config)
+
+	if decodeErr != nil {
+		trace.Fatal().Stack().Err(decodeErr).Msg("error unmarshaling toml file")
 	}
 
 	return config

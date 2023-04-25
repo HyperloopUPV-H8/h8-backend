@@ -16,7 +16,8 @@ tcp_client_tag = "TCP_CLIENT"
 tcp_server_tag = "TCP_SERVER"
 udp_tag = "UDP"
 # sniffer = { mtu = 1500, interface = "lo" }
-sniffer = { mtu = 1500, interface = "\\Device\\NPF_Loopback" }
+mtu = 1500
+interface = "\\Device\\NPF_Loopback"
 # blcu_ack_id = "blcu_ack"
 
 [vehicle.protections]
