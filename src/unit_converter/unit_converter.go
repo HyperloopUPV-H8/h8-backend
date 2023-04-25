@@ -1,6 +1,7 @@
 package unit_converter
 
 import (
+	"fmt"
 	"strings"
 
 	excelAdapterModels "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
@@ -57,28 +58,24 @@ func getCustomOperations(operationsStr string) string {
 	return strings.Split(operationsStr, "#")[1]
 }
 
-func (converter *UnitConverter) Convert(values map[string]any) map[string]any {
-	convertedValues := make(map[string]any, len(values))
-	for name, value := range values {
-		if ops, ok := converter.operations[name]; ok {
-			convertedValues[name] = ops.Convert(value.(float64))
-		} else {
-			convertedValues[name] = value
-		}
+func (converter *UnitConverter) Convert(name string, value float64) (float64, error) {
+	ops, ok := converter.operations[name]
+	if ok {
+		converter.trace.Trace().Msg("convert")
+		return ops.Convert(value), nil
+	} else {
+		converter.trace.Error().Str("name", name).Msg("operations not found")
+		return 0, fmt.Errorf("couldn't find operations for %s", name)
 	}
-	converter.trace.Trace().Msg("convert")
-	return convertedValues
 }
 
-func (converter *UnitConverter) Revert(values map[string]any) map[string]any {
-	convertedValues := make(map[string]any, len(values))
-	for name, value := range values {
-		if ops, ok := converter.operations[name]; ok {
-			convertedValues[name] = ops.Revert(value.(float64))
-		} else {
-			convertedValues[name] = value
-		}
+func (converter *UnitConverter) Revert(name string, value float64) (float64, error) {
+	ops, ok := converter.operations[name]
+	if ok {
+		converter.trace.Trace().Msg("convert")
+
+		return ops.Revert(value), nil
+	} else {
+		return 0, fmt.Errorf("couldn't find operations for %s", name)
 	}
-	converter.trace.Trace().Msg("convert")
-	return convertedValues
 }

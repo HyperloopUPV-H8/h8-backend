@@ -3,7 +3,6 @@ package vehicle
 import (
 	"fmt"
 	"io"
-	"log"
 )
 
 type BitarrayParser struct {
@@ -72,11 +71,11 @@ func (parser *BitarrayParser) Encode(id uint16, enabled map[string]bool, data io
 		return fmt.Errorf("invalid value count %d/%d", len(enabled), len(names))
 	}
 
-	return parser.encodeBitarray(enabled, names, data)
+	return parser.encodeBitarray(enabled, data)
 }
 
-func (encoder *BitarrayParser) encodeBitarray(enabled map[string]bool, names []string, data io.Writer) error {
-	buf := writeBits(enabled, names)
+func (encoder *BitarrayParser) encodeBitarray(nameToEnable map[string]bool, data io.Writer) error {
+	buf := writeBits(nameToEnable)
 
 	n, err := data.Write(buf)
 	if err != nil {
@@ -90,13 +89,14 @@ func (encoder *BitarrayParser) encodeBitarray(enabled map[string]bool, names []s
 	return nil
 }
 
-func writeBits(enabled map[string]bool, names []string) []byte {
-	buf := make([]byte, (len(enabled)/8)+1)
-	for i, name := range names {
-		log.Println(name)
-		if enabled[name] {
+func writeBits(nameToEnable map[string]bool) []byte {
+	buf := make([]byte, (len(nameToEnable)/8)+1)
+	i := 0
+	for _, enabled := range nameToEnable {
+		if enabled {
 			buf[i/8] |= 0b10000000 >> (i % 8)
 		}
+		i++
 	}
 	return buf
 }

@@ -1,11 +1,13 @@
 package pipe
 
 import (
+	"encoding/binary"
 	"errors"
 	"net"
+	"time"
 
+	"github.com/HyperloopUPV-H8/Backend-H8/packet"
 	"github.com/rs/zerolog"
-	trace "github.com/rs/zerolog/log"
 )
 
 type Pipe struct {
@@ -17,45 +19,12 @@ type Pipe struct {
 	isClosed bool
 	mtu      int
 
-	output             chan<- []byte
+	output             chan<- packet.Packet
 	onConnectionChange func(bool)
 
 	trace zerolog.Logger
 }
 
-func New(laddr string, raddr string, mtu uint, outputChan chan []byte, onConnectionChange func(bool)) (*Pipe, error) {
-	trace.Info().Str("laddr", laddr).Str("raddr", raddr).Msg("new pipe")
-	localAddr, err := net.ResolveTCPAddr("tcp", laddr)
-	if err != nil {
-		trace.Error().Str("laddr", laddr).Stack().Err(err).Msg("")
-		return nil, err
-	}
-
-	remoteAddr, err := net.ResolveTCPAddr("tcp", raddr)
-	if err != nil {
-		trace.Error().Str("raddr", raddr).Stack().Err(err).Msg("")
-		return nil, err
-	}
-
-	pipe := &Pipe{
-		laddr:  localAddr,
-		raddr:  remoteAddr,
-		output: outputChan,
-
-		isClosed: true,
-		mtu:      int(mtu),
-
-		onConnectionChange: onConnectionChange,
-
-		trace: trace.With().Str("component", "pipe").IPAddr("addr", remoteAddr.IP).Logger(),
-	}
-
-	go pipe.connect()
-
-	return pipe, nil
-}
-
-// FIXME: si las placas no cierran la conexión bien, el back peta (hacer prueba con board_conn)
 func (pipe *Pipe) connect() {
 	pipe.trace.Debug().Msg("connecting")
 	for pipe.isClosed {
@@ -95,7 +64,20 @@ func (pipe *Pipe) listen() {
 		}
 
 		pipe.trace.Trace().Msg("new message")
-		pipe.output <- buffer[:n]
+
+		raw := pipe.getRaw(buffer[:n])
+
+		pipe.output <- raw
+	}
+}
+
+var syntheticSeqNum uint32 = 0
+
+func (pipe *Pipe) getRaw(payload []byte) packet.Packet {
+	syntheticSeqNum++
+	return packet.Packet{
+		Metadata: packet.NewMetaData(pipe.raddr.String(), pipe.laddr.String(), binary.LittleEndian.Uint16(payload[0:2]), syntheticSeqNum, time.Now()),
+		Payload:  payload[2:],
 	}
 }
 
@@ -121,4 +103,12 @@ func (pipe *Pipe) Close(reconnect bool) error {
 		go pipe.connect()
 	}
 	return err
+}
+
+func (pipe *Pipe) Laddr() string {
+	return pipe.laddr.String()
+}
+
+func (pipe *Pipe) Raddr() string {
+	return pipe.raddr.String()
 }

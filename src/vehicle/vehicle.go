@@ -37,26 +37,22 @@ type Vehicle struct {
 
 func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, protectionChan chan<- models.Protection) {
 	vehicle.trace.Debug().Msg("vehicle listening")
-	for raw := range vehicle.dataChan {
-		payloadCopy := make([]byte, len(raw.Payload))
-		copy(payloadCopy, raw.Payload)
+	for packet := range vehicle.dataChan {
+		payloadCopy := make([]byte, len(packet.Payload))
+		copy(payloadCopy, packet.Payload)
 
-		switch id := raw.Metadata.ID; {
+		//TODO: add order decoding
+		switch id := packet.Metadata.ID; {
 		case vehicle.packetParser.Ids.Has(id):
-			update, err := vehicle.packetParser.Decode(id, raw.Payload, raw.Metadata)
+			update, err := vehicle.getUpdate(packet)
 
 			if err != nil {
 				vehicle.trace.Error().Err(err).Msg("error decoding packet")
 				continue
 			}
-
-			convertedValues := vehicle.applyUnitConversion(update.Values)
-			update.Values = convertedValues
-
 			updateChan <- update
-
 		case vehicle.protectionParser.Ids.Has(id):
-			protection, err := vehicle.protectionParser.Parse(id, raw.Payload)
+			protection, err := vehicle.protectionParser.Parse(id, packet.Payload)
 
 			if err != nil {
 				vehicle.trace.Error().Err(err).Msg("error decoding protection")
@@ -64,7 +60,7 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, protection
 			}
 			protectionChan <- protection
 		default:
-			fmt.Println("UNEXPECTED VALUE")
+			vehicle.trace.Error().Uint16("id", packet.Metadata.ID).Msg("raw id not recognized")
 		}
 
 	}
@@ -93,11 +89,28 @@ func (vehicle *Vehicle) SendOrder(order models.Order) error {
 		return err
 	}
 
-	fullBuf := append(idBuf, buf.Bytes()...)
+	enableBuf := new(bytes.Buffer)
+	vehicle.bitarrayParser.encodeBitarray(getOrderEnables(order), enableBuf)
 
-	_, err = common.WriteAll(pipe, fullBuf)
+	bufWithoutBitarray := append(idBuf, buf.Bytes()...)
+	// fullBuf := append(bufWithoutBitarray, enableBuf.Bytes()...)
+
+	_, err = common.WriteAll(pipe, bufWithoutBitarray)
 
 	return err
+}
+
+func (vehicle *Vehicle) getUpdate(packet packet.Packet) (models.PacketUpdate, error) {
+	update, err := vehicle.packetParser.Decode(packet.Metadata.ID, packet.Payload, packet.Metadata)
+
+	if err != nil {
+		return models.PacketUpdate{}, nil
+	}
+
+	convertedValues := vehicle.applyUnitConversion(update.Values)
+	update.Values = convertedValues
+
+	return update, nil
 }
 
 func (vehicle *Vehicle) applyUnitConversion(values map[string]packet.Value) map[string]packet.Value {
@@ -106,26 +119,30 @@ func (vehicle *Vehicle) applyUnitConversion(values map[string]packet.Value) map[
 	for name, value := range values {
 		switch typedValue := value.(type) {
 		case packet.Numeric:
-			valueInSIUnits, podErr := vehicle.podConverter.Revert(name, float64(typedValue))
-
-			if podErr != nil {
-				vehicle.trace.Error().Err(podErr).Msg("error reverting podUnits")
-			}
-
-			valueInDisplayUnits, displayErr := vehicle.displayConverter.Convert(name, valueInSIUnits)
-
-			if displayErr != nil {
-				vehicle.trace.Error().Err(displayErr).Msg("error converting to displayUnits")
-
-			}
-
-			newValues[name] = packet.Numeric(valueInDisplayUnits)
+			newValues[name] = vehicle.applyNumericConversion(name, float64(typedValue))
 		default:
 			newValues[name] = typedValue
 		}
 	}
 
 	return newValues
+}
+
+func (vehicle *Vehicle) applyNumericConversion(name string, value float64) packet.Numeric {
+	valueInSIUnits, podErr := vehicle.podConverter.Revert(name, value)
+
+	if podErr != nil {
+		vehicle.trace.Error().Err(podErr).Msg("error reverting podUnits")
+	}
+
+	valueInDisplayUnits, displayErr := vehicle.displayConverter.Convert(name, valueInSIUnits)
+
+	if displayErr != nil {
+		vehicle.trace.Error().Err(displayErr).Msg("error converting to displayUnits")
+
+	}
+
+	return packet.Numeric(valueInDisplayUnits)
 }
 
 func (vehicle *Vehicle) getPipe(id uint16) (*pipe.Pipe, error) {
@@ -154,18 +171,18 @@ func getOrderValues(order models.Order, trace zerolog.Logger) map[string]packet.
 		case string:
 			values[name] = packet.Enum(value)
 		default:
-			trace.Error().Msg("order field value not recognized")
+			trace.Error().Str("name", name).Type("type", field.Value).Msg("order field value not recognized")
 		}
 	}
 
 	return values
 }
 
-func getOrderEnables(order models.Order) []bool {
-	enables := make([]bool, 0)
+func getOrderEnables(order models.Order) map[string]bool {
+	enables := make(map[string]bool, 0)
 
-	for _, field := range order.Fields {
-		enables = append(enables, field.IsEnabled)
+	for name, field := range order.Fields {
+		enables[name] = field.IsEnabled
 	}
 
 	return enables

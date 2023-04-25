@@ -1,7 +1,6 @@
 package vehicle
 
 import (
-	"github.com/HyperloopUPV-H8/Backend-H8/sniffer"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/packet_parser"
 )
 
@@ -12,10 +11,11 @@ type Config struct {
 }
 
 type NetworkConfig struct {
-	TcpClientTag string         `toml:"tcp_client_tag"`
-	TcpServerTag string         `toml:"tcp_server_tag"`
-	UdpTag       string         `toml:"udp_tag"`
-	Sniffer      sniffer.Config `toml:"sniffer"`
+	TcpClientTag string `toml:"tcp_client_tag"`
+	TcpServerTag string `toml:"tcp_server_tag"`
+	UdpTag       string `toml:"udp_tag"`
+	Mtu          uint   `toml:"mtu"`
+	Interface    string `toml:"interface"`
 }
 
 type ProtectionConfig struct {

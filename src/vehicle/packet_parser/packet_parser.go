@@ -17,27 +17,6 @@ type PacketParser struct {
 	config       Config
 }
 
-func NewPacketParser(ids common.Set[uint16], structures map[uint16][]packet.ValueDescriptor, enums map[string]packet.EnumDescriptor) PacketParser {
-	return PacketParser{
-		Ids:        ids,
-		structures: structures,
-		valueParsers: map[string]parser{
-			"uint8":   numericParser[uint8]{},
-			"uint16":  numericParser[uint16]{},
-			"uint32":  numericParser[uint32]{},
-			"uint64":  numericParser[uint64]{},
-			"int8":    numericParser[int8]{},
-			"int16":   numericParser[int16]{},
-			"int32":   numericParser[int32]{},
-			"int64":   numericParser[int64]{},
-			"float32": numericParser[float32]{},
-			"float64": numericParser[float64]{},
-			"bool":    booleanParser{},
-			"enum":    enumParser{descriptors: enums},
-		},
-	}
-}
-
 func (parser *PacketParser) Decode(id uint16, raw []byte, metadata packet.Metadata) (models.PacketUpdate, error) {
 	structure, ok := parser.structures[id]
 	if !ok {
