@@ -45,7 +45,11 @@ func (parser *ProtectionParser) Parse(id uint16, raw []byte) (models.ProtectionM
 		parser.trace.Error().Err(err).Msg("data container not found")
 	}
 
-	json.Unmarshal(*adapter.Protection.Data, dataContainer)
+	err = json.Unmarshal(*adapter.Protection.Data, &dataContainer)
+
+	if err != nil {
+		parser.trace.Error().Err(err).Msg("cannot unmarshal protection data")
+	}
 
 	name, ok := parser.boardIdToName[adapter.BoardId]
 
