@@ -14,10 +14,11 @@ type ServerConfig struct {
 	FileServerPath     string `toml:"file_server_path"`
 	FileServerEndpoint string `toml:"file_server_endpoint"`
 	Endpoints          struct {
-		FileServer string `toml:"file_server"`
-		PodData    string `toml:"pod_data"`
-		OrderData  string `toml:"order_data"`
-		Websocket  string
+		FileServer       string `toml:"file_server"`
+		PodData          string `toml:"pod_data"`
+		OrderData        string `toml:"order_data"`
+		UploadableBoards string `toml:"uploadable_boards"`
+		Websocket        string
 	}
 }
 

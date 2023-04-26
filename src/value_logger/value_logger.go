@@ -39,6 +39,7 @@ func NewValueLogger(boards map[string]excel_adapter_models.Board, config Config)
 	return ValueLogger{
 		ids:           ids,
 		folderName:    config.FolderName,
+		filesMx:       &sync.Mutex{},
 		flushInterval: flushInterval,
 		trace:         trace,
 	}

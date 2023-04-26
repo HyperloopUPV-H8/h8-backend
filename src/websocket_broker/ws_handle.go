@@ -69,7 +69,6 @@ func (broker *WebSocketBroker) HandleConn(writter http.ResponseWriter, request *
 func (broker *WebSocketBroker) readMessages(client string, conn *websocket.Conn) {
 	broker.trace.Debug().Str("id", client).Msg("read messages")
 	for {
-
 		var message models.Message
 		if err := conn.ReadJSON(&message); err != nil {
 			broker.trace.Error().Str("id", client).Stack().Err(err).Msg("")
