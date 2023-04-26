@@ -45,7 +45,7 @@ func main() {
 	config := getConfig("./config.toml")
 	dev, err := selectDev()
 	if err != nil {
-		// TODO: handle error
+		trace.Fatal().Err(err).Msg("Error selecting device")
 		panic(err)
 	}
 	config.Vehicle.Network.Interface = dev.Name
