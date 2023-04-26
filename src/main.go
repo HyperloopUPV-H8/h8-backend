@@ -26,6 +26,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle"
 	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/websocket_broker"
+	"github.com/fatih/color"
 	"github.com/google/gopacket/pcap"
 	"github.com/gorilla/mux"
 	"github.com/pelletier/go-toml/v2"
@@ -198,35 +199,63 @@ func selectDev() (pcap.Interface, error) {
 		return pcap.Interface{}, err
 	}
 
-	fmt.Printf("select a device: (0-%d)\n", len(devs)-1)
+	cyan := color.New(color.FgCyan)
+
+	cyan.Print("select a device: ")
+	fmt.Printf("(0-%d)\n", len(devs)-1)
 	for i, dev := range devs {
-		desc := fmt.Sprintf("\t%d: %s (%s) [", i, dev.Description, dev.Name)
-		for _, addr := range dev.Addresses {
-			desc += fmt.Sprintf("%s, ", addr.IP)
-		}
-		desc = strings.TrimSuffix(desc, ", ")
-		fmt.Printf("%s]\n", desc)
+		displayDev(i, dev)
 	}
 
+	dev, err := acceptInput(len(devs))
+	if err != nil {
+		return pcap.Interface{}, err
+	}
+
+	return devs[dev], nil
+}
+
+func displayDev(i int, dev pcap.Interface) {
+	red := color.New(color.FgRed)
+	green := color.New(color.FgGreen)
+	yellow := color.New(color.FgYellow)
+
+	red.Printf("\t%d", i)
+	fmt.Print(": (")
+	yellow.Print(dev.Name)
+	fmt.Printf(") %s [", dev.Description)
+	for _, addr := range dev.Addresses {
+		green.Printf("%s", addr.IP)
+		fmt.Print(", ")
+	}
+	fmt.Println("]")
+}
+
+func acceptInput(limit int) (int, error) {
+	blue := color.New(color.FgBlue)
+	red := color.New(color.FgRed)
+
 	for {
-		fmt.Print(">>> ")
+		blue.Print(">>> ")
 
 		reader := bufio.NewReader(os.Stdin)
 		input, err := reader.ReadString('\n')
 		if err != nil {
-			return pcap.Interface{}, err
+			return 0, err
 		}
 
 		var dev int
 		_, err = fmt.Sscanf(input, "%d", &dev)
 		if err != nil {
-			return pcap.Interface{}, err
+			red.Printf("%s\n\n", err)
+			continue
 		}
 
-		if dev < 0 || dev >= len(devs) {
-			fmt.Printf("invalid device: %d\n", dev)
+		if dev < 0 || dev >= limit {
+			red.Println("invalid device selected\n")
+			continue
 		} else {
-			return devs[dev], nil
+			return dev, nil
 		}
 	}
 }
