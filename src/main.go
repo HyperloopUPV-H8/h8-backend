@@ -68,7 +68,7 @@ func main() {
 		OnConnectionChange: connectionTransfer.Update,
 	})
 	vehicleUpdates := make(chan vehicle_models.PacketUpdate, 1)
-	vehicleProtections := make(chan vehicle_models.Protection)
+	vehicleProtections := make(chan vehicle_models.ProtectionMessage)
 	// vehicleOrders := make(chan packet.Packet)
 	go vehicle.Listen(vehicleUpdates, vehicleProtections)
 
@@ -153,7 +153,7 @@ func startPacketUpdateRoutine(vehicleUpdates <-chan vehicle_models.PacketUpdate,
 	}
 }
 
-func startProtectionsRoutine(vehicleProtections <-chan vehicle_models.Protection, messageTransfer *message_transfer.MessageTransfer, loggerHandler *logger_handler.LoggerHandler) {
+func startProtectionsRoutine(vehicleProtections <-chan vehicle_models.ProtectionMessage, messageTransfer *message_transfer.MessageTransfer, loggerHandler *logger_handler.LoggerHandler) {
 	for protection := range vehicleProtections {
 		messageTransfer.SendMessage(protection)
 		loggerHandler.Log(protection_logger.LoggableProtection(protection))

@@ -148,8 +148,11 @@ func (handler *LoggerHandler) stop() {
 
 func (handler *LoggerHandler) NotifyDisconnect(session string) {
 	handler.trace.Debug().Str("session", session).Msg("notify disconnect")
-	if handler.verifySession(session) && handler.isRunning {
-		handler.stop()
+	if handler.verifySession(session) {
+		if handler.isRunning {
+			handler.stop()
+		}
+		handler.currentSession = ""
 	}
 }
 

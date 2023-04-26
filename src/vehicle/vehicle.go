@@ -12,6 +12,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/packet_parser"
+	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/protection_parser"
 	"github.com/rs/zerolog"
 )
 
@@ -23,7 +24,7 @@ type Vehicle struct {
 	podConverter     unit_converter.UnitConverter
 
 	packetParser     packet_parser.PacketParser
-	protectionParser ProtectionParser
+	protectionParser protection_parser.ProtectionParser
 	bitarrayParser   BitarrayParser
 
 	dataChan chan packet.Packet
@@ -35,7 +36,7 @@ type Vehicle struct {
 	trace zerolog.Logger
 }
 
-func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, protectionChan chan<- models.Protection) {
+func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, protectionChan chan<- models.ProtectionMessage) {
 	vehicle.trace.Debug().Msg("vehicle listening")
 	for packet := range vehicle.dataChan {
 		payloadCopy := make([]byte, len(packet.Payload))
@@ -52,13 +53,13 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, protection
 			}
 			updateChan <- update
 		case vehicle.protectionParser.Ids.Has(id):
-			protection, err := vehicle.protectionParser.Parse(id, packet.Payload)
+			message, err := vehicle.protectionParser.Parse(id, packet.Payload)
 
 			if err != nil {
 				vehicle.trace.Error().Err(err).Msg("error decoding protection")
 				continue
 			}
-			protectionChan <- protection
+			protectionChan <- message
 		default:
 			vehicle.trace.Error().Uint16("id", packet.Metadata.ID).Msg("raw id not recognized")
 		}
