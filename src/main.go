@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -24,6 +26,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle"
 	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/websocket_broker"
+	"github.com/google/gopacket/pcap"
 	"github.com/gorilla/mux"
 	"github.com/pelletier/go-toml/v2"
 	trace "github.com/rs/zerolog/log"
@@ -40,6 +43,12 @@ func main() {
 	defer traceFile.Close()
 
 	config := getConfig("./config.toml")
+	dev, err := selectDev()
+	if err != nil {
+		// TODO: handle error
+		panic(err)
+	}
+	config.Vehicle.Network.Interface = dev.Name
 
 	excelAdapter := excel_adapter.New(config.Excel)
 	boards := excelAdapter.GetBoards()
@@ -50,7 +59,6 @@ func main() {
 	podData := vehicle_models.NewPodData(boards)
 	orderData := vehicle_models.NewOrderData(boards)
 	blcu := blcuPackage.NewBLCU(globalInfo, config.BLCU)
-	uploadableBoards := blcuPackage.GetUploadableBoards(globalInfo, config.Excel.Parse.Global.BLCUAddressKey)
 
 	vehicle := vehicle.New(vehicle.VehicleConstructorArgs{
 		Config:             config.Vehicle,
@@ -113,7 +121,6 @@ func main() {
 
 	httpServer.ServeData("/backend"+config.Server.Endpoints.PodData, podData)
 	httpServer.ServeData("/backend"+config.Server.Endpoints.OrderData, orderData)
-	httpServer.ServeData("/backend"+config.Server.Endpoints.UploadableBoards, uploadableBoards)
 
 	httpServer.HandleFunc(config.Server.Endpoints.Websocket, websocketBroker.HandleConn)
 
@@ -183,4 +190,43 @@ func getConfig(path string) Config {
 	}
 
 	return config
+}
+
+func selectDev() (pcap.Interface, error) {
+	devs, err := pcap.FindAllDevs()
+	if err != nil {
+		return pcap.Interface{}, err
+	}
+
+	fmt.Printf("select a device: (0-%d)\n", len(devs)-1)
+	for i, dev := range devs {
+		desc := fmt.Sprintf("\t%d: %s (%s) [", i, dev.Description, dev.Name)
+		for _, addr := range dev.Addresses {
+			desc += fmt.Sprintf("%s, ", addr.IP)
+		}
+		desc = strings.TrimSuffix(desc, ", ")
+		fmt.Printf("%s]\n", desc)
+	}
+
+	for {
+		fmt.Print(">>> ")
+
+		reader := bufio.NewReader(os.Stdin)
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			return pcap.Interface{}, err
+		}
+
+		var dev int
+		_, err = fmt.Sscanf(input, "%d", &dev)
+		if err != nil {
+			return pcap.Interface{}, err
+		}
+
+		if dev < 0 || dev >= len(devs) {
+			fmt.Printf("invalid device: %d\n", dev)
+		} else {
+			return devs[dev], nil
+		}
+	}
 }
