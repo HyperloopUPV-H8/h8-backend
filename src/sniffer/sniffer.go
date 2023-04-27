@@ -26,7 +26,9 @@ type Sniffer struct {
 }
 
 func CreateSniffer(global excel_models.GlobalInfo, config Config, trace zerolog.Logger) Sniffer {
-	filter := getFilter(common.Values(global.BoardToIP), global.ProtocolToPort, config.TcpClientTag, config.TcpClientTag, config.UdpTag)
+	ips := common.Values(global.BoardToIP)
+	ips = append(ips, global.BackendIP)
+	filter := getFilter(ips, global.ProtocolToPort, config.TcpClientTag, config.TcpServerTag, config.UdpTag)
 	sniffer, err := newSniffer(filter, config)
 
 	if err != nil {
@@ -79,6 +81,8 @@ func getUDPFilter(addrs []string, protocolToPort map[string]string, udpTag strin
 
 func getTCPFilter(addrs []string, protocolToPort map[string]string, tcpClientTag string, tcpServerTag string) string {
 	tcp := fmt.Sprintf("(tcp port %s or tcp port %s) and (tcp[tcpflags] & (tcp-fin | tcp-syn | tcp-ack) == 0)", protocolToPort[tcpClientTag], protocolToPort[tcpServerTag])
+	// tcp := fmt.Sprintf("(tcp port %s or %s) and (tcp[tcpflags] & (tcp-fin | tcp-syn) == 0)", protocolToPort[tcpClientTag], protocolToPort[tcpServerTag])
+	// tcp := fmt.Sprintf("tcp port %s or %s", protocolToPort[tcpClientTag], protocolToPort[tcpServerTag])
 	tcpAddrSrc := ""
 	tcpAddrDst := ""
 	for _, addr := range addrs {
@@ -87,7 +91,8 @@ func getTCPFilter(addrs []string, protocolToPort map[string]string, tcpClientTag
 	}
 	tcpAddrSrc = strings.TrimPrefix(tcpAddrSrc, " or ")
 	tcpAddrDst = strings.TrimPrefix(tcpAddrDst, " or ")
-	return fmt.Sprintf("%s and (%s) and (%s)", tcp, tcpAddrSrc, tcpAddrDst)
+	filter := fmt.Sprintf("%s and (%s) and (%s)", tcp, tcpAddrSrc, tcpAddrDst)
+	return filter
 }
 
 func obtainSource(dev string, filter string, mtu uint) (*pcap.Handle, error) {
@@ -176,6 +181,10 @@ layerLoop:
 	}
 
 	//Config endianess from config.toml
+	if len(payload) == 0 {
+		return packet.Packet{}, errors.New("empty payload")
+	}
+
 	id := binary.LittleEndian.Uint16(payload[:2])
 
 	return packet.Packet{

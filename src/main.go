@@ -68,9 +68,9 @@ func main() {
 		OnConnectionChange: connectionTransfer.Update,
 	})
 	vehicleUpdates := make(chan vehicle_models.PacketUpdate, 1)
-	vehicleProtections := make(chan vehicle_models.Protection)
-	// vehicleOrders := make(chan packet.Packet)
-	go vehicle.Listen(vehicleUpdates, vehicleProtections)
+	vehicleProtections := make(chan vehicle_models.ProtectionMessage)
+	vehicleErrors := make(chan vehicle_models.ErrorMessage)
+	vehicleTransmittedOrders := make(chan vehicle_models.PacketUpdate)
 
 	dataTransfer := data_transfer.New(config.DataTransfer)
 	go dataTransfer.Run()
@@ -81,7 +81,7 @@ func main() {
 	packetLogger := packet_logger.NewPacketLogger(boards, config.PacketLogger)
 	valueLogger := value_logger.NewValueLogger(boards, config.ValueLogger)
 	orderLogger := order_logger.NewOrderLogger(boards, config.OrderLogger)
-	protectionLogger := protection_logger.NewProtectionLogger(config.Vehicle.Protections.FaultIdKey, config.Vehicle.Protections.WarningIdKey, config.ProtectionLogger)
+	protectionLogger := protection_logger.NewProtectionLogger(config.Vehicle.Protections.FaultIdKey, config.Vehicle.Protections.WarningIdKey, config.Vehicle.Protections.ErrorIdKey, config.ProtectionLogger)
 
 	loggers := map[string]logger_handler.Logger{
 		"packets":     &packetLogger,
@@ -102,15 +102,17 @@ func main() {
 	websocketBroker.RegisterHandle(&messageTransfer)
 	websocketBroker.RegisterHandle(&orderTransfer, config.Orders.SendTopic)
 
+	go vehicle.Listen(vehicleUpdates, vehicleTransmittedOrders, vehicleProtections, vehicleErrors)
+
 	go startPacketUpdateRoutine(vehicleUpdates, &dataTransfer, &loggerHandler)
 	go startProtectionsRoutine(vehicleProtections, &messageTransfer, &loggerHandler)
 	go startOrderRoutine(orderChannel, &vehicle, &loggerHandler)
 
-	// go func() {
-	// 	for packet := range vehicleOrders {
-	// 		logger.Update(packet)
-	// 	}
-	// }()
+	go func() {
+		for order := range vehicleTransmittedOrders {
+			loggerHandler.Log(order_logger.LoggableOrder(order))
+		}
+	}()
 
 	go func() {
 		for id := range websocketBroker.CloseChan {
@@ -153,7 +155,7 @@ func startPacketUpdateRoutine(vehicleUpdates <-chan vehicle_models.PacketUpdate,
 	}
 }
 
-func startProtectionsRoutine(vehicleProtections <-chan vehicle_models.Protection, messageTransfer *message_transfer.MessageTransfer, loggerHandler *logger_handler.LoggerHandler) {
+func startProtectionsRoutine(vehicleProtections <-chan vehicle_models.ProtectionMessage, messageTransfer *message_transfer.MessageTransfer, loggerHandler *logger_handler.LoggerHandler) {
 	for protection := range vehicleProtections {
 		messageTransfer.SendMessage(protection)
 		loggerHandler.Log(protection_logger.LoggableProtection(protection))
@@ -167,8 +169,6 @@ func startOrderRoutine(orderChannel <-chan vehicle_models.Order, vehicle *vehicl
 		if err != nil {
 			trace.Error().Any("order", ord).Msg("error sending order")
 		}
-
-		loggerHandler.Log(order_logger.LoggableOrder(ord))
 	}
 }
 

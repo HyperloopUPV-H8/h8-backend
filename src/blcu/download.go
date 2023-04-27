@@ -11,15 +11,19 @@ import (
 	"github.com/pin/tftp/v3"
 )
 
+type downloadRequest struct {
+	Board string `json:"board"`
+}
+
 func (blcu *BLCU) handleDownload(payload json.RawMessage) ([]byte, error) {
 	blcu.trace.Debug().Msg("Handling download")
-	var board string
-	if err := json.Unmarshal(payload, &board); err != nil {
+	var request downloadRequest
+	if err := json.Unmarshal(payload, &request); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Unmarshal payload")
 		return nil, err
 	}
 
-	if err := blcu.requestDownload(board); err != nil {
+	if err := blcu.requestDownload(request.Board); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Request download")
 		return nil, err
 	}
@@ -82,17 +86,17 @@ func (blcu *BLCU) ReadTFTP(writer io.Writer) error {
 	return nil
 }
 
-type fileResponsePayload struct {
-	File      []byte `json:"file"`
+type downloadResponse struct {
 	IsSuccess bool   `json:"success"`
+	File      []byte `json:"file,omitempty"`
 }
 
 func (blcu *BLCU) notifyDownloadFailure() {
 	blcu.trace.Warn().Msg("Download failed")
-	blcu.sendMessage(blcu.config.Topics.Download, fileResponsePayload{IsSuccess: false, File: nil})
+	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: false, File: nil})
 }
 
 func (blcu *BLCU) notifyDownloadSuccess(bytes []byte) {
 	blcu.trace.Info().Msg("Download success")
-	blcu.sendMessage(blcu.config.Topics.Download, fileResponsePayload{IsSuccess: true, File: bytes})
+	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: true, File: bytes})
 }

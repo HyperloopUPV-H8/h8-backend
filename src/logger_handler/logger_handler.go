@@ -28,7 +28,7 @@ type LoggerHandler struct {
 func NewLoggerHandler(loggers map[string]Logger, config Config) LoggerHandler {
 	trace.Info().Msg("new LoggerHandler")
 
-	os.MkdirAll(config.BasePath, os.ModeDir)
+	os.MkdirAll(config.BasePath, os.ModePerm)
 
 	return LoggerHandler{
 		loggers:        loggers,
@@ -99,7 +99,7 @@ func (handler *LoggerHandler) start() {
 	handler.loggableChan = make(chan Loggable)
 	sessionDirName := strconv.Itoa(int(time.Now().Unix()))
 	path := filepath.Join(handler.config.BasePath, sessionDirName)
-	os.MkdirAll(path, os.ModeDir)
+	os.MkdirAll(path, os.ModePerm)
 
 	activeLoggers := handler.createActiveLoggers(path)
 
@@ -141,15 +141,18 @@ func startBroadcastRoutine(activeLoggers []ActiveLogger, generalInput <-chan Log
 
 func (handler *LoggerHandler) stop() {
 	handler.trace.Info().Str("logger session", handler.currentSession).Msg("Stoped logging")
-	close(handler.loggableChan) // triggers loggers clean-up
 	handler.isRunning = false
+	close(handler.loggableChan) // triggers loggers clean-up
 	handler.currentSession = ""
 }
 
 func (handler *LoggerHandler) NotifyDisconnect(session string) {
 	handler.trace.Debug().Str("session", session).Msg("notify disconnect")
-	if handler.verifySession(session) && handler.isRunning {
-		handler.stop()
+	if handler.verifySession(session) {
+		if handler.isRunning {
+			handler.stop()
+		}
+		handler.currentSession = ""
 	}
 }
 

@@ -11,10 +11,15 @@ import (
 	"github.com/pin/tftp/v3"
 )
 
+type uploadRequest struct {
+	Board string `json:"board"`
+	File  []byte `json:"file"`
+}
+
 func (blcu *BLCU) handleUpload(payload json.RawMessage) error {
 	blcu.trace.Debug().Msg("Handling upload")
 
-	var uploadData uploadRequestPayload
+	var uploadData uploadRequest
 	if err := json.Unmarshal(payload, &uploadData); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Unmarshal payload")
 		return err
@@ -33,12 +38,7 @@ func (blcu *BLCU) handleUpload(payload json.RawMessage) error {
 	return nil
 }
 
-type uploadRequestPayload struct {
-	Board string `json:"board"`
-	File  []byte `json:"file"`
-}
-
-type uploadResponsePayload struct {
+type uploadResponse struct {
 	Percentage int  `json:"percentage"`
 	IsSuccess  bool `json:"success"`
 }
@@ -95,10 +95,10 @@ func (blcu *BLCU) WriteTFTP(reader io.Reader) error {
 // the topic BLCU_STATE_TOPIC expects a number between 0 and 100, the idea is in the future to inform about the percentage of the file uploaded
 func (blcu *BLCU) notifyUploadFailure() {
 	blcu.trace.Warn().Msg("Upload failed")
-	blcu.sendMessage(blcu.config.Topics.Download, uploadResponsePayload{Percentage: 0, IsSuccess: false})
+	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: 0, IsSuccess: false})
 }
 
 func (blcu *BLCU) notifyUploadSuccess() {
 	blcu.trace.Info().Msg("Upload success")
-	blcu.sendMessage(blcu.config.Topics.Download, uploadResponsePayload{Percentage: 100, IsSuccess: true})
+	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: 100, IsSuccess: true})
 }
