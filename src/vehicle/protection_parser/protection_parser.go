@@ -74,14 +74,19 @@ func (parser *ProtectionParser) Parse(id uint16, raw []byte) (models.ProtectionM
 func (parser *ProtectionParser) getKind(id uint16) (string, error) {
 	if id == parser.faultId {
 		return "fault", nil
-	} else if id == parser.warningId {
-		return "warning", nil
-	} else if id == parser.errorId {
-		return "error", nil
-	} else {
-		parser.trace.Error().Uint16("id", id).Msg("unrecognized message id")
-		return "", fmt.Errorf("unrecognized message id")
 	}
+
+	if id == parser.warningId {
+		return "warning", nil
+	}
+
+	if id == parser.errorId {
+		return "error", nil
+	}
+
+	parser.trace.Error().Uint16("id", id).Msg("unrecognized message id")
+	return "", fmt.Errorf("unrecognized message id")
+
 }
 
 func getDataContainer(kind string) (any, error) {
