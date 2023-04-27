@@ -28,7 +28,7 @@ type LoggerHandler struct {
 func NewLoggerHandler(loggers map[string]Logger, config Config) LoggerHandler {
 	trace.Info().Msg("new LoggerHandler")
 
-	os.MkdirAll(config.BasePath, os.ModeDir)
+	os.MkdirAll(config.BasePath, os.ModePerm)
 
 	return LoggerHandler{
 		loggers:        loggers,
@@ -99,7 +99,7 @@ func (handler *LoggerHandler) start() {
 	handler.loggableChan = make(chan Loggable)
 	sessionDirName := strconv.Itoa(int(time.Now().Unix()))
 	path := filepath.Join(handler.config.BasePath, sessionDirName)
-	os.MkdirAll(path, os.ModeDir)
+	os.MkdirAll(path, os.ModePerm)
 
 	activeLoggers := handler.createActiveLoggers(path)
 
