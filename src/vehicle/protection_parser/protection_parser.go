@@ -13,6 +13,7 @@ type ProtectionParser struct {
 	Ids           common.Set[uint16]
 	faultId       uint16
 	warningId     uint16
+	errorId       uint16
 	boardIdToName map[uint]string
 	trace         zerolog.Logger
 }
@@ -20,10 +21,10 @@ type ProtectionParser struct {
 type Config struct {
 	FaultIdKey   string `toml:"fault_id_key"`
 	WarningIdKey string `toml:"warning_id_key"`
+	ErrorIdKey   string `toml:"error_id_key"`
 }
 
 func (parser *ProtectionParser) Parse(id uint16, raw []byte) (models.ProtectionMessage, error) {
-
 	kind, err := parser.getKind(id)
 
 	if err != nil {
@@ -75,6 +76,8 @@ func (parser *ProtectionParser) getKind(id uint16) (string, error) {
 		return "fault", nil
 	} else if id == parser.warningId {
 		return "warning", nil
+	} else if id == parser.errorId {
+		return "error", nil
 	} else {
 		parser.trace.Error().Uint16("id", id).Msg("unrecognized message id")
 		return "", fmt.Errorf("unrecognized message id")
@@ -93,6 +96,8 @@ func getDataContainer(kind string) (any, error) {
 		return models.Equals{}, nil
 	case "NOT_EQUAL":
 		return models.NotEquals{}, nil
+	case "ERROR":
+		return models.Error{}, nil
 	default:
 		return nil, fmt.Errorf("protection kind not recognized: %s", kind)
 	}

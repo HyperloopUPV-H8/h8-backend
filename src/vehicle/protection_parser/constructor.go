@@ -12,36 +12,38 @@ import (
 func NewProtectionParser(globalInfo excelAdapterModels.GlobalInfo, config Config) ProtectionParser {
 	parserLogger := trace.With().Str("component", "protection parser").Logger()
 
-	faultId := getId(globalInfo.MessageToId, config.FaultIdKey, parserLogger)
-	warningId := getId(globalInfo.MessageToId, config.WarningIdKey, parserLogger)
-
+	faultId := mustGetId(globalInfo.MessageToId, config.FaultIdKey, parserLogger)
+	warningId := mustGetId(globalInfo.MessageToId, config.WarningIdKey, parserLogger)
+	errorId := mustGetId(globalInfo.MessageToId, config.ErrorIdKey, parserLogger)
 	ids := common.NewSet[uint16]()
 
 	ids.Add(faultId)
 	ids.Add(warningId)
+	ids.Add(errorId)
 
 	idToBoard := getIdToBoard(globalInfo.BoardToId, parserLogger)
 
 	return ProtectionParser{
 		Ids:           ids,
 		faultId:       faultId,
+		errorId:       errorId,
 		warningId:     warningId,
 		boardIdToName: idToBoard,
 		trace:         parserLogger,
 	}
 }
 
-func getId(kindToId map[string]string, key string, trace zerolog.Logger) uint16 {
+func mustGetId(kindToId map[string]string, key string, trace zerolog.Logger) uint16 {
 	idStr, ok := kindToId[key]
 
 	if !ok {
-		trace.Error().Str("key", key).Msg("key not found")
+		trace.Fatal().Str("key", key).Msg("key not found")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 16)
 
 	if err != nil {
-		trace.Error().Str("id", idStr).Msg("error parsing id")
+		trace.Fatal().Str("id", idStr).Msg("error parsing id")
 	}
 
 	return uint16(id)

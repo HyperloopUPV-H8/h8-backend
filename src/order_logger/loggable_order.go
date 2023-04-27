@@ -6,17 +6,17 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 )
 
-type LoggableOrder models.Order
+type LoggableOrder models.PacketUpdate
 
 func (lo LoggableOrder) Id() string {
-	return fmt.Sprint(lo.ID)
+	return fmt.Sprint(lo.Metadata.ID)
 }
 
 func (lo LoggableOrder) Log() []string {
-	log := []string{fmt.Sprint(lo.ID)}
+	log := []string{fmt.Sprint(lo.Metadata.ID)}
 
-	for name, field := range lo.Fields {
-		log = append(log, name, fmt.Sprint(field.Value), fmt.Sprint(field.IsEnabled))
+	for name, value := range lo.Values {
+		log = append(log, name, fmt.Sprint(value))
 	}
 
 	return log

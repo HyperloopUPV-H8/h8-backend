@@ -23,6 +23,7 @@ interface = "\\Device\\NPF_Loopback"
 [vehicle.protections]
 fault_id_key = "fault"
 warning_id_key = "warning"
+error_id_key = "error"
 
 [excel.download]
 id = "1BEwASubu0el9oQA6PSwVKaNU-Q6gbJ40JR6kgqguKYE"
@@ -71,7 +72,7 @@ send_topic = "order/send"
 update_topic = "message/update"
 
 [data_transfer]
-fps = 30
+fps = 60
 topics = { update = "podData/update" }
 
 [connections]

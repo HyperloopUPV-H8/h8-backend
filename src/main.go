@@ -69,8 +69,8 @@ func main() {
 	})
 	vehicleUpdates := make(chan vehicle_models.PacketUpdate, 1)
 	vehicleProtections := make(chan vehicle_models.ProtectionMessage)
-	// vehicleOrders := make(chan packet.Packet)
-	go vehicle.Listen(vehicleUpdates, vehicleProtections)
+	vehicleErrors := make(chan vehicle_models.ErrorMessage)
+	vehicleTransmittedOrders := make(chan vehicle_models.PacketUpdate)
 
 	dataTransfer := data_transfer.New(config.DataTransfer)
 	go dataTransfer.Run()
@@ -102,15 +102,17 @@ func main() {
 	websocketBroker.RegisterHandle(&messageTransfer)
 	websocketBroker.RegisterHandle(&orderTransfer, config.Orders.SendTopic)
 
+	go vehicle.Listen(vehicleUpdates, vehicleTransmittedOrders, vehicleProtections, vehicleErrors)
+
 	go startPacketUpdateRoutine(vehicleUpdates, &dataTransfer, &loggerHandler)
 	go startProtectionsRoutine(vehicleProtections, &messageTransfer, &loggerHandler)
 	go startOrderRoutine(orderChannel, &vehicle, &loggerHandler)
 
-	// go func() {
-	// 	for packet := range vehicleOrders {
-	// 		logger.Update(packet)
-	// 	}
-	// }()
+	go func() {
+		for order := range vehicleTransmittedOrders {
+			loggerHandler.Log(order_logger.LoggableOrder(order))
+		}
+	}()
 
 	go func() {
 		for id := range websocketBroker.CloseChan {
@@ -167,8 +169,6 @@ func startOrderRoutine(orderChannel <-chan vehicle_models.Order, vehicle *vehicl
 		if err != nil {
 			trace.Error().Any("order", ord).Msg("error sending order")
 		}
-
-		loggerHandler.Log(order_logger.LoggableOrder(ord))
 	}
 }
 
