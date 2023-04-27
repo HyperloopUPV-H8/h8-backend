@@ -141,8 +141,8 @@ func startBroadcastRoutine(activeLoggers []ActiveLogger, generalInput <-chan Log
 
 func (handler *LoggerHandler) stop() {
 	handler.trace.Info().Str("logger session", handler.currentSession).Msg("Stoped logging")
-	close(handler.loggableChan) // triggers loggers clean-up
 	handler.isRunning = false
+	close(handler.loggableChan) // triggers loggers clean-up
 	handler.currentSession = ""
 }
 
