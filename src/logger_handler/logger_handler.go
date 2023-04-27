@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -20,6 +21,7 @@ type LoggerHandler struct {
 	loggableChan   chan Loggable
 	currentSession string
 	isRunning      bool
+	isRunningMx    *sync.Mutex
 	sendMessage    func(topic string, payload any, target ...string) error
 	config         Config
 	trace          zerolog.Logger
@@ -35,16 +37,20 @@ func NewLoggerHandler(loggers map[string]Logger, config Config) LoggerHandler {
 		loggableChan:   make(chan Loggable),
 		currentSession: "",
 		isRunning:      false,
-		sendMessage:    defaultSendMessage,
-		config:         config,
-		trace:          trace.With().Str("component", LOG_HANDLER_HANDLER_NAME).Logger(),
+		isRunningMx:    &sync.Mutex{},
+
+		sendMessage: defaultSendMessage,
+		config:      config,
+		trace:       trace.With().Str("component", LOG_HANDLER_HANDLER_NAME).Logger(),
 	}
 }
 
 func (handler *LoggerHandler) Log(loggable Loggable) {
+	handler.isRunningMx.Lock()
 	if handler.isRunning {
 		handler.loggableChan <- loggable
 	}
+	handler.isRunningMx.Unlock()
 }
 
 func (handler *LoggerHandler) UpdateMessage(topic string, payload json.RawMessage, source string) {
@@ -77,11 +83,13 @@ func (handler *LoggerHandler) updateState(enable bool, source string) error {
 		return fmt.Errorf("%s tried to change running log session of %s", source, handler.currentSession)
 	}
 
+	handler.isRunningMx.Lock()
 	if enable && !handler.isRunning {
 		handler.start()
 	} else if !enable && handler.isRunning {
 		handler.stop()
 	}
+	handler.isRunningMx.Unlock()
 
 	return nil
 }
@@ -149,15 +157,22 @@ func (handler *LoggerHandler) stop() {
 func (handler *LoggerHandler) NotifyDisconnect(session string) {
 	handler.trace.Debug().Str("session", session).Msg("notify disconnect")
 	if handler.verifySession(session) {
+		handler.isRunningMx.Lock()
 		if handler.isRunning {
 			handler.stop()
 		}
+		handler.isRunningMx.Unlock()
+
 		handler.currentSession = ""
 	}
 }
 
 func (handler *LoggerHandler) notifyState() error {
-	if err := handler.sendMessage(handler.config.Topics.State, handler.isRunning); err != nil {
+	handler.isRunningMx.Lock()
+	runningCopy := handler.isRunning
+	handler.isRunningMx.Unlock()
+
+	if err := handler.sendMessage(handler.config.Topics.State, runningCopy); err != nil {
 		handler.trace.Error().Stack().Err(err).Msg("")
 		return err
 	}
