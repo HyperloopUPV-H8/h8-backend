@@ -29,7 +29,7 @@ func NewPodData(excelBoards map[string]excelAdapterModels.Board) PodData {
 			packets[uint16(id)] = Packet{
 				ID:           uint16(id),
 				Name:         packet.Description.Name,
-				HexValue:     "",
+				HexValue:     "000000",
 				Count:        0,
 				CycleTime:    0,
 				Measurements: getMeasurements(packet.Values),
