@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"sync"
 	"time"
 
@@ -20,6 +19,7 @@ type LoggerHandler struct {
 	loggers        map[string]Logger
 	loggableChan   chan Loggable
 	currentSession string
+	sessionCount   uint
 	isRunning      bool
 	isRunningMx    *sync.Mutex
 	sendMessage    func(topic string, payload any, target ...string) error
@@ -36,6 +36,7 @@ func NewLoggerHandler(loggers map[string]Logger, config Config) LoggerHandler {
 		loggers:        loggers,
 		loggableChan:   make(chan Loggable),
 		currentSession: "",
+		sessionCount:   0,
 		isRunning:      false,
 		isRunningMx:    &sync.Mutex{},
 
@@ -54,30 +55,22 @@ func (handler *LoggerHandler) Log(loggable Loggable) {
 }
 
 func (handler *LoggerHandler) UpdateMessage(topic string, payload json.RawMessage, source string) {
-	handler.trace.Debug().Str("topic", topic).Str("source", source).Msg("update message")
+	handler.trace.Info().Str("topic", topic).Str("source", source).Msg("update message")
 	switch topic {
 	case handler.config.Topics.Enable:
-		handler.handleEnable(payload, source)
+		var enable bool
+		err := json.Unmarshal(payload, &enable)
+		if err != nil {
+			handler.trace.Error().Stack().Err(err).Msg("unmarshal enable")
+		}
+
+		handler.handleEnable(enable, source)
 	}
 
 	handler.notifyState()
 }
 
-func (handler *LoggerHandler) handleEnable(payload json.RawMessage, source string) error {
-	var enable bool
-	err := json.Unmarshal(payload, &enable)
-	if err != nil {
-		handler.trace.Error().Stack().Err(err).Msg("unmarshal enable")
-		return err
-	}
-
-	handler.updateState(enable, source)
-	return nil
-}
-
-func (handler *LoggerHandler) updateState(enable bool, source string) error {
-	handler.trace.Debug().Bool("enable", enable).Str("source", source).Msg("update state")
-
+func (handler *LoggerHandler) handleEnable(enable bool, source string) error {
 	if !handler.verifySession(source) {
 		handler.trace.Warn().Str("source", source).Msg("tried to change running log session")
 		return fmt.Errorf("%s tried to change running log session of %s", source, handler.currentSession)
@@ -85,11 +78,12 @@ func (handler *LoggerHandler) updateState(enable bool, source string) error {
 
 	handler.isRunningMx.Lock()
 	if enable && !handler.isRunning {
+		handler.isRunningMx.Unlock()
 		handler.start()
 	} else if !enable && handler.isRunning {
+		handler.isRunningMx.Unlock()
 		handler.stop()
 	}
-	handler.isRunningMx.Unlock()
 
 	return nil
 }
@@ -105,14 +99,15 @@ func (handler *LoggerHandler) verifySession(session string) bool {
 func (handler *LoggerHandler) start() {
 	handler.trace.Info().Str("logger session", handler.currentSession).Msg("Started logging")
 	handler.loggableChan = make(chan Loggable)
-	sessionDirName := strconv.Itoa(int(time.Now().Unix()))
+	handler.sessionCount++
+	currentTime := time.Now()
+	sessionDirName := fmt.Sprintf("%d_%dh - Log %d", currentTime.Hour(), currentTime.Hour(), handler.sessionCount)
 	path := filepath.Join(handler.config.BasePath, sessionDirName)
 	os.MkdirAll(path, os.ModePerm)
 
 	activeLoggers := handler.createActiveLoggers(path)
 
 	go startBroadcastRoutine(activeLoggers, handler.loggableChan)
-
 	handler.isRunning = true
 }
 
@@ -172,7 +167,7 @@ func (handler *LoggerHandler) notifyState() error {
 	runningCopy := handler.isRunning
 	handler.isRunningMx.Unlock()
 
-	if err := handler.sendMessage(handler.config.Topics.State, runningCopy); err != nil {
+	if err := handler.sendMessage(handler.config.Topics.Enable, runningCopy); err != nil {
 		handler.trace.Error().Stack().Err(err).Msg("")
 		return err
 	}
