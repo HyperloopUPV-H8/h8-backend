@@ -31,17 +31,22 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/pelletier/go-toml/v2"
 	trace "github.com/rs/zerolog/log"
+	"github.com/soellman/pidfile"
 )
 
 var traceLevel = flag.String("trace", "info", "set the trace level (\"fatal\", \"error\", \"warn\", \"info\", \"debug\", \"trace\")")
 var traceFile = flag.String("log", "trace.json", "set the trace log file")
+var PID_FILENAME = "pid"
 
 func main() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
-	flag.Parse()
-
 	traceFile := initTrace(*traceLevel, *traceFile)
 	defer traceFile.Close()
+
+	createPid()
+	defer pidfile.Remove(PID_FILENAME)
+
+	runtime.GOMAXPROCS(runtime.NumCPU())
+	flag.Parse()
 
 	config := getConfig("./config.toml")
 	dev, err := selectDev()
@@ -98,7 +103,7 @@ func main() {
 	websocketBroker.RegisterHandle(&blcu, config.BLCU.Topics.Upload, config.BLCU.Topics.Download)
 	websocketBroker.RegisterHandle(&connectionTransfer, config.Connections.UpdateTopic)
 	websocketBroker.RegisterHandle(&dataTransfer)
-	websocketBroker.RegisterHandle(&loggerHandler, config.LoggerHandler.Topics.Enable, config.LoggerHandler.Topics.State)
+	websocketBroker.RegisterHandle(&loggerHandler, config.LoggerHandler.Topics.Enable)
 	websocketBroker.RegisterHandle(&messageTransfer)
 	websocketBroker.RegisterHandle(&orderTransfer, config.Orders.SendTopic)
 
@@ -110,7 +115,8 @@ func main() {
 
 	go func() {
 		for order := range vehicleTransmittedOrders {
-			loggerHandler.Log(order_logger.LoggableOrder(order))
+			loggable := order_logger.LoggableTransmittedOrder(order)
+			loggerHandler.Log(loggable)
 		}
 	}()
 
@@ -140,57 +146,17 @@ func main() {
 	<-interrupt
 }
 
-func startPacketUpdateRoutine(vehicleUpdates <-chan vehicle_models.PacketUpdate, dataTransfer *data_transfer.DataTransfer, loggerHandler *logger_handler.LoggerHandler) {
-	updateFactory := update_factory.NewFactory()
+func createPid() {
+	err := pidfile.Write(PID_FILENAME)
 
-	for packetUpdate := range vehicleUpdates {
-		update := updateFactory.NewUpdate(packetUpdate)
-		dataTransfer.Update(update)
-
-		loggerHandler.Log(packet_logger.ToLoggablePacket(packetUpdate))
-
-		for id, value := range packetUpdate.Values {
-			loggerHandler.Log(value_logger.ToLoggableValue(id, value, packetUpdate.Metadata.Timestamp))
+	if err != nil {
+		switch err {
+		case pidfile.ErrProcessRunning:
+			trace.Fatal().Err(err).Msg("BACKEND IS ALREADY RUNNING")
+		default:
+			trace.Error().Err(err).Msg("pid error")
 		}
 	}
-}
-
-func startProtectionsRoutine(vehicleProtections <-chan vehicle_models.ProtectionMessage, messageTransfer *message_transfer.MessageTransfer, loggerHandler *logger_handler.LoggerHandler) {
-	for protection := range vehicleProtections {
-		messageTransfer.SendMessage(protection)
-		loggerHandler.Log(protection_logger.LoggableProtection(protection))
-	}
-}
-
-func startOrderRoutine(orderChannel <-chan vehicle_models.Order, vehicle *vehicle.Vehicle, loggerHandler *logger_handler.LoggerHandler) {
-	for ord := range orderChannel {
-		err := vehicle.SendOrder(ord)
-
-		if err != nil {
-			trace.Error().Any("order", ord).Msg("error sending order")
-		}
-	}
-}
-
-func getConfig(path string) Config {
-	configFile, fileErr := os.ReadFile(path)
-
-	if fileErr != nil {
-		trace.Fatal().Stack().Err(fileErr).Msg("error reading config file")
-	}
-
-	reader := strings.NewReader(string(configFile))
-
-	var config Config
-
-	// decodeErr := toml.NewDecoder(reader).DisallowUnknownFields().Decode(&config)
-	decodeErr := toml.NewDecoder(reader).Decode(&config)
-
-	if decodeErr != nil {
-		trace.Fatal().Stack().Err(decodeErr).Msg("error unmarshaling toml file")
-	}
-
-	return config
 }
 
 func selectDev() (pcap.Interface, error) {
@@ -257,5 +223,60 @@ func acceptInput(limit int) (int, error) {
 		} else {
 			return dev, nil
 		}
+	}
+}
+
+func getConfig(path string) Config {
+	configFile, fileErr := os.ReadFile(path)
+
+	if fileErr != nil {
+		trace.Fatal().Stack().Err(fileErr).Msg("error reading config file")
+	}
+
+	reader := strings.NewReader(string(configFile))
+
+	var config Config
+
+	// decodeErr := toml.NewDecoder(reader).DisallowUnknownFields().Decode(&config)
+	decodeErr := toml.NewDecoder(reader).Decode(&config)
+
+	if decodeErr != nil {
+		trace.Fatal().Stack().Err(decodeErr).Msg("error unmarshaling toml file")
+	}
+
+	return config
+}
+
+func startPacketUpdateRoutine(vehicleUpdates <-chan vehicle_models.PacketUpdate, dataTransfer *data_transfer.DataTransfer, loggerHandler *logger_handler.LoggerHandler) {
+	updateFactory := update_factory.NewFactory()
+
+	for packetUpdate := range vehicleUpdates {
+		update := updateFactory.NewUpdate(packetUpdate)
+		dataTransfer.Update(update)
+
+		loggerHandler.Log(packet_logger.ToLoggablePacket(packetUpdate))
+
+		for id, value := range packetUpdate.Values {
+			loggerHandler.Log(value_logger.ToLoggableValue(id, value, packetUpdate.Metadata.Timestamp))
+		}
+	}
+}
+
+func startProtectionsRoutine(vehicleProtections <-chan vehicle_models.ProtectionMessage, messageTransfer *message_transfer.MessageTransfer, loggerHandler *logger_handler.LoggerHandler) {
+	for protection := range vehicleProtections {
+		messageTransfer.SendMessage(protection)
+		loggerHandler.Log(protection_logger.LoggableProtection(protection))
+	}
+}
+
+func startOrderRoutine(orderChannel <-chan vehicle_models.Order, vehicle *vehicle.Vehicle, loggerHandler *logger_handler.LoggerHandler) {
+	for ord := range orderChannel {
+		err := vehicle.SendOrder(ord)
+
+		if err != nil {
+			trace.Error().Any("order", ord).Msg("error sending order")
+		}
+
+		loggerHandler.Log(order_logger.LoggableOrder(ord))
 	}
 }
