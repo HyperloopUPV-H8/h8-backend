@@ -4,24 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/rs/zerolog"
 )
 
 type ProtectionParser struct {
-	Ids           common.Set[uint16]
 	faultId       uint16
 	warningId     uint16
 	errorId       uint16
 	boardIdToName map[uint]string
 	trace         zerolog.Logger
-}
-
-type Config struct {
-	FaultIdKey   string `toml:"fault_id_key"`
-	WarningIdKey string `toml:"warning_id_key"`
-	ErrorIdKey   string `toml:"error_id_key"`
 }
 
 func (parser *ProtectionParser) Parse(id uint16, raw []byte) (models.ProtectionMessage, error) {

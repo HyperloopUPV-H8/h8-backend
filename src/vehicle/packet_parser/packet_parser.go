@@ -5,13 +5,11 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 )
 
 type PacketParser struct {
-	Ids          common.Set[uint16]
 	structures   map[uint16][]packet.ValueDescriptor
 	valueParsers map[string]parser
 	config       Config
