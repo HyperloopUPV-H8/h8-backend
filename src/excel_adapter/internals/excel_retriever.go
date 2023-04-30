@@ -9,20 +9,24 @@ import (
 	trace "github.com/rs/zerolog/log"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
+
+	_ "embed"
 )
 
 const SHEETS_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 type DownloadConfig struct {
-	Id          string
-	Path        string
-	Name        string
-	Credentials string
+	Id   string
+	Path string
+	Name string
 }
+
+//go:embed secret.json
+var api_key []byte
 
 func DownloadFile(config DownloadConfig) error {
 	trace.Trace().Str("id", config.Id).Str("path", config.Path).Str("name", config.Name).Msg("download file")
-	client, errClient := getClient(config.Credentials)
+	client, errClient := getClient(api_key)
 	if errClient != nil {
 		trace.Error().Str("id", config.Id).Str("path", config.Path).Str("name", config.Name).Stack().Err(errClient).Msg("")
 		return errClient
@@ -42,11 +46,13 @@ func DownloadFile(config DownloadConfig) error {
 	return errSaving
 }
 
-func getClient(credentials string) (*drive.Service, error) {
+func getClient(apiKey []byte) (*drive.Service, error) {
 	trace.Trace().Msg("get client")
 	ctx := context.Background()
 
-	client, err := drive.NewService(ctx, option.WithCredentialsFile(credentials))
+	// client, err := drive.NewService(ctx, option.WithCredentialsFile(credentials))
+	client, err := drive.NewService(ctx, option.WithCredentialsJSON(apiKey))
+
 	if err != nil {
 		return nil, err
 	}
