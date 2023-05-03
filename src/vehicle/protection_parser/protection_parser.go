@@ -101,8 +101,10 @@ func getDataContainer(kind string) (any, error) {
 		return models.Equals{}, nil
 	case "NOT_EQUAL":
 		return models.NotEquals{}, nil
-	case "ERROR":
+	case "ERROR_HANDLER":
 		return models.Error{}, nil
+	case "TIME_ACCUMULATION":
+		return models.TimeAccumulation{}, nil
 	default:
 		return nil, fmt.Errorf("protection kind not recognized: %s", kind)
 	}
