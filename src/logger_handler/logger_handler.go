@@ -19,7 +19,6 @@ type LoggerHandler struct {
 	loggers        map[string]Logger
 	loggableChan   chan Loggable
 	currentSession string
-	sessionCount   uint
 	isRunning      bool
 	isRunningMx    *sync.Mutex
 	sendMessage    func(topic string, payload any, target ...string) error
@@ -36,7 +35,6 @@ func NewLoggerHandler(loggers map[string]Logger, config Config) LoggerHandler {
 		loggers:        loggers,
 		loggableChan:   make(chan Loggable),
 		currentSession: "",
-		sessionCount:   0,
 		isRunning:      false,
 		isRunningMx:    &sync.Mutex{},
 
@@ -99,9 +97,8 @@ func (handler *LoggerHandler) verifySession(session string) bool {
 func (handler *LoggerHandler) start() {
 	handler.trace.Info().Str("logger session", handler.currentSession).Msg("Started logging")
 	handler.loggableChan = make(chan Loggable)
-	handler.sessionCount++
 	currentTime := time.Now()
-	sessionDirName := fmt.Sprintf("%d_%dh - Log %d", currentTime.Hour(), currentTime.Hour(), handler.sessionCount)
+	sessionDirName := fmt.Sprintf("%d_%d_%d - %d_%dh", currentTime.Day(), currentTime.Month(), currentTime.Year(), currentTime.Hour(), currentTime.Minute())
 	path := filepath.Join(handler.config.BasePath, sessionDirName)
 	os.MkdirAll(path, os.ModePerm)
 

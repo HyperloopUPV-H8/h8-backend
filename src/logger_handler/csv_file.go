@@ -25,6 +25,7 @@ func NewCSVFile(path, name string) (CSVFile, error) {
 
 	fileName := fmt.Sprintf("%s.csv", name)
 	file, err := os.Create(filepath.Join(path, fileName))
+
 	if err != nil {
 		trace.Error().Stack().Err(err).Str("path", path).Str("name", name).Msg("failed to create file")
 		return CSVFile{}, err

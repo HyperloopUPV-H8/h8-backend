@@ -59,8 +59,9 @@ func getFilter(addrs []string, protocolToPort map[string]string, tcpClientTag st
 	ipipFilter := getIPIPfilter()
 	udpFilter := getUDPFilter(addrs, protocolToPort, udpTag)
 	tcpFilter := getTCPFilter(addrs, protocolToPort, tcpClientTag, tcpServerTag)
-
+	// tcpFilter := "(tcp port 50500 or 50501) and (src host 127.0.0.9) and (tcp[tcpflags] & (tcp-fin | tcp-syn) == 0)"
 	filter := fmt.Sprintf("(%s) or (%s) or (%s)", ipipFilter, udpFilter, tcpFilter)
+
 	trace.Trace().Strs("addrs", addrs).Str("filter", filter).Msg("new filter")
 	return filter
 }
@@ -80,18 +81,23 @@ func getUDPFilter(addrs []string, protocolToPort map[string]string, udpTag strin
 }
 
 func getTCPFilter(addrs []string, protocolToPort map[string]string, tcpClientTag string, tcpServerTag string) string {
-	tcp := fmt.Sprintf("(tcp port %s or tcp port %s) and (tcp[tcpflags] & (tcp-fin | tcp-syn | tcp-ack) == 0)", protocolToPort[tcpClientTag], protocolToPort[tcpServerTag])
-	// tcp := fmt.Sprintf("(tcp port %s or %s) and (tcp[tcpflags] & (tcp-fin | tcp-syn) == 0)", protocolToPort[tcpClientTag], protocolToPort[tcpServerTag])
-	// tcp := fmt.Sprintf("tcp port %s or %s", protocolToPort[tcpClientTag], protocolToPort[tcpServerTag])
-	tcpAddrSrc := ""
-	tcpAddrDst := ""
+
+	ports := fmt.Sprintf("tcp port %s or %s", protocolToPort[tcpClientTag], protocolToPort[tcpServerTag])
+	flags := "tcp[tcpflags] & (tcp-fin | tcp-syn | tcp-rst) == 0"
+	nonZeroPayload := "tcp[tcpflags] & tcp-push != 0"
+
+	srcAddresses := make([]string, 0, len(addrs))
+	dstAddresses := make([]string, 0, len(addrs))
+
 	for _, addr := range addrs {
-		tcpAddrSrc = fmt.Sprintf("%s or (src host %s)", tcpAddrSrc, addr)
-		tcpAddrDst = fmt.Sprintf("%s or (dst host %s)", tcpAddrDst, addr)
+		srcAddresses = append(srcAddresses, fmt.Sprintf("(src host %s)", addr))
+		dstAddresses = append(dstAddresses, fmt.Sprintf("(dst host %s)", addr))
 	}
-	tcpAddrSrc = strings.TrimPrefix(tcpAddrSrc, " or ")
-	tcpAddrDst = strings.TrimPrefix(tcpAddrDst, " or ")
-	filter := fmt.Sprintf("%s and (%s) and (%s)", tcp, tcpAddrSrc, tcpAddrDst)
+
+	srcAddrsStr := strings.Join(srcAddresses, " or ")
+	dstAddrsStr := strings.Join(dstAddresses, " or ")
+
+	filter := fmt.Sprintf("(%s) and (%s) and (%s) and (%s) and (%s)", ports, flags, nonZeroPayload, srcAddrsStr, dstAddrsStr)
 	return filter
 }
 
@@ -110,22 +116,18 @@ func obtainSource(dev string, filter string, mtu uint) (*pcap.Handle, error) {
 	return source, nil
 }
 
-func (sniffer *Sniffer) Listen(output chan<- packet.Packet) <-chan error {
+func (sniffer *Sniffer) Listen(output chan<- packet.Packet) {
 	sniffer.trace.Info().Msg("start listening")
-	errorChan := make(chan error)
 
-	go sniffer.read(output, errorChan)
+	go sniffer.read(output)
 
-	return errorChan
 }
 
-func (sniffer *Sniffer) read(output chan<- packet.Packet, errorChan chan<- error) {
+func (sniffer *Sniffer) read(output chan<- packet.Packet) {
 	for {
 		raw, _, err := sniffer.source.ReadPacketData()
 		if err != nil {
 			sniffer.trace.Error().Stack().Err(err).Msg("")
-			errorChan <- err
-			close(errorChan)
 			return
 		}
 
@@ -138,7 +140,6 @@ func (sniffer *Sniffer) read(output chan<- packet.Packet, errorChan chan<- error
 		rawPacket, err := sniffer.parseLayers(packet.Layers())
 		if err != nil {
 			sniffer.trace.Error().Stack().Err(err).Msg("")
-			errorChan <- err
 			continue
 		}
 
@@ -181,8 +182,8 @@ layerLoop:
 	}
 
 	//Config endianess from config.toml
-	if len(payload) == 0 {
-		return packet.Packet{}, errors.New("empty payload")
+	if len(payload) < 2 {
+		return packet.Packet{}, errors.New("payload smaller than 2")
 	}
 
 	id := binary.LittleEndian.Uint16(payload[:2])

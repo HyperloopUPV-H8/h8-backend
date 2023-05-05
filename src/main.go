@@ -39,6 +39,7 @@ var traceFile = flag.String("log", "trace.json", "set the trace log file")
 var PID_FILENAME = "pid"
 
 func main() {
+
 	traceFile := initTrace(*traceLevel, *traceFile)
 	defer traceFile.Close()
 
@@ -49,16 +50,17 @@ func main() {
 	flag.Parse()
 
 	config := getConfig("./config.toml")
+
+	excelAdapter := excel_adapter.New(config.Excel)
+	boards := excelAdapter.GetBoards()
+	globalInfo := excelAdapter.GetGlobalInfo()
+
 	dev, err := selectDev()
 	if err != nil {
 		trace.Fatal().Err(err).Msg("Error selecting device")
 		panic(err)
 	}
 	config.Vehicle.Network.Interface = dev.Name
-
-	excelAdapter := excel_adapter.New(config.Excel)
-	boards := excelAdapter.GetBoards()
-	globalInfo := excelAdapter.GetGlobalInfo()
 
 	connectionTransfer := connection_transfer.New(config.Connections)
 

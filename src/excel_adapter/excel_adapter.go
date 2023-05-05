@@ -1,11 +1,15 @@
 package excel_adapter
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/internals"
 	internalModels "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/internals/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
+	ade_linter "github.com/HyperloopUPV-H8/ade-linter"
 	trace "github.com/rs/zerolog/log"
 	"github.com/xuri/excelize/v2"
 )
@@ -68,7 +72,30 @@ func fetchDocument(downloadConfig internals.DownloadConfig, parseConfig internal
 		trace.Fatal().Stack().Err(err).Msg("")
 	}
 
+	if !ade_linter.Lint(file) {
+		// if !promptContinue() {
+		os.Exit(1)
+		// }
+	}
+
 	return internals.GetDocument(file, parseConfig)
+}
+
+func promptContinue() bool {
+	fmt.Println("Continue? [Y/n]")
+	for {
+		var selection string
+		fmt.Scan(selection)
+
+		if strings.ToUpper(selection) == "Y" || strings.ToUpper(selection) == "YES" {
+			return true
+		} else if strings.ToUpper(selection) == "N" || strings.ToUpper(selection) == "NO" {
+			return false
+		} else {
+			fmt.Println("Incorrect input")
+		}
+	}
+
 }
 
 func getBoards(document internalModels.Document, addressTableName string) map[string]models.Board {
