@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -31,20 +32,20 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/pelletier/go-toml/v2"
 	trace "github.com/rs/zerolog/log"
-	"github.com/soellman/pidfile"
 )
 
 var traceLevel = flag.String("trace", "info", "set the trace level (\"fatal\", \"error\", \"warn\", \"info\", \"debug\", \"trace\")")
 var traceFile = flag.String("log", "trace.json", "set the trace log file")
-var PID_FILENAME = "pid"
 
 func main() {
 
 	traceFile := initTrace(*traceLevel, *traceFile)
 	defer traceFile.Close()
 
-	createPid()
-	defer pidfile.Remove(PID_FILENAME)
+	pidPath := path.Join(os.TempDir(), "backendPid")
+
+	createPid(pidPath)
+	defer RemovePid(pidPath)
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	flag.Parse()
@@ -148,12 +149,12 @@ func main() {
 	<-interrupt
 }
 
-func createPid() {
-	err := pidfile.Write(PID_FILENAME)
+func createPid(path string) {
+	err := WritePid(path)
 
 	if err != nil {
 		switch err {
-		case pidfile.ErrProcessRunning:
+		case ErrProcessRunning:
 			trace.Fatal().Err(err).Msg("BACKEND IS ALREADY RUNNING")
 		default:
 			trace.Error().Err(err).Msg("pid error")

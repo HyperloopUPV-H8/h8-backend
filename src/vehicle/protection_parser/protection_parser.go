@@ -89,9 +89,9 @@ func getDataContainer(kind string) (any, error) {
 		return models.UpperBound{}, nil
 	case "LOWER_BOUND":
 		return models.LowerBound{}, nil
-	case "EQUAL":
+	case "EQUALS":
 		return models.Equals{}, nil
-	case "NOT_EQUAL":
+	case "NOT_EQUALS":
 		return models.NotEquals{}, nil
 	case "ERROR_HANDLER":
 		return models.Error{}, nil

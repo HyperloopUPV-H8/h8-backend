@@ -71,7 +71,7 @@ send_topic = "order/send"
 update_topic = "message/update"
 
 [data_transfer]
-fps = 60
+fps = 20
 topics = { update = "podData/update" }
 
 [connections]
