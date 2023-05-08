@@ -1,11 +1,12 @@
 package models
 
 type ProtectionMessage struct {
+	Board     string    `json:"board"`
+	Name      string    `json:"name"`
+	Timestamp Timestamp `json:"timestamp"`
+
 	Kind       string     `json:"kind"`
-	Board      string     `json:"board"`
-	Name       string     `json:"name"`
 	Protection Protection `json:"protection"`
-	Timestamp  Timestamp  `json:"timestamp"`
 }
 
 type Protection struct {
