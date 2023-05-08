@@ -14,7 +14,7 @@ func (lo LoggableOrder) Id() string {
 }
 
 func (lo LoggableOrder) Log() []string {
-	return []string{"[GUI]", time.Now().String(), "-", "-", "-", fmt.Sprint(lo.ID), fmt.Sprint(lo.Fields)}
+	return []string{"[GUI]", time.Now().String(), "", "", "", fmt.Sprint(lo.ID), fmt.Sprint(lo.Fields)}
 }
 
 type LoggableTransmittedOrder models.PacketUpdate
