@@ -73,9 +73,9 @@ func fetchDocument(downloadConfig internals.DownloadConfig, parseConfig internal
 	}
 
 	if !ade_linter.Lint(file) {
-		// if !promptContinue() {
-		os.Exit(1)
-		// }
+		if !promptContinue() {
+			os.Exit(1)
+		}
 	}
 
 	return internals.GetDocument(file, parseConfig)
@@ -85,7 +85,7 @@ func promptContinue() bool {
 	fmt.Println("Continue? [Y/n]")
 	for {
 		var selection string
-		fmt.Scan(selection)
+		fmt.Scanln(&selection)
 
 		if strings.ToUpper(selection) == "Y" || strings.ToUpper(selection) == "YES" {
 			return true
@@ -95,7 +95,6 @@ func promptContinue() bool {
 			fmt.Println("Incorrect input")
 		}
 	}
-
 }
 
 func getBoards(document internalModels.Document, addressTableName string) map[string]models.Board {
