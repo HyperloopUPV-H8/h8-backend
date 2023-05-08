@@ -11,7 +11,5 @@ func (packets SortedPackets) Less(i, j int) bool {
 }
 
 func (packets SortedPackets) Swap(i, j int) {
-	copyPacket := packets[i]
-	packets[i] = packets[j]
-	packets[j] = copyPacket
+	packets[i], packets[j] = packets[j], packets[i]
 }
