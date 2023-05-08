@@ -82,7 +82,7 @@ func fetchDocument(downloadConfig internals.DownloadConfig, parseConfig internal
 }
 
 func promptContinue() bool {
-	fmt.Println("Continue? [Y/n]")
+	fmt.Println("Continue with incorrect ADE? [Y/n]")
 	for {
 		var selection string
 		fmt.Scanln(&selection)
