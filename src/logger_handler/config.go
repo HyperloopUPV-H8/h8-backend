@@ -8,5 +8,4 @@ type Config struct {
 
 type LoggerTopics struct {
 	Enable string `toml:"enable"`
-	State  string `toml:"state"`
 }

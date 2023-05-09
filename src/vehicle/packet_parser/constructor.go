@@ -4,7 +4,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	excel_models "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet"
 	"github.com/rs/zerolog"
@@ -16,14 +15,11 @@ func CreatePacketParser(global excel_models.GlobalInfo, boards map[string]excel_
 		return PacketParser{}, err
 	}
 
-	ids := getPacketParserIds(global, boards, trace)
-
-	return newPacketParser(ids, structures, getEnumDescriptors(global, boards)), nil
+	return newPacketParser(structures, getEnumDescriptors(global, boards)), nil
 }
 
-func newPacketParser(ids common.Set[uint16], structures map[uint16][]packet.ValueDescriptor, enums map[string]packet.EnumDescriptor) PacketParser {
+func newPacketParser(structures map[uint16][]packet.ValueDescriptor, enums map[string]packet.EnumDescriptor) PacketParser {
 	return PacketParser{
-		Ids:        ids,
 		structures: structures,
 		valueParsers: map[string]parser{
 			"uint8":   numericParser[uint8]{},
@@ -56,23 +52,6 @@ func getStructures(global excel_models.GlobalInfo, boards map[string]excel_model
 		}
 	}
 	return structures, nil
-}
-
-func getPacketParserIds(global excel_models.GlobalInfo, boards map[string]excel_models.Board, trace zerolog.Logger) common.Set[uint16] {
-	ids := common.NewSet[uint16]()
-	for _, board := range boards {
-		for _, packet := range board.Packets {
-			if packet.Description.Type == "data" || packet.Description.Type == "order" {
-				id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
-				if err != nil {
-					trace.Error().Err(err).Msg("error parsing packet id")
-					continue
-				}
-				ids.Add(uint16(id))
-			}
-		}
-	}
-	return ids
 }
 
 func getDescriptor(values []excel_models.Value) []packet.ValueDescriptor {

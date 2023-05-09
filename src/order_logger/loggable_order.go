@@ -2,22 +2,28 @@ package order_logger
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 )
 
-type LoggableOrder models.PacketUpdate
+type LoggableOrder models.Order
 
 func (lo LoggableOrder) Id() string {
-	return fmt.Sprint(lo.Metadata.ID)
+	return fmt.Sprint(lo.ID)
 }
 
 func (lo LoggableOrder) Log() []string {
-	log := []string{fmt.Sprint(lo.Metadata.ID)}
+	return []string{"[GUI]", time.Now().String(), "", "", "", fmt.Sprint(lo.ID), fmt.Sprint(lo.Fields)}
+}
 
-	for name, value := range lo.Values {
-		log = append(log, name, fmt.Sprint(value))
-	}
+type LoggableTransmittedOrder models.PacketUpdate
 
-	return log
+func (lto LoggableTransmittedOrder) Id() string {
+	return fmt.Sprint(lto.Metadata.ID)
+}
+
+func (lto LoggableTransmittedOrder) Log() []string {
+
+	return []string{"[TRANSMITTED]", fmt.Sprint(lto.Metadata.Timestamp), fmt.Sprint(lto.Metadata.From), fmt.Sprint(lto.Metadata.To), fmt.Sprint(lto.Metadata.SeqNum), fmt.Sprint(lto.Metadata.ID), fmt.Sprint(lto.Values)}
 }

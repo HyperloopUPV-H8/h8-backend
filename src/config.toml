@@ -17,7 +17,7 @@ tcp_server_tag = "TCP_SERVER"
 udp_tag = "UDP"
 # sniffer = { mtu = 1500, interface = "lo" }
 mtu = 1500
-interface = "\\Device\\NPF_Loopback"
+interface = "lo"
 # blcu_ack_id = "blcu_ack"
 
 [vehicle.protections]
@@ -27,7 +27,6 @@ error_id_key = "error"
 
 [excel.download]
 id = "1BEwASubu0el9oQA6PSwVKaNU-Q6gbJ40JR6kgqguKYE"
-credentials = "./secret.json"
 name = "ade.xlsx"
 path = "."
 
@@ -45,7 +44,7 @@ board_ids_table = "board_ids"
 message_ids_table = "message_ids"
 
 [logger_handler]
-topics = { enable = "logger/enable", state = "logger/state" }
+topics = { enable = "logger/enable" }
 base_path = "log"
 flush_interval="5s"
 
@@ -72,7 +71,7 @@ send_topic = "order/send"
 update_topic = "message/update"
 
 [data_transfer]
-fps = 60
+fps = 20
 topics = { update = "podData/update" }
 
 [connections]

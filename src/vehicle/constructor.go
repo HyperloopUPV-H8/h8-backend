@@ -3,6 +3,7 @@ package vehicle
 import (
 	"strconv"
 
+	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	excel_models "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet"
 	"github.com/HyperloopUPV-H8/Backend-H8/pipe"
@@ -46,6 +47,15 @@ func New(args VehicleConstructorArgs) Vehicle {
 	snifferConfig := getSnifferConfig(args.Config)
 	pipesConfig := getPipesConfig(args.Config)
 
+	protectionIds := common.NewSet[uint16]()
+
+	faultId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Protections.FaultIdKey, vehicleTrace)
+	protectionIds.Add(faultId)
+	warningId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Protections.WarningIdKey, vehicleTrace)
+	protectionIds.Add(warningId)
+	errorId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Protections.ErrorIdKey, vehicleTrace)
+	protectionIds.Add(errorId)
+
 	vehicle := Vehicle{
 		podConverter:     unit_converter.NewUnitConverter("pod", args.Boards, args.GlobalInfo.UnitToOperations),
 		displayConverter: unit_converter.NewUnitConverter("display", args.Boards, args.GlobalInfo.UnitToOperations),
@@ -53,8 +63,12 @@ func New(args VehicleConstructorArgs) Vehicle {
 		sniffer: sniffer.CreateSniffer(args.GlobalInfo, snifferConfig, vehicleTrace),
 		pipes:   pipe.CreatePipes(args.GlobalInfo, dataChan, args.OnConnectionChange, pipesConfig, vehicleTrace),
 
+		dataIds:       getBoardIdsFromType(args.Boards, "data", vehicleTrace),
+		orderIds:      getBoardIdsFromType(args.Boards, "order", vehicleTrace),
+		protectionIds: protectionIds,
+
 		packetParser:     packetParser,
-		protectionParser: protection_parser.NewProtectionParser(args.GlobalInfo, args.Config.Protections),
+		protectionParser: protection_parser.NewProtectionParser(args.GlobalInfo, faultId, warningId, errorId),
 		bitarrayParser:   NewBitarrayParser(names),
 
 		dataChan: dataChan,
@@ -124,4 +138,41 @@ func getIdToBoard(boards map[string]excel_models.Board, trace zerolog.Logger) ma
 	}
 
 	return idToBoard
+}
+
+func getBoardIdsFromType(boards map[string]excel_models.Board, kind string, trace zerolog.Logger) common.Set[uint16] {
+	ids := common.NewSet[uint16]()
+
+	for _, board := range boards {
+		for _, packet := range board.Packets {
+			if packet.Description.Type == kind {
+				id, err := strconv.ParseInt(packet.Description.ID, 10, 16)
+
+				if err != nil {
+					trace.Error().Err(err).Msg("Incorrect board id")
+					continue
+				}
+
+				ids.Add(uint16(id))
+			}
+		}
+	}
+
+	return ids
+}
+
+func mustGetId(kindToId map[string]string, key string, trace zerolog.Logger) uint16 {
+	idStr, ok := kindToId[key]
+
+	if !ok {
+		trace.Fatal().Str("key", key).Msg("key not found")
+	}
+
+	id, err := strconv.ParseUint(idStr, 10, 16)
+
+	if err != nil {
+		trace.Fatal().Str("id", idStr).Msg("error parsing id")
+	}
+
+	return uint16(id)
 }

@@ -8,8 +8,8 @@ import (
 
 type ProtectionMessageAdapter struct {
 	BoardId    uint              `json:"boardId"`
-	Protection ProtectionAdapter `json:"protection"`
 	Timestamp  models.Timestamp  `json:"timestamp"`
+	Protection ProtectionAdapter `json:"protection"`
 }
 
 type ProtectionAdapter struct {

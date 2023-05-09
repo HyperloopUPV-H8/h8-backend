@@ -27,7 +27,7 @@ func NewOrderData(boards map[string]excelAdapterModels.Board) OrderData {
 
 			fields := make(map[string]FieldDescription, len(packet.Values))
 			for _, value := range packet.Values {
-				fields[value.Name] = getField(value.ID, value.Type)
+				fields[value.Name] = getField(value.ID, value.Type, value.SafeRange, value.WarningRange)
 			}
 
 			orderData[packet.Description.Name] = OrderDescription{
@@ -42,13 +42,19 @@ func NewOrderData(boards map[string]excelAdapterModels.Board) OrderData {
 	return orderData
 }
 
-func getField(name string, valueType string) FieldDescription {
+func getField(name string, valueType string, safeRangeStr string, warningRangeStr string) FieldDescription {
 	if IsNumeric(valueType) {
+
+		SafeRange := parseRange(safeRangeStr)
+		WarningRange := parseRange(warningRangeStr)
+
 		return FieldDescription{
 			Name: name,
-			ValueDescription: Value{
-				Kind:  "numeric",
-				Value: valueType,
+			ValueDescription: NumericValue{
+				Kind:         "numeric",
+				Value:        valueType,
+				SafeRange:    SafeRange,
+				WarningRange: WarningRange,
 			},
 		}
 	} else if valueType == "bool" {
@@ -86,10 +92,17 @@ type OrderDescription struct {
 
 type FieldDescription struct {
 	Name             string `json:"name"`
-	ValueDescription Value  `json:"valueDescription"`
+	ValueDescription any    `json:"valueDescription"`
 }
 
 type Value struct {
 	Kind  string `json:"kind"`
 	Value any    `json:"value"`
+}
+
+type NumericValue struct {
+	Kind         string     `json:"kind"`
+	Value        string     `json:"value"`
+	SafeRange    []*float64 `json:"safeRange"`
+	WarningRange []*float64 `json:"warningRange"`
 }

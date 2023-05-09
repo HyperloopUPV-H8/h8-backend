@@ -6,6 +6,7 @@ import (
 
 	excelAdapterModels "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter/models"
+	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
@@ -23,15 +24,17 @@ func NewUnitConverter(kind string, boards map[string]excelAdapterModels.Board, u
 	for _, board := range boards {
 		for _, packet := range board.Packets {
 			for _, val := range packet.Values {
-				var ops string
-				if kind == "pod" && val.PodUnits != "" {
-					ops = getCustomOrGlobalOperations(val.PodUnits, unitToOperations)
-				} else if kind == "display" && val.DisplayUnits != "" {
-					ops = getCustomOrGlobalOperations(val.DisplayUnits, unitToOperations)
-				} else {
-					continue
+				if vehicle_models.IsNumeric(val.Type) {
+					var ops string
+					if kind == "pod" {
+						ops = getCustomOrGlobalOperations(val.PodUnits, unitToOperations)
+					} else if kind == "display" {
+						ops = getCustomOrGlobalOperations(val.DisplayUnits, unitToOperations)
+					} else {
+						continue
+					}
+					operations[val.ID] = models.NewOperations(ops)
 				}
-				operations[val.ID] = models.NewOperations(ops)
 			}
 		}
 	}
@@ -43,15 +46,17 @@ func NewUnitConverter(kind string, boards map[string]excelAdapterModels.Board, u
 }
 
 func getCustomOrGlobalOperations(nameOrCustomOperations string, unitToOperations map[string]string) string {
-	var operationsStr string
-
 	if strings.Contains(nameOrCustomOperations, "#") {
-		operationsStr = getCustomOperations(nameOrCustomOperations)
+		return getCustomOperations(nameOrCustomOperations)
 	} else {
-		operationsStr = unitToOperations[nameOrCustomOperations]
-	}
+		operationsStr, ok := unitToOperations[nameOrCustomOperations]
 
-	return operationsStr
+		if !ok {
+			return ""
+		}
+
+		return operationsStr
+	}
 }
 
 func getCustomOperations(operationsStr string) string {

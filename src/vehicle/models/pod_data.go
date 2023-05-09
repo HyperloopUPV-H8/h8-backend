@@ -1,7 +1,9 @@
 package models
 
 import (
+	"fmt"
 	"log"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -9,37 +11,16 @@ import (
 )
 
 type PodData struct {
-	Boards map[string]Board `json:"boards"`
+	Boards []Board `json:"boards"`
 }
 
 func NewPodData(excelBoards map[string]excelAdapterModels.Board) PodData {
-	boards := make(map[string]Board)
+	boards := make([]Board, 0)
 	for name, excelBoard := range excelBoards {
-		packets := make(map[uint16]Packet)
-		for _, packet := range excelBoard.Packets {
-			if packet.Description.Type != "data" {
-				continue
-			}
-
-			id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
-			if err != nil {
-				log.Fatalf("data transfer: AddPacket: %s\n", err)
-			}
-
-			packets[uint16(id)] = Packet{
-				ID:           uint16(id),
-				Name:         packet.Description.Name,
-				HexValue:     "",
-				Count:        0,
-				CycleTime:    0,
-				Measurements: getMeasurements(packet.Values),
-			}
-		}
-
-		boards[name] = Board{
+		boards = append(boards, Board{
 			Name:    name,
-			Packets: packets,
-		}
+			Packets: getPackets(excelBoard.Packets),
+		})
 	}
 
 	return PodData{
@@ -47,15 +28,55 @@ func NewPodData(excelBoards map[string]excelAdapterModels.Board) PodData {
 	}
 }
 
-func getMeasurements(values []excelAdapterModels.Value) map[string]any {
-	measurements := make(map[string]any, len(values))
+func getPackets(excelPackets []excelAdapterModels.Packet) []Packet {
+	packets := make([]Packet, 0)
+
+	for _, packet := range excelPackets {
+
+		packet, err := getPacket(packet)
+
+		if err != nil {
+			continue
+		}
+
+		packets = append(packets, packet)
+	}
+
+	sortedPackets := SortedPackets(packets)
+	sort.Sort(sortedPackets)
+
+	return sortedPackets
+}
+
+func getPacket(packet excelAdapterModels.Packet) (Packet, error) {
+	if packet.Description.Type != "data" {
+		return Packet{}, fmt.Errorf("packet %s is not data packet", packet.Description.Name)
+	}
+
+	id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
+	if err != nil {
+		log.Fatalf("data transfer: AddPacket: %s\n", err)
+	}
+
+	return Packet{
+		ID:           uint16(id),
+		Name:         packet.Description.Name,
+		HexValue:     "000000",
+		Count:        0,
+		CycleTime:    0,
+		Measurements: getMeasurements(packet.Values),
+	}, nil
+}
+
+func getMeasurements(values []excelAdapterModels.Value) []any {
+	measurements := make([]any, 0)
 	for _, value := range values {
 		if IsNumeric(value.Type) {
-			measurements[value.ID] = getNumericMeasurement(value)
+			measurements = append(measurements, getNumericMeasurement(value))
 		} else if value.Type == "bool" {
-			measurements[value.ID] = getBooleanMeasurement(value)
+			measurements = append(measurements, getBooleanMeasurement(value))
 		} else {
-			measurements[value.ID] = getEnumMeasurement(value)
+			measurements = append(measurements, getEnumMeasurement(value))
 		}
 	}
 	return measurements
@@ -129,17 +150,17 @@ func parseRange(literal string) []*float64 {
 }
 
 type Board struct {
-	Name    string            `json:"name"`
-	Packets map[uint16]Packet `json:"packets"`
+	Name    string   `json:"name"`
+	Packets []Packet `json:"packets"`
 }
 
 type Packet struct {
-	ID           uint16         `json:"id"`
-	Name         string         `json:"name"`
-	HexValue     string         `json:"hexValue"`
-	Count        uint16         `json:"count"`
-	CycleTime    int64          `json:"cycleTime"`
-	Measurements map[string]any `json:"measurements"`
+	ID           uint16 `json:"id"`
+	Name         string `json:"name"`
+	HexValue     string `json:"hexValue"`
+	Count        uint16 `json:"count"`
+	CycleTime    int64  `json:"cycleTime"`
+	Measurements []any  `json:"measurements"`
 }
 
 type NumericMeasurement struct {

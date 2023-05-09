@@ -23,10 +23,13 @@ type Vehicle struct {
 	displayConverter unit_converter.UnitConverter
 	podConverter     unit_converter.UnitConverter
 
+	dataIds       common.Set[uint16]
+	orderIds      common.Set[uint16]
+	protectionIds common.Set[uint16]
+
 	packetParser     packet_parser.PacketParser
 	protectionParser protection_parser.ProtectionParser
 	bitarrayParser   BitarrayParser
-	orderIds         common.Set[uint16]
 
 	dataChan chan packet.Packet
 
@@ -45,7 +48,7 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmitte
 
 		//TODO: add order decoding
 		switch id := packet.Metadata.ID; {
-		case vehicle.packetParser.Ids.Has(id):
+		case vehicle.dataIds.Has(id):
 			update, err := vehicle.getUpdate(packet)
 
 			if err != nil {
@@ -53,12 +56,19 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmitte
 				continue
 			}
 
-			if vehicle.orderIds.Has(id) {
-				transmittedOrderChan <- update
-			} else {
-				updateChan <- update
+			updateChan <- update
+
+		case vehicle.orderIds.Has(id):
+			update, err := vehicle.getUpdate(packet)
+
+			if err != nil {
+				vehicle.trace.Error().Err(err).Msg("error decoding packet")
+				continue
 			}
-		case vehicle.protectionParser.Ids.Has(id):
+
+			transmittedOrderChan <- update
+
+		case vehicle.protectionIds.Has(id):
 			message, err := vehicle.protectionParser.Parse(id, packet.Payload)
 
 			if err != nil {
@@ -66,6 +76,7 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmitte
 				continue
 			}
 			protectionChan <- message
+
 		default:
 			vehicle.trace.Error().Uint16("id", packet.Metadata.ID).Msg("raw id not recognized")
 		}
