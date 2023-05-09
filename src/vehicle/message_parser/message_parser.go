@@ -1,4 +1,4 @@
-package protection_parser
+package message_parser
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-type ProtectionParser struct {
+type MessageParser struct {
 	faultId       uint16
 	warningId     uint16
 	errorId       uint16
@@ -16,7 +16,7 @@ type ProtectionParser struct {
 	trace         zerolog.Logger
 }
 
-func (parser *ProtectionParser) Parse(id uint16, raw []byte) (models.ProtectionMessage, error) {
+func (parser *MessageParser) Parse(id uint16, raw []byte) (any, error) {
 	kind, err := parser.getKind(id)
 
 	if err != nil {
@@ -24,7 +24,7 @@ func (parser *ProtectionParser) Parse(id uint16, raw []byte) (models.ProtectionM
 		return models.ProtectionMessage{}, err
 	}
 
-	var adapter ProtectionMessageAdapter
+	var adapter MessageAdapter
 	err = json.Unmarshal(raw, &adapter)
 
 	if err != nil {
@@ -32,13 +32,41 @@ func (parser *ProtectionParser) Parse(id uint16, raw []byte) (models.ProtectionM
 		return models.ProtectionMessage{}, err
 	}
 
-	dataContainer, err := getDataContainer(adapter.Protection.Type)
+	if kind == "error" {
+		return parser.toErrorMessage(kind, adapter), nil
+	}
+
+	return parser.toProtectionMessage(kind, adapter), nil
+}
+
+func (parser *MessageParser) toErrorMessage(kind string, adapter MessageAdapter) models.ErrorMessage {
+	name, ok := parser.boardIdToName[adapter.BoardId]
+
+	if !ok {
+		parser.trace.Error().Uint("board id", adapter.BoardId).Msg("board id not found")
+		name = "DEFAULT"
+	}
+
+	var data string
+	json.Unmarshal(*adapter.Protection.Data, &data)
+
+	return models.ErrorMessage{
+		Kind:      kind,
+		Board:     name,
+		Name:      adapter.Protection.Name,
+		Timestamp: adapter.Timestamp,
+		Msg:       data,
+	}
+}
+
+func (parser *MessageParser) toProtectionMessage(kind string, adapter MessageAdapter) models.ProtectionMessage {
+	protectionContainer, err := getProtectionContainer(adapter.Protection.Type)
 
 	if err != nil {
 		parser.trace.Error().Err(err).Msg("data container not found")
 	}
 
-	err = json.Unmarshal(*adapter.Protection.Data, &dataContainer)
+	err = json.Unmarshal(*adapter.Protection.Data, &protectionContainer)
 
 	if err != nil {
 		parser.trace.Error().Err(err).Msg("cannot unmarshal protection data")
@@ -48,7 +76,7 @@ func (parser *ProtectionParser) Parse(id uint16, raw []byte) (models.ProtectionM
 
 	if !ok {
 		parser.trace.Error().Uint("board id", adapter.BoardId).Msg("board id not found")
-		return models.ProtectionMessage{}, fmt.Errorf("board id not found: %d", adapter.BoardId)
+		name = "DEFAULT"
 	}
 
 	return models.ProtectionMessage{
@@ -58,12 +86,12 @@ func (parser *ProtectionParser) Parse(id uint16, raw []byte) (models.ProtectionM
 		Timestamp: adapter.Timestamp,
 		Protection: models.Protection{
 			Kind: adapter.Protection.Type,
-			Data: dataContainer,
+			Data: protectionContainer,
 		},
-	}, nil
+	}
 }
 
-func (parser *ProtectionParser) getKind(id uint16) (string, error) {
+func (parser *MessageParser) getKind(id uint16) (string, error) {
 	if id == parser.faultId {
 		return "fault", nil
 	}
@@ -81,7 +109,7 @@ func (parser *ProtectionParser) getKind(id uint16) (string, error) {
 
 }
 
-func getDataContainer(kind string) (any, error) {
+func getProtectionContainer(kind string) (any, error) {
 	switch kind {
 	case "OUT_OF_BOUNDS":
 		return models.OutOfBounds{}, nil
@@ -93,8 +121,6 @@ func getDataContainer(kind string) (any, error) {
 		return models.Equals{}, nil
 	case "NOT_EQUALS":
 		return models.NotEquals{}, nil
-	case "ERROR_HANDLER":
-		return models.Error{}, nil
 	case "TIME_ACCUMULATION":
 		return models.TimeAccumulation{}, nil
 	default:

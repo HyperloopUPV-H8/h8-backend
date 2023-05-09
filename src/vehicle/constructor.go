@@ -9,8 +9,8 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/pipe"
 	"github.com/HyperloopUPV-H8/Backend-H8/sniffer"
 	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter"
+	protection_parser "github.com/HyperloopUPV-H8/Backend-H8/vehicle/message_parser"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/packet_parser"
-	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/protection_parser"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
@@ -63,13 +63,13 @@ func New(args VehicleConstructorArgs) Vehicle {
 		sniffer: sniffer.CreateSniffer(args.GlobalInfo, snifferConfig, vehicleTrace),
 		pipes:   pipe.CreatePipes(args.GlobalInfo, dataChan, args.OnConnectionChange, pipesConfig, vehicleTrace),
 
-		dataIds:       getBoardIdsFromType(args.Boards, "data", vehicleTrace),
-		orderIds:      getBoardIdsFromType(args.Boards, "order", vehicleTrace),
-		protectionIds: protectionIds,
+		dataIds:    getBoardIdsFromType(args.Boards, "data", vehicleTrace),
+		orderIds:   getBoardIdsFromType(args.Boards, "order", vehicleTrace),
+		messageIds: protectionIds,
 
-		packetParser:     packetParser,
-		protectionParser: protection_parser.NewProtectionParser(args.GlobalInfo, faultId, warningId, errorId),
-		bitarrayParser:   NewBitarrayParser(names),
+		packetParser:   packetParser,
+		messageParser:  protection_parser.NewMessageParser(args.GlobalInfo, faultId, warningId, errorId),
+		bitarrayParser: NewBitarrayParser(names),
 
 		dataChan: dataChan,
 

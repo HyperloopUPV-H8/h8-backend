@@ -10,9 +10,9 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/pipe"
 	"github.com/HyperloopUPV-H8/Backend-H8/sniffer"
 	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter"
+	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/message_parser"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/packet_parser"
-	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/protection_parser"
 	"github.com/rs/zerolog"
 )
 
@@ -23,13 +23,13 @@ type Vehicle struct {
 	displayConverter unit_converter.UnitConverter
 	podConverter     unit_converter.UnitConverter
 
-	dataIds       common.Set[uint16]
-	orderIds      common.Set[uint16]
-	protectionIds common.Set[uint16]
+	dataIds    common.Set[uint16]
+	orderIds   common.Set[uint16]
+	messageIds common.Set[uint16]
 
-	packetParser     packet_parser.PacketParser
-	protectionParser protection_parser.ProtectionParser
-	bitarrayParser   BitarrayParser
+	packetParser   packet_parser.PacketParser
+	messageParser  message_parser.MessageParser
+	bitarrayParser BitarrayParser
 
 	dataChan chan packet.Packet
 
@@ -68,19 +68,27 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmitte
 
 			transmittedOrderChan <- update
 
-		case vehicle.protectionIds.Has(id):
-			message, err := vehicle.protectionParser.Parse(id, packet.Payload)
+		case vehicle.messageIds.Has(id):
+			fmt.Printf("%s\n", packet.Payload)
+			message, err := vehicle.messageParser.Parse(id, packet.Payload)
 
 			if err != nil {
 				vehicle.trace.Error().Err(err).Msg("error decoding protection")
 				continue
 			}
-			protectionChan <- message
+
+			switch msg := message.(type) {
+			case models.ProtectionMessage:
+				protectionChan <- msg
+			case models.ErrorMessage:
+				errorChan <- msg
+			default:
+				vehicle.trace.Error().Msg("unrecognized message type")
+			}
 
 		default:
 			vehicle.trace.Error().Uint16("id", packet.Metadata.ID).Msg("raw id not recognized")
 		}
-
 	}
 }
 

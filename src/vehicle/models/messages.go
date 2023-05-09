@@ -1,5 +1,14 @@
 package models
 
+type ErrorMessage struct {
+	Board     string    `json:"board"`
+	Name      string    `json:"name"`
+	Timestamp Timestamp `json:"timestamp"`
+
+	Kind string `json:"kind"`
+	Msg  string `json:"msg"`
+}
+
 type ProtectionMessage struct {
 	Board     string    `json:"board"`
 	Name      string    `json:"name"`

@@ -1,4 +1,4 @@
-package protection_parser
+package message_parser
 
 import (
 	"strconv"
@@ -8,12 +8,12 @@ import (
 	trace "github.com/rs/zerolog/log"
 )
 
-func NewProtectionParser(globalInfo excelAdapterModels.GlobalInfo, faultId uint16, warningId uint16, errorId uint16) ProtectionParser {
+func NewMessageParser(globalInfo excelAdapterModels.GlobalInfo, faultId uint16, warningId uint16, errorId uint16) MessageParser {
 	parserLogger := trace.With().Str("component", "protection parser").Logger()
 
 	idToBoard := getIdToBoard(globalInfo.BoardToId, parserLogger)
 
-	return ProtectionParser{
+	return MessageParser{
 		faultId:       faultId,
 		errorId:       errorId,
 		warningId:     warningId,
