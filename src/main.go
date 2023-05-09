@@ -155,7 +155,7 @@ func createPid(path string) {
 	if err != nil {
 		switch err {
 		case ErrProcessRunning:
-			trace.Fatal().Err(err).Msg("BACKEND IS ALREADY RUNNING")
+			trace.Fatal().Err(err).Msg("Backend is already running")
 		default:
 			trace.Error().Err(err).Msg("pid error")
 		}

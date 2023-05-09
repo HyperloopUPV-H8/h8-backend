@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fatih/color"
+
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/internals"
 	internalModels "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/internals/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
@@ -82,7 +84,8 @@ func fetchDocument(downloadConfig internals.DownloadConfig, parseConfig internal
 }
 
 func promptContinue() bool {
-	fmt.Println("Continue with incorrect ADE? [Y/n]")
+	fmt.Print(color.WhiteString("Continue with incorrect ADE?"), " ", color.MagentaString("[Y/n]: "))
+
 	for {
 		var selection string
 		fmt.Scanln(&selection)
@@ -92,7 +95,7 @@ func promptContinue() bool {
 		} else if strings.ToUpper(selection) == "N" || strings.ToUpper(selection) == "NO" {
 			return false
 		} else {
-			fmt.Println("Incorrect input")
+			fmt.Print(color.WhiteString("Incorrect input, try again: "))
 		}
 	}
 }

@@ -22,11 +22,11 @@ type DownloadConfig struct {
 }
 
 //go:embed secret.json
-var api_key []byte
+var apiKey []byte
 
 func DownloadFile(config DownloadConfig) error {
 	trace.Trace().Str("id", config.Id).Str("path", config.Path).Str("name", config.Name).Msg("download file")
-	client, errClient := getClient(api_key)
+	client, errClient := getClient(apiKey)
 	if errClient != nil {
 		trace.Error().Str("id", config.Id).Str("path", config.Path).Str("name", config.Name).Stack().Err(errClient).Msg("")
 		return errClient

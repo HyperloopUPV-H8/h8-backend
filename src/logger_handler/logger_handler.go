@@ -60,6 +60,7 @@ func (handler *LoggerHandler) UpdateMessage(topic string, payload json.RawMessag
 		err := json.Unmarshal(payload, &enable)
 		if err != nil {
 			handler.trace.Error().Stack().Err(err).Msg("unmarshal enable")
+			return
 		}
 
 		handler.handleEnable(enable, source)
@@ -74,16 +75,17 @@ func (handler *LoggerHandler) handleEnable(enable bool, source string) error {
 		return fmt.Errorf("%s tried to change running log session of %s", source, handler.currentSession)
 	}
 
+	return nil
+}
+
+func (handler *LoggerHandler) changeState(enable bool) {
 	handler.isRunningMx.Lock()
+	defer handler.isRunningMx.Unlock()
 	if enable && !handler.isRunning {
-		handler.isRunningMx.Unlock()
 		handler.start()
 	} else if !enable && handler.isRunning {
-		handler.isRunningMx.Unlock()
 		handler.stop()
 	}
-
-	return nil
 }
 
 func (handler *LoggerHandler) verifySession(session string) bool {

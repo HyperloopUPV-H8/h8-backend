@@ -63,8 +63,8 @@ func New(args VehicleConstructorArgs) Vehicle {
 		sniffer: sniffer.CreateSniffer(args.GlobalInfo, snifferConfig, vehicleTrace),
 		pipes:   pipe.CreatePipes(args.GlobalInfo, dataChan, args.OnConnectionChange, pipesConfig, vehicleTrace),
 
-		dataIds:       getBoardIdsFromType(args.Boards, "data"),
-		orderIds:      getBoardIdsFromType(args.Boards, "order"),
+		dataIds:       getBoardIdsFromType(args.Boards, "data", vehicleTrace),
+		orderIds:      getBoardIdsFromType(args.Boards, "order", vehicleTrace),
 		protectionIds: protectionIds,
 
 		packetParser:     packetParser,
@@ -140,7 +140,7 @@ func getIdToBoard(boards map[string]excel_models.Board, trace zerolog.Logger) ma
 	return idToBoard
 }
 
-func getBoardIdsFromType(boards map[string]excel_models.Board, kind string) common.Set[uint16] {
+func getBoardIdsFromType(boards map[string]excel_models.Board, kind string, trace zerolog.Logger) common.Set[uint16] {
 	ids := common.NewSet[uint16]()
 
 	for _, board := range boards {
@@ -149,7 +149,8 @@ func getBoardIdsFromType(boards map[string]excel_models.Board, kind string) comm
 				id, err := strconv.ParseInt(packet.Description.ID, 10, 16)
 
 				if err != nil {
-					//TODO:
+					trace.Error().Err(err).Msg("Incorrect board id")
+					continue
 				}
 
 				ids.Add(uint16(id))

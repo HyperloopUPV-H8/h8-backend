@@ -63,15 +63,7 @@ func isProcessRunning(pid int) bool {
 
 	err = process.Signal(syscall.Signal(0))
 
-	if err != nil && err.Error() == "no such process" {
-		return false
-	}
-
-	if err != nil && err.Error() == "os: process already finished" {
-		return false
-	}
-
-	return true
+	return err == nil
 }
 
 func RemovePid(filename string) error {
