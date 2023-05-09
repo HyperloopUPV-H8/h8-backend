@@ -75,6 +75,8 @@ func (handler *LoggerHandler) handleEnable(enable bool, source string) error {
 		return fmt.Errorf("%s tried to change running log session of %s", source, handler.currentSession)
 	}
 
+	handler.changeState(enable)
+
 	return nil
 }
 
