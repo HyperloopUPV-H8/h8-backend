@@ -13,8 +13,6 @@ var (
 	ErrProcessRunning = errors.New("process is running")
 )
 
-// Write writes a pidfile, returning an error
-// if the process is already running or pidfile is orphaned
 func WritePid(filename string) error {
 	oldPid, err := getOldPid(filename)
 
@@ -41,7 +39,6 @@ func WritePid(filename string) error {
 func getOldPid(filename string) (int, error) {
 	oldPidFile, err := os.Open(filename)
 	if err != nil {
-
 		return 0, err
 	}
 
@@ -77,7 +74,6 @@ func isProcessRunning(pid int) bool {
 	return true
 }
 
-// Remove a pidfile
 func RemovePid(filename string) error {
 	return os.RemoveAll(filename)
 }

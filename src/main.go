@@ -240,7 +240,7 @@ func getConfig(path string) Config {
 
 	var config Config
 
-	// decodeErr := toml.NewDecoder(reader).DisallowUnknownFields().Decode(&config)
+	// TODO: add strict mode (DisallowUnkownFields)
 	decodeErr := toml.NewDecoder(reader).Decode(&config)
 
 	if decodeErr != nil {
