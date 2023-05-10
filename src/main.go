@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	blcuPackage "github.com/HyperloopUPV-H8/Backend-H8/blcu"
+	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter"
@@ -66,8 +67,7 @@ func main() {
 	connectionTransfer := connection_transfer.New(config.Connections)
 
 	podData := vehicle_models.NewPodData(boards)
-	orderData := vehicle_models.NewOrderData(boards)
-	blcu := blcuPackage.NewBLCU(globalInfo, config.BLCU)
+	orderData := vehicle_models.NewOrderData(boards, config.Excel.Parse.Global.BLCUAddressKey)
 
 	vehicle := vehicle.New(vehicle.VehicleConstructorArgs{
 		Config:             config.Vehicle,
@@ -75,10 +75,14 @@ func main() {
 		GlobalInfo:         globalInfo,
 		OnConnectionChange: connectionTransfer.Update,
 	})
+
+	blcu := blcuPackage.NewBLCU(globalInfo, config.BLCU)
+	blcu.SetSendOrder(vehicle.SendOrder)
+
 	vehicleUpdates := make(chan vehicle_models.PacketUpdate, 1)
 	vehicleProtections := make(chan vehicle_models.ProtectionMessage)
-	vehicleErrors := make(chan vehicle_models.ErrorMessage)
 	vehicleTransmittedOrders := make(chan vehicle_models.PacketUpdate)
+	blcuAckChan := make(chan struct{})
 
 	dataTransfer := data_transfer.New(config.DataTransfer)
 	go dataTransfer.Run()
@@ -110,7 +114,7 @@ func main() {
 	websocketBroker.RegisterHandle(&messageTransfer)
 	websocketBroker.RegisterHandle(&orderTransfer, config.Orders.SendTopic)
 
-	go vehicle.Listen(vehicleUpdates, vehicleTransmittedOrders, vehicleProtections, vehicleErrors)
+	go vehicle.Listen(vehicleUpdates, vehicleTransmittedOrders, vehicleProtections, blcuAckChan)
 
 	go startPacketUpdateRoutine(vehicleUpdates, &dataTransfer, &loggerHandler)
 	go startProtectionsRoutine(vehicleProtections, &messageTransfer, &loggerHandler)
@@ -124,8 +128,8 @@ func main() {
 	}()
 
 	go func() {
-		for error := range vehicleErrors {
-			messageTransfer.SendMessage(error)
+		for range blcuAckChan {
+			blcu.NotifyAck()
 		}
 	}()
 
@@ -139,6 +143,11 @@ func main() {
 
 	httpServer.ServeData("/backend"+config.Server.Endpoints.PodData, podData)
 	httpServer.ServeData("/backend"+config.Server.Endpoints.OrderData, orderData)
+
+	uploadableBords := common.Filter(common.Keys(globalInfo.BoardToIP), func(item string) bool {
+		return item != config.Excel.Parse.Global.BLCUAddressKey
+	})
+	httpServer.ServeData("/backend"+config.Server.Endpoints.UploadableBoards, uploadableBords)
 
 	httpServer.HandleFunc(config.Server.Endpoints.Websocket, websocketBroker.HandleConn)
 

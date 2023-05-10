@@ -10,11 +10,14 @@ import (
 
 type OrderData map[string]OrderDescription
 
-func NewOrderData(boards map[string]excelAdapterModels.Board) OrderData {
-
+func NewOrderData(boards map[string]excelAdapterModels.Board, blcuName string) OrderData {
 	orderData := make(map[string]OrderDescription)
 
 	for _, board := range boards {
+		if board.Name == blcuName {
+			continue
+		}
+
 		for _, packet := range board.Packets {
 			if packet.Description.Type != "order" {
 				continue

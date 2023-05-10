@@ -12,7 +12,7 @@ import (
 )
 
 type downloadRequest struct {
-	Board string `json:"board"`
+	Board uint16 `json:"board"`
 }
 
 func (blcu *BLCU) handleDownload(payload json.RawMessage) ([]byte, error) {
@@ -37,8 +37,8 @@ func (blcu *BLCU) handleDownload(payload json.RawMessage) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (blcu *BLCU) requestDownload(board string) error {
-	blcu.trace.Info().Str("board", board).Msg("Requesting download")
+func (blcu *BLCU) requestDownload(board uint16) error {
+	blcu.trace.Info().Uint16("board", board).Msg("Requesting download")
 
 	downloadOrder := blcu.createDownloadOrder(board)
 	if err := blcu.sendOrder(downloadOrder); err != nil {
@@ -53,7 +53,7 @@ func (blcu *BLCU) requestDownload(board string) error {
 	return nil
 }
 
-func (blcu *BLCU) createDownloadOrder(board string) models.Order {
+func (blcu *BLCU) createDownloadOrder(board uint16) models.Order {
 	return models.Order{
 		ID: blcu.config.Packets.Download.Id,
 		Fields: map[string]models.Field{

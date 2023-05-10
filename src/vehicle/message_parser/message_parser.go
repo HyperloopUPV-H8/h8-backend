@@ -16,7 +16,7 @@ type MessageParser struct {
 	trace         zerolog.Logger
 }
 
-func (parser *MessageParser) Parse(id uint16, raw []byte) (any, error) {
+func (parser *MessageParser) Parse(id uint16, raw []byte) (models.ProtectionMessage, error) {
 	kind, err := parser.getKind(id)
 
 	if err != nil {
@@ -24,39 +24,17 @@ func (parser *MessageParser) Parse(id uint16, raw []byte) (any, error) {
 		return models.ProtectionMessage{}, err
 	}
 
+	payload := raw[2:]
+
 	var adapter MessageAdapter
-	err = json.Unmarshal(raw, &adapter)
+	err = json.Unmarshal(payload, &adapter)
 
 	if err != nil {
 		parser.trace.Error().Err(err).Str("message", string(raw)).Msg("error parsing protection message")
 		return models.ProtectionMessage{}, err
 	}
 
-	if kind == "error" {
-		return parser.toErrorMessage(kind, adapter), nil
-	}
-
 	return parser.toProtectionMessage(kind, adapter), nil
-}
-
-func (parser *MessageParser) toErrorMessage(kind string, adapter MessageAdapter) models.ErrorMessage {
-	name, ok := parser.boardIdToName[adapter.BoardId]
-
-	if !ok {
-		parser.trace.Error().Uint("board id", adapter.BoardId).Msg("board id not found")
-		name = "DEFAULT"
-	}
-
-	var data string
-	json.Unmarshal(*adapter.Protection.Data, &data)
-
-	return models.ErrorMessage{
-		Kind:      kind,
-		Board:     name,
-		Name:      adapter.Protection.Name,
-		Timestamp: adapter.Timestamp,
-		Msg:       data,
-	}
 }
 
 func (parser *MessageParser) toProtectionMessage(kind string, adapter MessageAdapter) models.ProtectionMessage {
@@ -123,6 +101,8 @@ func getProtectionContainer(kind string) (any, error) {
 		return models.NotEquals{}, nil
 	case "TIME_ACCUMULATION":
 		return models.TimeAccumulation{}, nil
+	case "ERROR_HANDLER":
+		return "", nil
 	default:
 		return nil, fmt.Errorf("protection kind not recognized: %s", kind)
 	}

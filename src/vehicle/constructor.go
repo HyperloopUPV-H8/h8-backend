@@ -47,14 +47,16 @@ func New(args VehicleConstructorArgs) Vehicle {
 	snifferConfig := getSnifferConfig(args.Config)
 	pipesConfig := getPipesConfig(args.Config)
 
-	protectionIds := common.NewSet[uint16]()
+	messageIds := common.NewSet[uint16]()
 
 	faultId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Protections.FaultIdKey, vehicleTrace)
-	protectionIds.Add(faultId)
+	messageIds.Add(faultId)
 	warningId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Protections.WarningIdKey, vehicleTrace)
-	protectionIds.Add(warningId)
+	messageIds.Add(warningId)
 	errorId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Protections.ErrorIdKey, vehicleTrace)
-	protectionIds.Add(errorId)
+	messageIds.Add(errorId)
+	blcuAckId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Protections.ErrorIdKey, vehicleTrace)
+	messageIds.Add(blcuAckId)
 
 	vehicle := Vehicle{
 		podConverter:     unit_converter.NewUnitConverter("pod", args.Boards, args.GlobalInfo.UnitToOperations),
@@ -65,7 +67,8 @@ func New(args VehicleConstructorArgs) Vehicle {
 
 		dataIds:    getBoardIdsFromType(args.Boards, "data", vehicleTrace),
 		orderIds:   getBoardIdsFromType(args.Boards, "order", vehicleTrace),
-		messageIds: protectionIds,
+		messageIds: messageIds,
+		blcuAckId:  blcuAckId,
 
 		packetParser:   packetParser,
 		messageParser:  protection_parser.NewMessageParser(args.GlobalInfo, faultId, warningId, errorId),

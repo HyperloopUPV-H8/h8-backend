@@ -1,14 +1,5 @@
 package models
 
-type ErrorMessage struct {
-	Board     string    `json:"board"`
-	Name      string    `json:"name"`
-	Timestamp Timestamp `json:"timestamp"`
-
-	Kind string `json:"kind"`
-	Msg  string `json:"msg"`
-}
-
 type ProtectionMessage struct {
 	Board     string    `json:"board"`
 	Name      string    `json:"name"`
@@ -31,7 +22,6 @@ type LowerBound struct {
 	Value float64 `json:"value"`
 	Bound float64 `json:"bound"`
 }
-
 type UpperBound struct {
 	Value float64 `json:"value"`
 	Bound float64 `json:"bound"`
@@ -44,7 +34,4 @@ type NotEquals struct {
 	Want  float64 `json:"want"`
 }
 
-type Error struct {
-	Kind string `json:"kind"`
-	Data string `json:"data"`
-}
+type Error = string
