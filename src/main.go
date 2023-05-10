@@ -124,6 +124,12 @@ func main() {
 	}()
 
 	go func() {
+		for error := range vehicleErrors {
+			messageTransfer.SendMessage(error)
+		}
+	}()
+
+	go func() {
 		for id := range websocketBroker.CloseChan {
 			loggerHandler.NotifyDisconnect(id)
 		}

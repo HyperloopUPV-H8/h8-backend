@@ -1,4 +1,4 @@
-package protection_parser
+package message_parser
 
 import (
 	"encoding/json"
@@ -6,7 +6,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 )
 
-type ProtectionMessageAdapter struct {
+type MessageAdapter struct {
 	BoardId    uint              `json:"boardId"`
 	Timestamp  models.Timestamp  `json:"timestamp"`
 	Protection ProtectionAdapter `json:"protection"`
