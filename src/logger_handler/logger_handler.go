@@ -29,7 +29,8 @@ type LoggerHandler struct {
 func NewLoggerHandler(loggers map[string]Logger, config Config) LoggerHandler {
 	trace.Info().Msg("new LoggerHandler")
 
-	os.MkdirAll(config.BasePath, os.ModePerm)
+	os.MkdirAll(config.BasePath, 0777)
+	os.Chmod(config.BasePath, 0777)
 
 	return LoggerHandler{
 		loggers:        loggers,
@@ -104,7 +105,8 @@ func (handler *LoggerHandler) start() {
 	currentTime := time.Now()
 	sessionDirName := fmt.Sprintf("%d_%d_%d - %d_%dh", currentTime.Day(), currentTime.Month(), currentTime.Year(), currentTime.Hour(), currentTime.Minute())
 	path := filepath.Join(handler.config.BasePath, sessionDirName)
-	os.MkdirAll(path, os.ModePerm)
+	os.MkdirAll(path, 0777)
+	os.Chmod(path, 0777)
 
 	activeLoggers := handler.createActiveLoggers(path)
 

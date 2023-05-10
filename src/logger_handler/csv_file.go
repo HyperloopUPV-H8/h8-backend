@@ -18,13 +18,14 @@ type CSVFile struct {
 
 func NewCSVFile(path, name string) (CSVFile, error) {
 	trace.Debug().Str("path", path).Str("name", name).Msg("creating save file")
-	if err := os.MkdirAll(path, os.ModePerm); err != nil {
+	if err := os.MkdirAll(path, 0777); err != nil {
 		trace.Error().Stack().Err(err).Str("path", path).Str("name", name).Msg("failed to create directory")
 		return CSVFile{}, err
 	}
 
 	fileName := fmt.Sprintf("%s.csv", name)
 	file, err := os.Create(filepath.Join(path, fileName))
+	os.Chmod(filepath.Join(path, fileName), 0777)
 
 	if err != nil {
 		trace.Error().Stack().Err(err).Str("path", path).Str("name", name).Msg("failed to create file")
