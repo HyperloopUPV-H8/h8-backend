@@ -93,7 +93,7 @@ func main() {
 	packetLogger := packet_logger.NewPacketLogger(boards, config.PacketLogger)
 	valueLogger := value_logger.NewValueLogger(boards, config.ValueLogger)
 	orderLogger := order_logger.NewOrderLogger(boards, config.OrderLogger)
-	protectionLogger := protection_logger.NewProtectionLogger(config.Vehicle.Protections.FaultIdKey, config.Vehicle.Protections.WarningIdKey, config.Vehicle.Protections.ErrorIdKey, config.ProtectionLogger)
+	protectionLogger := protection_logger.NewProtectionLogger(config.Vehicle.Messages.FaultIdKey, config.Vehicle.Messages.WarningIdKey, config.Vehicle.Messages.ErrorIdKey, config.ProtectionLogger)
 
 	loggers := map[string]logger_handler.Logger{
 		"packets":     &packetLogger,

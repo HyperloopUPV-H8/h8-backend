@@ -49,13 +49,13 @@ func New(args VehicleConstructorArgs) Vehicle {
 
 	messageIds := common.NewSet[uint16]()
 
-	faultId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Protections.FaultIdKey, vehicleTrace)
+	faultId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Messages.FaultIdKey, vehicleTrace)
 	messageIds.Add(faultId)
-	warningId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Protections.WarningIdKey, vehicleTrace)
+	warningId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Messages.WarningIdKey, vehicleTrace)
 	messageIds.Add(warningId)
-	errorId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Protections.ErrorIdKey, vehicleTrace)
+	errorId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Messages.ErrorIdKey, vehicleTrace)
 	messageIds.Add(errorId)
-	blcuAckId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Protections.ErrorIdKey, vehicleTrace)
+	blcuAckId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Messages.BlcuAckId, vehicleTrace)
 	messageIds.Add(blcuAckId)
 
 	vehicle := Vehicle{
