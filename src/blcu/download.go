@@ -100,12 +100,25 @@ func (blcu *BLCU) notifyDownloadFailure() {
 
 func (blcu *BLCU) notifyDownloadSuccess(board string, bytes []byte) {
 	blcu.trace.Info().Msg("Download success")
-	os.MkdirAll(blcu.config.DownloadPath, 0777)
-	os.Chmod(blcu.config.DownloadPath, 0777)
-	err := os.WriteFile(path.Join(blcu.config.DownloadPath, board+".bin"), bytes, 0644)
-	if err != nil {
-		blcu.trace.Error().Err(err).Stack().Msg("Write file")
+	if err := blcu.writeDownloadFile(board, bytes); err != nil {
+		blcu.trace.Error().Err(err).Stack().Msg("Write download file")
+		blcu.notifyDownloadFailure()
+		return
 	}
-	os.Chmod(path.Join(blcu.config.DownloadPath, board+".bin"), 0777)
 	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: true, File: bytes})
+}
+
+func (blcu *BLCU) writeDownloadFile(board string, data []byte) error {
+	blcu.trace.Info().Msg("Creating download file")
+
+	err := os.MkdirAll(blcu.config.DownloadPath, 0777)
+	if err != nil {
+		return err
+	}
+	err = os.Chmod(blcu.config.DownloadPath, 0777)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path.Join(blcu.config.DownloadPath, board+".bin"), data, 0777)
 }
