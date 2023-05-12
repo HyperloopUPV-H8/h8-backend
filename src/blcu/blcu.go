@@ -79,10 +79,10 @@ func (blcu *BLCU) UpdateMessage(topic string, payload json.RawMessage, source st
 			blcu.notifyUploadSuccess()
 		}
 	case blcu.config.Topics.Download:
-		if file, err := blcu.handleDownload(payload); err != nil {
+		if board, file, err := blcu.handleDownload(payload); err != nil {
 			blcu.notifyDownloadFailure()
 		} else {
-			blcu.notifyDownloadSuccess(file)
+			blcu.notifyDownloadSuccess(board, file)
 		}
 	}
 }
