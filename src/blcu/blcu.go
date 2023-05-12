@@ -46,7 +46,7 @@ func getBoardToId(boardToIdStr map[string]string) map[string]uint16 {
 		id, err := strconv.Atoi(idStr)
 
 		if err != nil {
-			//TODO: TRACE
+			trace.Error().Err(err).Stack().Msg("Convert board id")
 			continue
 		}
 
