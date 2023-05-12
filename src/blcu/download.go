@@ -17,26 +17,34 @@ type downloadRequest struct {
 	Board string `json:"board"`
 }
 
-func (blcu *BLCU) handleDownload(payload json.RawMessage) (string, []byte, error) {
+type downloadData struct {
+	Board   string
+	Payload []byte
+}
+
+func (blcu *BLCU) handleDownload(payload json.RawMessage) (downloadData, error) {
 	blcu.trace.Debug().Msg("Handling download")
 	var request downloadRequest
 	if err := json.Unmarshal(payload, &request); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Unmarshal payload")
-		return "", nil, err
+		return downloadData{}, err
 	}
 
 	if err := blcu.requestDownload(request.Board); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Request download")
-		return "", nil, err
+		return downloadData{}, err
 	}
 
 	buffer := bytes.NewBuffer([]byte{})
 	if err := blcu.ReadTFTP(buffer); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Read TFTP")
-		return "", nil, err
+		return downloadData{}, err
 	}
 
-	return request.Board, buffer.Bytes(), nil
+	return downloadData{
+		Board:   request.Board,
+		Payload: buffer.Bytes(),
+	}, nil
 }
 
 func (blcu *BLCU) requestDownload(board string) error {
@@ -98,17 +106,12 @@ func (blcu *BLCU) notifyDownloadFailure() {
 	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: false, File: nil})
 }
 
-func (blcu *BLCU) notifyDownloadSuccess(board string, bytes []byte) {
+func (blcu *BLCU) notifyDownloadSuccess(data downloadData) {
 	blcu.trace.Info().Msg("Download success")
-	if err := blcu.writeDownloadFile(board, bytes); err != nil {
-		blcu.trace.Error().Err(err).Stack().Msg("Write download file")
-		blcu.notifyDownloadFailure()
-		return
-	}
-	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: true, File: bytes})
+	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: true, File: data.Payload})
 }
 
-func (blcu *BLCU) writeDownloadFile(board string, data []byte) error {
+func (blcu *BLCU) writeDownloadFile(data downloadData) error {
 	blcu.trace.Info().Msg("Creating download file")
 
 	err := os.MkdirAll(blcu.config.DownloadPath, 0777)
@@ -120,5 +123,5 @@ func (blcu *BLCU) writeDownloadFile(board string, data []byte) error {
 		return err
 	}
 
-	return os.WriteFile(path.Join(blcu.config.DownloadPath, board+".bin"), data, 0777)
+	return os.WriteFile(path.Join(blcu.config.DownloadPath, data.Board+".bin"), data.Payload, 0777)
 }
