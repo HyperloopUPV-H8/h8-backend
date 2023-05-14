@@ -1,5 +1,5 @@
 package websocket_broker
 
 type Config struct {
-	MaxConnextions uint `toml:"max_connextions"`
+	MaxConnections uint `toml:"max_connections"`
 }

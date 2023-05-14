@@ -43,7 +43,7 @@ func (broker *WebSocketBroker) HandleConn(writter http.ResponseWriter, request *
 
 	writter.Header().Set("Access-Control-Allow-Origin", "*")
 
-	if broker.currentConns() >= broker.config.MaxConnextions {
+	if broker.currentConns() >= broker.config.MaxConnections {
 		broker.trace.Warn().Msg("max connextions reached")
 		http.Error(writter, "max connextions reached", http.StatusTooManyRequests)
 		return

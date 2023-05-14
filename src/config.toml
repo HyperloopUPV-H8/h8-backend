@@ -46,11 +46,11 @@ message_ids_table = "message_ids"
 [logger_handler]
 topics = { enable = "logger/enable" }
 base_path = "log"
-flush_interval="5s"
+flush_interval = "5s"
 
 [packet_logger]
 file_name = "packets"
-flush_interval="5s"
+flush_interval = "5s"
 
 [value_logger]
 folder_name = "values"
@@ -58,11 +58,11 @@ flush_interval = "5s"
 
 [order_logger]
 file_name = "orders"
-flush_interval="5s"
+flush_interval = "5s"
 
 [protection_logger]
 file_name = "protections"
-flush_interval="5s"
+flush_interval = "5s"
 
 [orders]
 send_topic = "order/send"
@@ -85,3 +85,6 @@ ack = { name = "tftp_ack" }
 [blcu.topics]
 upload = "blcu/upload"
 download = "blcu/download"
+
+[websocket]
+max_connections = 190
