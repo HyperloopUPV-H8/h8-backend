@@ -100,7 +100,7 @@ func main() {
 
 	loggerHandler := logger_handler.NewLoggerHandler(loggers, config.LoggerHandler)
 
-	websocketBroker := websocket_broker.New()
+	websocketBroker := websocket_broker.New(config.Websocket)
 	defer websocketBroker.Close()
 
 	websocketBroker.RegisterHandle(&blcu, config.BLCU.Topics.Upload, config.BLCU.Topics.Download)

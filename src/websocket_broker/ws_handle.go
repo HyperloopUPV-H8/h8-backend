@@ -20,9 +20,10 @@ type WebSocketBroker struct {
 	clientsMx  *sync.Mutex
 	CloseChan  chan string
 	trace      zerolog.Logger
+	config     Config
 }
 
-func New() WebSocketBroker {
+func New(config Config) WebSocketBroker {
 	trace.Info().Msg("new websocket broker")
 	return WebSocketBroker{
 		handlers:   make(map[string][]models.MessageHandler),
@@ -30,6 +31,7 @@ func New() WebSocketBroker {
 		clients:    make(map[string]*websocket.Conn),
 		clientsMx:  &sync.Mutex{},
 		CloseChan:  make(chan string),
+		config:     config,
 
 		trace: trace.With().Str("component", "webSocketBroker").Logger(),
 	}
@@ -40,6 +42,12 @@ func (broker *WebSocketBroker) HandleConn(writter http.ResponseWriter, request *
 	defer request.Body.Close()
 
 	writter.Header().Set("Access-Control-Allow-Origin", "*")
+
+	if broker.currentConns() >= broker.config.MaxConnextions {
+		broker.trace.Warn().Msg("max connextions reached")
+		http.Error(writter, "max connextions reached", http.StatusTooManyRequests)
+		return
+	}
 
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(*http.Request) bool { return true },
@@ -64,6 +72,12 @@ func (broker *WebSocketBroker) HandleConn(writter http.ResponseWriter, request *
 	broker.trace.Info().Str("id", id.String()).Msg("new client")
 	broker.clients[id.String()] = conn
 	go broker.readMessages(id.String(), conn)
+}
+
+func (broker *WebSocketBroker) currentConns() uint {
+	broker.clientsMx.Lock()
+	defer broker.clientsMx.Unlock()
+	return uint(len(broker.clients))
 }
 
 func (broker *WebSocketBroker) readMessages(client string, conn *websocket.Conn) {

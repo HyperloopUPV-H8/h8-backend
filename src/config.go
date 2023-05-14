@@ -11,6 +11,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/server"
 	"github.com/HyperloopUPV-H8/Backend-H8/value_logger"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle"
+	"github.com/HyperloopUPV-H8/Backend-H8/websocket_broker"
 )
 
 type Config struct {
@@ -26,7 +27,8 @@ type Config struct {
 	Orders           struct {
 		SendTopic string `toml:"send_topic"`
 	}
-	Messages message_transfer.MessageTransferConfig
-	Server   server.ServerConfig
-	BLCU     blcu.BLCUConfig `toml:"blcu"`
+	Messages  message_transfer.MessageTransferConfig
+	Server    server.ServerConfig
+	BLCU      blcu.BLCUConfig `toml:"blcu"`
+	Websocket websocket_broker.Config
 }
