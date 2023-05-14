@@ -125,18 +125,6 @@ func (vehicle *Vehicle) SendOrder(order models.Order) error {
 	return err
 }
 
-// func (vehicle *Vehicle) Send(board string, buf []byte) error {
-// 	pipe, ok := vehicle.pipes[board]
-
-// 	if !ok {
-// 		return fmt.Errorf("pipe for board %s not found", board)
-// 	}
-
-// 	_, err := pipe.Write(buf)
-
-// 	return err
-// }
-
 func (vehicle *Vehicle) getUpdate(packet packet.Packet) (models.PacketUpdate, error) {
 	update, err := vehicle.packetParser.Decode(packet.Metadata.ID, packet.Payload, packet.Metadata)
 
