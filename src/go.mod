@@ -11,7 +11,6 @@ require (
 	github.com/pelletier/go-toml/v2 v2.0.7
 	github.com/pin/tftp/v3 v3.0.0
 	github.com/rs/zerolog v1.29.0
-	github.com/soellman/pidfile v0.0.0-20160225184504-d482c905736b
 	github.com/xuri/excelize/v2 v2.7.1
 	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53
 	google.golang.org/api v0.103.0

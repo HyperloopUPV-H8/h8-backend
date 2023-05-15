@@ -7,6 +7,8 @@ type BLCUConfig struct {
 		Ack      PacketData
 	}
 
+	DownloadPath string `toml:"download_path,omitempty"`
+
 	Topics struct {
 		Upload   string
 		Download string

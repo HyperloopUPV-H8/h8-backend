@@ -23,9 +23,11 @@ type Vehicle struct {
 	displayConverter unit_converter.UnitConverter
 	podConverter     unit_converter.UnitConverter
 
-	dataIds    common.Set[uint16]
-	orderIds   common.Set[uint16]
-	messageIds common.Set[uint16]
+	dataIds     common.Set[uint16]
+	orderIds    common.Set[uint16]
+	messageIds  common.Set[uint16]
+	blcuAckId   uint16
+	blcuAckChan chan<- struct{}
 
 	packetParser   packet_parser.PacketParser
 	messageParser  message_parser.MessageParser
@@ -40,7 +42,7 @@ type Vehicle struct {
 	trace zerolog.Logger
 }
 
-func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmittedOrderChan chan<- models.PacketUpdate, protectionChan chan<- models.ProtectionMessage, errorChan chan<- models.ErrorMessage) {
+func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmittedOrderChan chan<- models.PacketUpdate, protectionChan chan<- models.ProtectionMessage, blcuAckChan chan<- struct{}) {
 	vehicle.trace.Debug().Msg("vehicle listening")
 	for packet := range vehicle.dataChan {
 		payloadCopy := make([]byte, len(packet.Payload))
@@ -69,7 +71,11 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmitte
 			transmittedOrderChan <- update
 
 		case vehicle.messageIds.Has(id):
-			fmt.Printf("%s\n", packet.Payload)
+			if id == vehicle.blcuAckId {
+				blcuAckChan <- struct{}{}
+				continue
+			}
+
 			message, err := vehicle.messageParser.Parse(id, packet.Payload)
 
 			if err != nil {
@@ -77,14 +83,7 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmitte
 				continue
 			}
 
-			switch msg := message.(type) {
-			case models.ProtectionMessage:
-				protectionChan <- msg
-			case models.ErrorMessage:
-				errorChan <- msg
-			default:
-				vehicle.trace.Error().Msg("unrecognized message type")
-			}
+			protectionChan <- message
 
 		default:
 			vehicle.trace.Error().Uint16("id", packet.Metadata.ID).Msg("raw id not recognized")

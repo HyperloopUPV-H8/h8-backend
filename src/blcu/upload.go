@@ -3,6 +3,7 @@ package blcu
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"time"
 
@@ -13,24 +14,32 @@ import (
 
 type uploadRequest struct {
 	Board string `json:"board"`
-	File  []byte `json:"file"`
+	File  string `json:"file"`
 }
 
 func (blcu *BLCU) handleUpload(payload json.RawMessage) error {
 	blcu.trace.Debug().Msg("Handling upload")
 
-	var uploadData uploadRequest
-	if err := json.Unmarshal(payload, &uploadData); err != nil {
+	var request uploadRequest
+	if err := json.Unmarshal(payload, &request); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Unmarshal payload")
 		return err
 	}
 
-	if err := blcu.requestUpload(uploadData.Board); err != nil {
+	id, ok := blcu.boardToId[request.Board]
+
+	if !ok {
+		err := fmt.Errorf("id not found for board %s", request.Board)
+		blcu.trace.Error().Err(err).Stack().Msg("Board not found")
+		return err
+	}
+
+	if err := blcu.requestUpload(id); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Request upload")
 		return err
 	}
 
-	if err := blcu.WriteTFTP(bytes.NewReader(uploadData.File)); err != nil {
+	if err := blcu.WriteTFTP(bytes.NewReader([]byte(request.File))); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Write TFTP")
 		return err
 	}
@@ -43,10 +52,10 @@ type uploadResponse struct {
 	IsSuccess  bool `json:"success"`
 }
 
-func (blcu *BLCU) requestUpload(board string) error {
-	blcu.trace.Info().Str("board", board).Msg("Requesting upload")
+func (blcu *BLCU) requestUpload(board uint16) error {
+	blcu.trace.Info().Uint16("board", board).Msg("Requesting upload")
 
-	uploadOrder := blcu.createUploadOrder(board)
+	uploadOrder := blcu.createUploadOrder(float64(board))
 	if err := blcu.sendOrder(uploadOrder); err != nil {
 		return err
 	}
@@ -59,7 +68,7 @@ func (blcu *BLCU) requestUpload(board string) error {
 	return nil
 }
 
-func (blcu *BLCU) createUploadOrder(board string) models.Order {
+func (blcu *BLCU) createUploadOrder(board float64) models.Order {
 	return models.Order{
 		ID: blcu.config.Packets.Upload.Id,
 		Fields: map[string]models.Field{

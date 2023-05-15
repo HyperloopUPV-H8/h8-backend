@@ -7,7 +7,7 @@ import (
 type Config struct {
 	Network      NetworkConfig        `toml:"network"`
 	PacketParser packet_parser.Config `toml:"packet_parser"`
-	Protections  ProtectionConfig     `toml:"protections"`
+	Messages     MessageConfig        `toml:"messages"`
 }
 
 type NetworkConfig struct {
@@ -18,8 +18,9 @@ type NetworkConfig struct {
 	Interface    string `toml:"interface"`
 }
 
-type ProtectionConfig struct {
+type MessageConfig struct {
 	FaultIdKey   string `toml:"fault_id_key"`
 	WarningIdKey string `toml:"warning_id_key"`
 	ErrorIdKey   string `toml:"error_id_key"`
+	BlcuAckId    string `toml:"blcu_ack_id_key"`
 }
