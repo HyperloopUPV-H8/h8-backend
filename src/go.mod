@@ -5,7 +5,6 @@ go 1.19
 require (
 	github.com/HyperloopUPV-H8/ade-linter v0.0.0-20230502150353-66a5396676ec
 	github.com/google/gopacket v1.1.19
-	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/pelletier/go-toml/v2 v2.0.7
@@ -21,6 +20,7 @@ require (
 	cloud.google.com/go/compute/metadata v0.2.1 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.0 // indirect
 	github.com/googleapis/gax-go/v2 v2.7.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

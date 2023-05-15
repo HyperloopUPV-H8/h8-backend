@@ -114,8 +114,3 @@ ack = { name = "tftp_ack" }
 [blcu.topics]
 upload = "blcu/upload"
 download = "blcu/download"
-
-[test]
-a = 10
-b = 20
-c = 30

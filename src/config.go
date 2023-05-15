@@ -29,6 +29,4 @@ type Config struct {
 	Messages message_transfer.MessageTransferConfig
 	Server   server.Config
 	BLCU     blcu.BLCUConfig `toml:"blcu"`
-
-	Test map[string]uint `toml:"test"`
 }

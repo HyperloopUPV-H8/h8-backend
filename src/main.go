@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"path"
@@ -51,7 +50,6 @@ func main() {
 	flag.Parse()
 
 	config := getConfig("./config.toml")
-	log.Println(config.Test)
 
 	excelAdapter := excel_adapter.New(config.Excel)
 	boards := excelAdapter.GetBoards()
