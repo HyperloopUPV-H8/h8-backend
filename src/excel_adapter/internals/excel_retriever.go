@@ -79,7 +79,8 @@ func getFile(client *drive.Service, id string, mimeType string) ([]byte, error) 
 func saveFile(content []byte, path string, name string) error {
 	trace.Trace().Str("path", path).Str("name", name).Msg("save file")
 
-	err := os.Mkdir(path, os.ModePerm)
+	err := os.Mkdir(path, 0777)
+
 	if !os.IsExist(err) {
 		return err
 	}

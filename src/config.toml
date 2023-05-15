@@ -20,13 +20,15 @@ mtu = 1500
 interface = "lo"
 # blcu_ack_id = "blcu_ack"
 
-[vehicle.protections]
+[vehicle.messages]
 fault_id_key = "fault"
 warning_id_key = "warning"
 error_id_key = "error"
+blcu_ack_id_key = "blcu_ack"
 
 [excel.download]
 id = "1BEwASubu0el9oQA6PSwVKaNU-Q6gbJ40JR6kgqguKYE"
+# id = "1l3YbwL2fPzehZc1kO0KySp84IzepfwzqT7XUWVQjk3Q"
 name = "ade.xlsx"
 path = "."
 
