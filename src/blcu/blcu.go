@@ -46,7 +46,7 @@ func getBoardToId(boardToIdStr map[string]string) map[string]uint16 {
 		id, err := strconv.Atoi(idStr)
 
 		if err != nil {
-			//TODO: TRACE
+			trace.Error().Err(err).Stack().Msg("Convert board id")
 			continue
 		}
 
@@ -73,17 +73,28 @@ func (blcu *BLCU) UpdateMessage(topic string, payload json.RawMessage, source st
 	blcu.trace.Debug().Str("topic", topic).Str("source", source).Msg("Update message")
 	switch topic {
 	case blcu.config.Topics.Upload:
-		if err := blcu.handleUpload(payload); err != nil {
+		err := blcu.handleUpload(payload)
+		if err != nil {
 			blcu.notifyUploadFailure()
-		} else {
-			blcu.notifyUploadSuccess()
+			return
 		}
+
+		blcu.notifyUploadSuccess()
+
 	case blcu.config.Topics.Download:
-		if file, err := blcu.handleDownload(payload); err != nil {
+		data, err := blcu.handleDownload(payload)
+		if err != nil {
 			blcu.notifyDownloadFailure()
-		} else {
-			blcu.notifyDownloadSuccess(file)
+			return
 		}
+
+		err = blcu.writeDownloadFile(data)
+		if err != nil {
+			blcu.notifyDownloadFailure()
+			return
+		}
+
+		blcu.notifyDownloadSuccess(data)
 	}
 }
 

@@ -30,7 +30,7 @@ func (blcu *BLCU) handleUpload(payload json.RawMessage) error {
 
 	if !ok {
 		err := fmt.Errorf("id not found for board %s", request.Board)
-		blcu.trace.Error().Err(err)
+		blcu.trace.Error().Err(err).Stack().Msg("Board not found")
 		return err
 	}
 

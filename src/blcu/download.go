@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"os"
+	"path"
 	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
@@ -12,33 +14,41 @@ import (
 )
 
 type downloadRequest struct {
-	Board uint16 `json:"board"`
+	Board string `json:"board"`
 }
 
-func (blcu *BLCU) handleDownload(payload json.RawMessage) ([]byte, error) {
+type downloadData struct {
+	Board   string
+	Payload []byte
+}
+
+func (blcu *BLCU) handleDownload(payload json.RawMessage) (downloadData, error) {
 	blcu.trace.Debug().Msg("Handling download")
 	var request downloadRequest
 	if err := json.Unmarshal(payload, &request); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Unmarshal payload")
-		return nil, err
+		return downloadData{}, err
 	}
 
 	if err := blcu.requestDownload(request.Board); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Request download")
-		return nil, err
+		return downloadData{}, err
 	}
 
-	var buffer *bytes.Buffer
+	buffer := bytes.NewBuffer([]byte{})
 	if err := blcu.ReadTFTP(buffer); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Read TFTP")
-		return nil, err
+		return downloadData{}, err
 	}
 
-	return buffer.Bytes(), nil
+	return downloadData{
+		Board:   request.Board,
+		Payload: buffer.Bytes(),
+	}, nil
 }
 
-func (blcu *BLCU) requestDownload(board uint16) error {
-	blcu.trace.Info().Uint16("board", board).Msg("Requesting download")
+func (blcu *BLCU) requestDownload(board string) error {
+	blcu.trace.Info().Str("board", board).Msg("Requesting download")
 
 	downloadOrder := blcu.createDownloadOrder(board)
 	if err := blcu.sendOrder(downloadOrder); err != nil {
@@ -53,7 +63,7 @@ func (blcu *BLCU) requestDownload(board uint16) error {
 	return nil
 }
 
-func (blcu *BLCU) createDownloadOrder(board uint16) models.Order {
+func (blcu *BLCU) createDownloadOrder(board string) models.Order {
 	return models.Order{
 		ID: blcu.config.Packets.Download.Id,
 		Fields: map[string]models.Field{
@@ -96,7 +106,22 @@ func (blcu *BLCU) notifyDownloadFailure() {
 	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: false, File: nil})
 }
 
-func (blcu *BLCU) notifyDownloadSuccess(bytes []byte) {
+func (blcu *BLCU) notifyDownloadSuccess(data downloadData) {
 	blcu.trace.Info().Msg("Download success")
-	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: true, File: bytes})
+	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: true, File: data.Payload})
+}
+
+func (blcu *BLCU) writeDownloadFile(data downloadData) error {
+	blcu.trace.Info().Msg("Creating download file")
+
+	err := os.MkdirAll(blcu.config.DownloadPath, 0777)
+	if err != nil {
+		return err
+	}
+	err = os.Chmod(blcu.config.DownloadPath, 0777)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path.Join(blcu.config.DownloadPath, data.Board+".bin"), data.Payload, 0777)
 }
