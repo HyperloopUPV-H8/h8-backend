@@ -4,10 +4,10 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"path"
-	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -29,7 +29,6 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/websocket_broker"
 	"github.com/fatih/color"
 	"github.com/google/gopacket/pcap"
-	"github.com/gorilla/mux"
 	"github.com/pelletier/go-toml/v2"
 	trace "github.com/rs/zerolog/log"
 )
@@ -51,6 +50,7 @@ func main() {
 	flag.Parse()
 
 	config := getConfig("./config.toml")
+	log.Println(config.Test)
 
 	excelAdapter := excel_adapter.New(config.Excel)
 	boards := excelAdapter.GetBoards()
@@ -135,24 +135,33 @@ func main() {
 		}
 	}()
 
-	httpServer := server.New(mux.NewRouter())
+	endpointData := server.EndpointData{
+		PodData:           podData,
+		OrderData:         orderData,
+		ProgramableBoards: nil, // TODO: Add programable boards
+	}
 
-	httpServer.ServeData("/backend"+config.Server.Endpoints.PodData, podData)
-	httpServer.ServeData("/backend"+config.Server.Endpoints.OrderData, orderData)
+	serverHandler, err := server.New(&websocketBroker, endpointData, config.Server)
+	if err != nil {
+		trace.Fatal().Err(err).Msg("Error creating server")
+		panic(err)
+	}
 
-	httpServer.HandleFunc(config.Server.Endpoints.Websocket, websocketBroker.HandleConn)
-
-	path, _ := os.Getwd()
-	httpServer.FileServer(config.Server.Endpoints.FileServer, filepath.Join(path, config.Server.FileServerPath))
-
-	go httpServer.ListenAndServe(config.Server.Address)
-
-	// browser.OpenURL(fmt.Sprintf("http://%s", config.Server.Address))
+	errs := serverHandler.ListenAndServe()
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	<-interrupt
+	for {
+		select {
+		case err := <-errs:
+			trace.Error().Err(err).Msg("Error in server")
+
+		case <-interrupt:
+			trace.Info().Msg("Shutting down")
+			return
+		}
+	}
 }
 
 func createPid(path string) {

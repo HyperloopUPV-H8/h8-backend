@@ -48,4 +48,4 @@ require (
 	golang.org/x/net v0.9.0 // indirect
 )
 
-replace github.com/HyperloopUPV-H8/ade-linter => ../../ade-linter
+replace github.com/HyperloopUPV-H8/ade-linter => ../../../utilities/lint/ade-linter

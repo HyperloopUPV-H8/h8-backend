@@ -3,70 +3,93 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"sync/atomic"
 
 	"github.com/gorilla/mux"
-	"github.com/rs/zerolog"
-	trace "github.com/rs/zerolog/log"
+	"github.com/gorilla/websocket"
 )
 
-type ServerConfig struct {
-	Address            string
-	FileServerPath     string `toml:"file_server_path"`
-	FileServerEndpoint string `toml:"file_server_endpoint"`
-	Endpoints          struct {
-		FileServer       string `toml:"file_server"`
-		PodData          string `toml:"pod_data"`
-		OrderData        string `toml:"order_data"`
-		UploadableBoards string `toml:"uploadable_boards"`
-		Websocket        string
+type WebServer struct {
+	name        string
+	router      *mux.Router
+	connections ConnectionHandler
+	connected   *atomic.Int32
+	config      ServerConfig
+}
+
+func NewWebServer(name string, connectionHandle ConnectionHandler, staticData EndpointData, config ServerConfig) (*WebServer, error) {
+	server := &WebServer{
+		name:        name,
+		router:      mux.NewRouter(),
+		connections: connectionHandle,
+		connected:   &atomic.Int32{},
+		config:      config,
 	}
-}
 
-type Server struct {
-	router *mux.Router
-	trace  zerolog.Logger
-}
-
-func New(router *mux.Router) *Server {
-	trace.Info().Msg("new http server")
-	return &Server{
-		router: router,
-		trace:  trace.With().Str("component", "httpServer").Logger(),
+	headers := map[string]string{
+		"Access-Control-Allow-Origin": "*",
 	}
+
+	err := server.serveJSON("/backend"+config.Endpoints.PodData, staticData.PodData, headers)
+	if err != nil {
+		return nil, err
+	}
+
+	err = server.serveJSON("/backend"+config.Endpoints.OrderData, staticData.OrderData, headers)
+	if err != nil {
+		return nil, err
+	}
+
+	err = server.serveJSON("/backend"+config.Endpoints.ProgramableBoards, staticData.ProgramableBoards, headers)
+	if err != nil {
+		return nil, err
+	}
+
+	upgrader := &websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool { return true },
+	}
+	server.serveWebsocket(config.Endpoints.Connections, upgrader, headers)
+	go server.consumeRemoved()
+
+	server.serveFiles(config.Endpoints.Files, config.StaticPath)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return server, nil
 }
 
-func (server *Server) ServeData(route string, data any) {
-	server.trace.Debug().Str("route", route).Msg("serve data")
-	server.router.HandleFunc(route, func(w http.ResponseWriter, r *http.Request) {
-		r.Body.Close()
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		marshaledData, err := json.Marshal(data)
-		if err != nil {
-			server.trace.Error().Stack().Err(err).Msg("")
-			http.Error(w, "failed to serialize resource", http.StatusInternalServerError)
-			return
+func (server *WebServer) serveJSON(path string, data any, headers map[string]string) error {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		for key, value := range headers {
+			w.Header().Set(key, value)
 		}
+		w.Write(jsonData)
+	}
 
-		w.Write(marshaledData)
-		server.trace.Trace().Str("route", route).Msg("write data")
-	})
+	server.router.HandleFunc(path, handler)
+
+	return nil
 }
 
-func (server *Server) FileServer(route string, path string) {
-	server.trace.Debug().Str("route", route).Str("path", path).Msg("file server")
-	server.router.PathPrefix(route).HandlerFunc(http.FileServer(http.Dir(path)).ServeHTTP)
+func (server *WebServer) serveFiles(path string, staticPath string) {
+	server.router.PathPrefix(path).Handler(http.FileServer(http.Dir(staticPath)))
 }
 
-func (server *Server) HandleFunc(route string, handler func(http.ResponseWriter, *http.Request)) {
-	server.trace.Debug().Str("route", route).Msg("handle func")
-	server.router.HandleFunc(route, func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		server.trace.Trace().Str("route", route).Msg("handle request")
-		handler(w, r)
-	})
-}
+func (server *WebServer) ListenAndServe() <-chan error {
+	errs := make(chan error, 1)
 
-func (server *Server) ListenAndServe(addr string) {
-	server.trace.Info().Str("addr", addr).Msg("listen and serve")
-	http.ListenAndServe(addr, server.router)
+	go func() {
+		errs <- http.ListenAndServe(server.config.Addr, server.router)
+		close(errs)
+	}()
+
+	return errs
 }
