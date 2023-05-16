@@ -27,6 +27,6 @@ type Config struct {
 		SendTopic string `toml:"send_topic"`
 	}
 	Messages message_transfer.MessageTransferConfig
-	Server   server.ServerConfig
+	Server   server.Config
 	BLCU     blcu.BLCUConfig `toml:"blcu"`
 }

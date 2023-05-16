@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"path"
-	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -30,7 +29,6 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/websocket_broker"
 	"github.com/fatih/color"
 	"github.com/google/gopacket/pcap"
-	"github.com/gorilla/mux"
 	"github.com/pelletier/go-toml/v2"
 	trace "github.com/rs/zerolog/log"
 )
@@ -139,29 +137,37 @@ func main() {
 		}
 	}()
 
-	httpServer := server.New(mux.NewRouter())
-
-	httpServer.ServeData("/backend"+config.Server.Endpoints.PodData, podData)
-	httpServer.ServeData("/backend"+config.Server.Endpoints.OrderData, orderData)
-
 	uploadableBords := common.Filter(common.Keys(globalInfo.BoardToIP), func(item string) bool {
 		return item != config.Excel.Parse.Global.BLCUAddressKey
 	})
-	httpServer.ServeData("/backend"+config.Server.Endpoints.UploadableBoards, uploadableBords)
 
-	httpServer.HandleFunc(config.Server.Endpoints.Websocket, websocketBroker.HandleConn)
+	endpointData := server.EndpointData{
+		PodData:           podData,
+		OrderData:         orderData,
+		ProgramableBoards: uploadableBords,
+	}
 
-	path, _ := os.Getwd()
-	httpServer.FileServer(config.Server.Endpoints.FileServer, filepath.Join(path, config.Server.FileServerPath))
+	serverHandler, err := server.New(&websocketBroker, endpointData, config.Server)
+	if err != nil {
+		trace.Fatal().Err(err).Msg("Error creating server")
+		panic(err)
+	}
 
-	go httpServer.ListenAndServe(config.Server.Address)
-
-	// browser.OpenURL(fmt.Sprintf("http://%s", config.Server.Address))
+	errs := serverHandler.ListenAndServe()
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	<-interrupt
+	for {
+		select {
+		case err := <-errs:
+			trace.Error().Err(err).Msg("Error in server")
+
+		case <-interrupt:
+			trace.Info().Msg("Shutting down")
+			return
+		}
+	}
 }
 
 func createPid(path string) {

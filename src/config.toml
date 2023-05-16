@@ -1,14 +1,38 @@
 
-[server]
-#address = "192.168.0.9:4000"
-address = "127.0.0.1:4000"
-file_server_path = "static" # Change name to front build path
+[server.local]
+address = "localhost:4000"
+client_limit = 1
+static = "./static/local"
 
-[server.endpoints]
+[server.local.endpoints]
 pod_data = "/podDataStructure"
 order_data = "/orderStructures"
-uploadable_boards = "/uploadableBoards"
-websocket = "/backend"
+programable_boards = "/uploadableBoards"
+connections = "/backend"
+file_server = "/"
+
+[server.audience]
+address = "172.16.0.2:4000"
+client_limit = 2
+static = "./static/audience"
+
+[server.audience.endpoints]
+pod_data = "/podDataStructure"
+order_data = "/orderStructures"
+programable_boards = "/uploadableBoards"
+connections = "/backend"
+file_server = "/"
+
+[server.jury]
+address = "192.168.2.2:4000"
+client_limit = 5
+static = "./static/jury"
+
+[server.jury.endpoints]
+pod_data = "/podDataStructure"
+order_data = "/orderStructures"
+programable_boards = "/uploadableBoards"
+connections = "/backend"
 file_server = "/"
 
 [vehicle.network]
