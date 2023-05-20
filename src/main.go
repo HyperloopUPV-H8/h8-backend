@@ -16,11 +16,11 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter"
 	"github.com/HyperloopUPV-H8/Backend-H8/logger_handler"
+	protection_logger "github.com/HyperloopUPV-H8/Backend-H8/message_logger"
 	"github.com/HyperloopUPV-H8/Backend-H8/message_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/order_logger"
 	"github.com/HyperloopUPV-H8/Backend-H8/order_transfer"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet_logger"
-	"github.com/HyperloopUPV-H8/Backend-H8/protection_logger"
 	"github.com/HyperloopUPV-H8/Backend-H8/server"
 	"github.com/HyperloopUPV-H8/Backend-H8/update_factory"
 	"github.com/HyperloopUPV-H8/Backend-H8/value_logger"
@@ -78,7 +78,7 @@ func main() {
 	blcu.SetSendOrder(vehicle.SendOrder)
 
 	vehicleUpdates := make(chan vehicle_models.PacketUpdate, 1)
-	vehicleProtections := make(chan vehicle_models.ProtectionMessage)
+	vehicleProtections := make(chan any)
 	vehicleTransmittedOrders := make(chan vehicle_models.PacketUpdate)
 	blcuAckChan := make(chan struct{})
 
@@ -91,7 +91,7 @@ func main() {
 	packetLogger := packet_logger.NewPacketLogger(boards, config.PacketLogger)
 	valueLogger := value_logger.NewValueLogger(boards, config.ValueLogger)
 	orderLogger := order_logger.NewOrderLogger(boards, config.OrderLogger)
-	protectionLogger := protection_logger.NewProtectionLogger(config.Vehicle.Messages.FaultIdKey, config.Vehicle.Messages.WarningIdKey, config.Vehicle.Messages.ErrorIdKey, config.ProtectionLogger)
+	protectionLogger := protection_logger.NewMessageLogger(config.Vehicle.Messages.InfoIdKey, config.Vehicle.Messages.FaultIdKey, config.Vehicle.Messages.WarningIdKey, config.Vehicle.Messages.ErrorIdKey, config.ProtectionLogger)
 
 	loggers := map[string]logger_handler.Logger{
 		"packets":     &packetLogger,
@@ -115,7 +115,7 @@ func main() {
 	go vehicle.Listen(vehicleUpdates, vehicleTransmittedOrders, vehicleProtections, blcuAckChan)
 
 	go startPacketUpdateRoutine(vehicleUpdates, &dataTransfer, &loggerHandler)
-	go startProtectionsRoutine(vehicleProtections, &messageTransfer, &loggerHandler)
+	go startMessagesRoutine(vehicleProtections, &messageTransfer, &loggerHandler)
 	go startOrderRoutine(orderChannel, &vehicle, &loggerHandler)
 
 	go func() {
@@ -286,10 +286,18 @@ func startPacketUpdateRoutine(vehicleUpdates <-chan vehicle_models.PacketUpdate,
 	}
 }
 
-func startProtectionsRoutine(vehicleProtections <-chan vehicle_models.ProtectionMessage, messageTransfer *message_transfer.MessageTransfer, loggerHandler *logger_handler.LoggerHandler) {
-	for protection := range vehicleProtections {
-		messageTransfer.SendMessage(protection)
-		loggerHandler.Log(protection_logger.LoggableProtection(protection))
+func startMessagesRoutine(vehicleMessages <-chan any, messageTransfer *message_transfer.MessageTransfer, loggerHandler *logger_handler.LoggerHandler) {
+	for message := range vehicleMessages {
+		messageTransfer.SendMessage(message)
+
+		switch msg := message.(type) {
+		case vehicle_models.InfoMessage:
+			loggerHandler.Log(protection_logger.LoggableInfo(msg))
+			break
+		case vehicle_models.ProtectionMessage:
+			loggerHandler.Log(protection_logger.LoggableProtection(msg))
+			break
+		}
 	}
 }
 

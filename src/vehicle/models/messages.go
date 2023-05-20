@@ -1,5 +1,12 @@
 package models
 
+type InfoMessage struct {
+	Board     string    `json:"board"`
+	Timestamp Timestamp `json:"timestamp"`
+	Msg       string    `json:"msg"`
+	Kind      string    `json:"kind"`
+}
+
 type ProtectionMessage struct {
 	Board     string    `json:"board"`
 	Name      string    `json:"name"`
@@ -35,3 +42,5 @@ type NotEquals struct {
 }
 
 type Error = string
+
+type Info = string

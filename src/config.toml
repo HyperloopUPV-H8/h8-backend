@@ -45,6 +45,7 @@ interface = "lo"
 # blcu_ack_id = "blcu_ack"
 
 [vehicle.messages]
+info_id_key = "info"
 fault_id_key = "fault"
 warning_id_key = "warning"
 error_id_key = "error"

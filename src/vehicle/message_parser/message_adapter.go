@@ -6,7 +6,13 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 )
 
-type MessageAdapter struct {
+type InfoMessageAdapter struct {
+	BoardId   uint             `json:"boardId"`
+	Timestamp models.Timestamp `json:"timestamp"`
+	Msg       string           `json:"msg"`
+}
+
+type ProtectionMessageAdapter struct {
 	BoardId    uint              `json:"boardId"`
 	Timestamp  models.Timestamp  `json:"timestamp"`
 	Protection ProtectionAdapter `json:"protection"`
