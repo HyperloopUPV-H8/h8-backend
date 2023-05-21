@@ -8,13 +8,13 @@ import (
 
 type LoggableInfo vehicle_models.InfoMessage
 
-func (lp LoggableInfo) Id() string {
+func (info LoggableInfo) Id() string {
 	return "info"
 }
 
-func (lp LoggableInfo) Log() []string {
-	date := fmt.Sprintf("%d/%d/%d", lp.Timestamp.Day, lp.Timestamp.Month, lp.Timestamp.Year)
-	time := fmt.Sprintf("%d:%d:%d", lp.Timestamp.Hour, lp.Timestamp.Minute, lp.Timestamp.Second)
+func (info LoggableInfo) Log() []string {
+	date := fmt.Sprintf("%d/%d/%d", info.Timestamp.Day, info.Timestamp.Month, info.Timestamp.Year)
+	time := fmt.Sprintf("%d:%d:%d", info.Timestamp.Hour, info.Timestamp.Minute, info.Timestamp.Second)
 	datetime := fmt.Sprintf("%s %s", date, time)
-	return []string{datetime, "info", lp.Board, lp.Msg}
+	return []string{datetime, "info", info.Board, info.Msg}
 }

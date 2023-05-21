@@ -116,55 +116,28 @@ func (parser *MessageParser) getKind(id uint16) (string, error) {
 func getProtection(kind string, payload []byte) (models.Protection, error) {
 	switch kind {
 	case "OUT_OF_BOUNDS":
-		var protection models.OutOfBounds
-		err := json.Unmarshal(payload, &protection)
-		return models.Protection{
-			Kind: kind,
-			Data: protection,
-		}, err
+		return parseProtection[models.OutOfBounds](kind, payload)
 	case "UPPER_BOUND":
-		var protection models.UpperBound
-		err := json.Unmarshal(payload, &protection)
-		return models.Protection{
-			Kind: kind,
-			Data: protection,
-		}, err
+		return parseProtection[models.UpperBound](kind, payload)
 	case "LOWER_BOUND":
-		var protection models.LowerBound
-		err := json.Unmarshal(payload, &protection)
-		return models.Protection{
-			Kind: kind,
-			Data: protection,
-		}, err
+		return parseProtection[models.LowerBound](kind, payload)
 	case "EQUALS":
-		var protection models.Equals
-		err := json.Unmarshal(payload, &protection)
-		return models.Protection{
-			Kind: kind,
-			Data: protection,
-		}, err
+		return parseProtection[models.Equals](kind, payload)
 	case "NOT_EQUALS":
-		var protection models.NotEquals
-		err := json.Unmarshal(payload, &protection)
-		return models.Protection{
-			Kind: kind,
-			Data: protection,
-		}, err
+		return parseProtection[models.NotEquals](kind, payload)
 	case "TIME_ACCUMULATION":
-		var protection models.TimeLimit
-		err := json.Unmarshal(payload, &protection)
-		return models.Protection{
-			Kind: kind,
-			Data: protection,
-		}, err
+		return parseProtection[models.TimeLimit](kind, payload)
 	case "ERROR_HANDLER":
-		var protection models.Error
-		err := json.Unmarshal(payload, &protection)
-		return models.Protection{
-			Kind: kind,
-			Data: protection,
-		}, err
+		return parseProtection[models.Error](kind, payload)
 	default:
 		return models.Protection{}, fmt.Errorf("protection kind not recognized: %s", kind)
 	}
+}
+func parseProtection[T any](kind string, payload []byte) (models.Protection, error) {
+	var data T
+	err := json.Unmarshal(payload, &data)
+	return models.Protection{
+		Kind: kind,
+		Data: data,
+	}, err
 }
