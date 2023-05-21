@@ -133,29 +133,12 @@ func getTable(name string, sheet doc.Sheet, headers []string) (Table, error) {
 		return Table{}, fmt.Errorf("table %s is empty (not even headers)", name)
 	}
 
-	if !areHeadersCorrect(table[0], headers) {
-		return Table{}, fmt.Errorf("incorrect headers: %v", table[0])
-	}
-
 	if len(table) == 1 {
-		return Table{}, fmt.Errorf("table %s has no fields", name)
+		return table, nil
+	} else {
+		return table[1:], nil
 	}
 
-	return table[1:], nil
-}
-
-func areHeadersCorrect(headerRow []string, headers []string) bool {
-	if len(headerRow) != len(headers) {
-		return false
-	}
-
-	for index, header := range headers {
-		if !(header == headerRow[index]) {
-			return false
-		}
-	}
-
-	return true
 }
 
 func getStructureColumns(rows [][]string) [][]string {
