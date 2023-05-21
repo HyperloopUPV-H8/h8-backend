@@ -53,8 +53,8 @@ func New(args VehicleConstructorArgs) Vehicle {
 	messageIds.Add(faultId)
 	warningId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Messages.WarningIdKey, vehicleTrace)
 	messageIds.Add(warningId)
-	errorId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Messages.ErrorIdKey, vehicleTrace)
-	messageIds.Add(errorId)
+	infoId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Messages.InfoIdKey, vehicleTrace)
+	messageIds.Add(infoId)
 	blcuAckId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Messages.BlcuAckId, vehicleTrace)
 	messageIds.Add(blcuAckId)
 
@@ -71,7 +71,7 @@ func New(args VehicleConstructorArgs) Vehicle {
 		blcuAckId:  blcuAckId,
 
 		packetParser:   packetParser,
-		messageParser:  protection_parser.NewMessageParser(args.GlobalInfo, faultId, warningId, errorId),
+		messageParser:  protection_parser.NewMessageParser(args.GlobalInfo, infoId, faultId, warningId),
 		bitarrayParser: NewBitarrayParser(names),
 
 		dataChan: dataChan,

@@ -21,17 +21,21 @@ func (lp LoggableProtection) Log() []string {
 }
 
 func getDataString(data any) string {
-	switch data := data.(type) {
+	switch castedData := data.(type) {
 	case vehicle_models.OutOfBounds:
-		return fmt.Sprintf("Got: %f Want: %f", data.Value, data.Bounds)
+		return fmt.Sprintf("Got: %f Want: %f", castedData.Value, castedData.Bounds)
 	case vehicle_models.LowerBound:
-		return fmt.Sprintf("Got: %f Want: > %f", data.Value, data.Bound)
+		return fmt.Sprintf("Got: %f Want: > %f", castedData.Value, castedData.Bound)
 	case vehicle_models.UpperBound:
-		return fmt.Sprintf("Got: %f Want: < %f", data.Value, data.Bound)
+		return fmt.Sprintf("Got: %f Want: < %f", castedData.Value, castedData.Bound)
 	case vehicle_models.Equals:
-		return fmt.Sprintf("%f is not allowed", data.Value)
+		return fmt.Sprintf("%f is not allowed", castedData.Value)
 	case vehicle_models.NotEquals:
-		return fmt.Sprintf("%f should be %f", data.Value, data.Want)
+		return fmt.Sprintf("%f should be %f", castedData.Value, castedData.Want)
+	case vehicle_models.TimeLimit:
+		return fmt.Sprintf("Value (%f) surpassed bound (%f) for %f", castedData.Value, castedData.Bound, castedData.TimeLimit)
+	case vehicle_models.Error:
+		return fmt.Sprint(castedData)
 	default:
 		return fmt.Sprintf("UNRECOGNIZED VIOLATION: %v", data)
 	}

@@ -42,7 +42,7 @@ type Vehicle struct {
 	trace zerolog.Logger
 }
 
-func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmittedOrderChan chan<- models.PacketUpdate, protectionChan chan<- models.ProtectionMessage, blcuAckChan chan<- struct{}) {
+func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmittedOrderChan chan<- models.PacketUpdate, messageChan chan<- any, blcuAckChan chan<- struct{}) {
 	vehicle.trace.Debug().Msg("vehicle listening")
 	for packet := range vehicle.dataChan {
 		payloadCopy := make([]byte, len(packet.Payload))
@@ -83,7 +83,7 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmitte
 				continue
 			}
 
-			protectionChan <- message
+			messageChan <- message
 
 		default:
 			vehicle.trace.Error().Uint16("id", packet.Metadata.ID).Msg("raw id not recognized")
