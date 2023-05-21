@@ -46,5 +46,3 @@ require (
 	github.com/fatih/color v1.15.0
 	golang.org/x/net v0.9.0 // indirect
 )
-
-replace github.com/HyperloopUPV-H8/ade-linter => ../../../utilities/lint/ade-linter

@@ -17,3 +17,23 @@ func Filter[T any](items []T, predicate func(item T) bool) []T {
 
 	return newSlice
 }
+
+func Map[T any, U any](items []T, mapFn func(item T) U) []U {
+	result := make([]U, len(items))
+
+	for index, item := range items {
+		result[index] = mapFn(item)
+	}
+
+	return result
+}
+
+func Every[T any](slice []T, predicate func(T) bool) bool {
+	for _, item := range slice {
+		if !predicate(item) {
+			return false
+		}
+	}
+
+	return true
+}
