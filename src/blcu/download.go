@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"time"
@@ -17,34 +18,23 @@ type downloadRequest struct {
 	Board string `json:"board"`
 }
 
-func (blcu *BLCU) download(payload json.RawMessage) (string, DownloadResult) {
+func (blcu *BLCU) download(payload json.RawMessage) (string, []byte, error) {
 	blcu.trace.Debug().Msg("Handling download")
 	var request downloadRequest
 	if err := json.Unmarshal(payload, &request); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Unmarshal payload")
-		return "", DownloadResult{Err: err}
+		return "", nil, err
 	}
 
 	if err := blcu.requestDownload(request.Board); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Request download")
-		return request.Board, DownloadResult{Err: err}
+		return request.Board, nil, err
 	}
 
-	download, err := blcu.ReadTFTP()
-	if err != nil {
-		blcu.trace.Error().Err(err).Stack().Msg("Read payload")
-		return request.Board, DownloadResult{Err: err}
-	}
+	buffer := &bytes.Buffer{}
+	err := blcu.ReadTFTP(buffer, blcu.notifyDownloadProgress)
 
-	go blcu.consumeDownloadPercentage(download.Percentage)
-
-	return request.Board, <-download.Result
-}
-
-func (blcu *BLCU) consumeDownloadPercentage(percentage <-chan float64) {
-	for p := range percentage {
-		blcu.notifyDownloadProgress(p)
-	}
+	return request.Board, buffer.Bytes(), err
 }
 
 func (blcu *BLCU) requestDownload(board string) error {
@@ -75,47 +65,45 @@ func (blcu *BLCU) createDownloadOrder(board string) models.Order {
 	}
 }
 
-func (blcu *BLCU) ReadTFTP() (Download, error) {
+const FlashMemorySize = 786432
+
+func (blcu *BLCU) ReadTFTP(output io.Writer, onProgress func(float64)) error {
 	blcu.trace.Info().Msg("Reading TFTP")
 
 	client, err := tftp.NewClient(blcu.addr)
 	if err != nil {
-		return Download{}, err
+		return err
 	}
 
 	receiver, err := client.Receive("a.bin", "octet")
 	if err != nil {
-		return Download{}, err
+		return err
 	}
 
-	download := NewDownload(786432) // Size of the flash memory (downlaod size)
-	go receiver.WriteTo(&download)
+	download := NewDownload(output, FlashMemorySize, onProgress)
+	_, err = receiver.WriteTo(&download)
 
-	return download, nil
+	return err
 }
 
 type downloadResponse struct {
 	Percentage float64 `json:"percentage"`
-	IsSuccess  *bool   `json:"success,omitempty"`
+	IsSuccess  bool    `json:"success,omitempty"`
 	File       []byte  `json:"file,omitempty"`
 }
 
 func (blcu *BLCU) notifyDownloadFailure() {
 	blcu.trace.Warn().Msg("Download failed")
-	success := new(bool)
-	*success = false
-	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: success, File: nil, Percentage: 0.0})
+	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: false, File: nil, Percentage: 0.0})
 }
 
 func (blcu *BLCU) notifyDownloadSuccess(data []byte) {
 	blcu.trace.Info().Msg("Download success")
-	success := new(bool)
-	*success = true
-	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: success, File: data, Percentage: 1.0})
+	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: true, File: data, Percentage: 1.0})
 }
 
 func (blcu *BLCU) notifyDownloadProgress(percentage float64) {
-	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: nil, File: nil, Percentage: percentage})
+	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: false, File: nil, Percentage: percentage})
 }
 
 func (blcu *BLCU) writeDownloadFile(board string, data []byte) error {
@@ -133,77 +121,27 @@ func (blcu *BLCU) writeDownloadFile(board string, data []byte) error {
 	return os.WriteFile(path.Join(blcu.config.DownloadPath, fmt.Sprintf("%s-%d.bin", board, time.Now().Unix())), data, 0777)
 }
 
-type DownloadResult struct {
-	Data []byte
-	Err  error
-}
-
 type Download struct {
-	output         bytes.Buffer
-	Result         <-chan DownloadResult
-	resultChan     chan<- DownloadResult
-	Percentage     <-chan float64
-	percentageChan chan<- float64
-	notify         chan int
-	total          int
-	writeErr       error
+	writer     io.Writer
+	onProgress func(float64)
+	total      int
+	current    int
 }
 
-func NewDownload(size int) Download {
-	resultChan := make(chan DownloadResult)
-	percentageChan := make(chan float64, 100)
-
-	download := Download{
-		output:         bytes.Buffer{},
-		Result:         resultChan,
-		resultChan:     resultChan,
-		Percentage:     percentageChan,
-		percentageChan: percentageChan,
-		notify:         make(chan int),
-		total:          size,
-		writeErr:       nil,
+func NewDownload(writer io.Writer, size int, onProgress func(float64)) Download {
+	return Download{
+		writer:     writer,
+		onProgress: onProgress,
+		total:      size,
+		current:    0,
 	}
-
-	go download.consumeNotifications()
-
-	return download
 }
 
 func (download *Download) Write(p []byte) (n int, err error) {
-	if download.writeErr != nil {
-		return 0, download.writeErr
-	}
-	n, err = download.output.Write(p)
+	n, err = download.writer.Write(p)
 	if err != nil {
-		download.writeErr = err
-		download.abort(err)
-	} else {
-		download.notify <- n
+		download.current += n
+		download.onProgress(float64(download.current) / float64(download.total))
 	}
 	return n, err
-}
-
-func (download *Download) abort(err error) {
-	close(download.notify)
-	download.resultChan <- DownloadResult{
-		Data: download.output.Bytes(),
-		Err:  err,
-	}
-}
-
-func (download *Download) consumeNotifications() {
-	defer close(download.percentageChan)
-	current := 0
-	for amount := range download.notify {
-		current += amount
-		percentage := float64(current) / float64(download.total)
-		download.percentageChan <- common.Clamp(percentage, 0.0, 1.0)
-		if current >= amount {
-			download.resultChan <- DownloadResult{
-				Data: download.output.Bytes(),
-				Err:  nil,
-			}
-			return
-		}
-	}
 }

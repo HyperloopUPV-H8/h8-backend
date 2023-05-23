@@ -73,20 +73,20 @@ func (blcu *BLCU) UpdateMessage(topic string, payload json.RawMessage, source st
 	blcu.trace.Debug().Str("topic", topic).Str("source", source).Msg("Update message")
 	switch topic {
 	case blcu.config.Topics.Upload:
-		result := blcu.upload(payload)
-		if result.Err != nil {
+		err := blcu.upload(payload)
+		if err != nil {
 			blcu.notifyUploadFailure()
 		} else {
 			blcu.notifyUploadSuccess()
 		}
 
 	case blcu.config.Topics.Download:
-		board, result := blcu.download(payload)
-		if result.Err != nil {
+		board, data, err := blcu.download(payload)
+		if err != nil {
 			blcu.notifyDownloadFailure()
 		} else {
-			blcu.notifyDownloadSuccess(result.Data)
-			blcu.writeDownloadFile(board, result.Data)
+			blcu.notifyDownloadSuccess(data)
+			blcu.writeDownloadFile(board, data)
 		}
 	}
 }

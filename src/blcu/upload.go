@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
@@ -16,46 +17,28 @@ type uploadRequest struct {
 	File  string `json:"file"`
 }
 
-func (blcu *BLCU) upload(payload json.RawMessage) UploadResult {
+func (blcu *BLCU) upload(payload json.RawMessage) error {
 	blcu.trace.Debug().Msg("Handling upload")
 
 	var request uploadRequest
 	if err := json.Unmarshal(payload, &request); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Unmarshal payload")
-		return UploadResult{Err: err}
+		return err
 	}
 
 	if err := blcu.requestUpload(request.Board); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Request upload")
-		return UploadResult{Err: err}
+		return err
 	}
 
 	decoded, err := base64.StdEncoding.DecodeString(request.File)
 	if err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Decode payload")
-		return UploadResult{Err: err}
+		return err
 	}
 
-	upload, err := blcu.WriteTFTP(bytes.NewReader(decoded))
-	if err != nil {
-		blcu.trace.Error().Err(err).Stack().Msg("Write payload")
-		return UploadResult{Err: err}
-	}
-
-	go blcu.consumeUploadPercentage(upload.Percentage)
-
-	return <-upload.Result
-}
-
-func (blcu *BLCU) consumeUploadPercentage(percentage <-chan float64) {
-	for p := range percentage {
-		blcu.notifyUploadProgress(p)
-	}
-}
-
-type uploadResponse struct {
-	Percentage float64 `json:"percentage"`
-	IsSuccess  *bool   `json:"success,omitempty"`
+	reader := bytes.NewReader(decoded)
+	return blcu.WriteTFTP(reader, int(reader.Size()), blcu.notifyUploadProgress)
 }
 
 func (blcu *BLCU) requestUpload(board string) error {
@@ -86,24 +69,28 @@ func (blcu *BLCU) createUploadOrder(board string) models.Order {
 	}
 }
 
-func (blcu *BLCU) WriteTFTP(reader *bytes.Reader) (Upload, error) {
+func (blcu *BLCU) WriteTFTP(reader io.Reader, size int, onProgress func(float64)) error {
 	blcu.trace.Info().Msg("Writing TFTP")
 
 	client, err := tftp.NewClient(blcu.addr)
 	if err != nil {
-		return Upload{}, err
+		return err
 	}
 
 	sender, err := client.Send("a.bin", "octet")
 	if err != nil {
-		return Upload{}, err
+		return err
 	}
 
-	upload := NewUpload(reader, reader.Len())
+	upload := NewUpload(reader, size, onProgress)
+	_, err = sender.ReadFrom(&upload)
 
-	go sender.ReadFrom(&upload)
+	return err
+}
 
-	return upload, nil
+type uploadResponse struct {
+	Percentage float64 `json:"percentage"`
+	IsSuccess  *bool   `json:"success,omitempty"`
 }
 
 func (blcu *BLCU) notifyUploadFailure() {
@@ -124,74 +111,27 @@ func (blcu *BLCU) notifyUploadProgress(percentage float64) {
 	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: percentage, IsSuccess: nil})
 }
 
-type UploadResult struct {
-	Err error
-}
-
 type Upload struct {
-	input          *bytes.Reader
-	Result         <-chan UploadResult
-	resultChan     chan<- UploadResult
-	Percentage     <-chan float64
-	percentageChan chan<- float64
-	notify         chan int
-	total          int
-	readErr        error
+	reader     io.Reader
+	onProgress func(float64)
+	total      int
+	current    int
 }
 
-func NewUpload(data *bytes.Reader, size int) Upload {
-	resultChan := make(chan UploadResult)
-	percentageChan := make(chan float64, 100)
-
-	upload := Upload{
-		input:          data,
-		Result:         resultChan,
-		resultChan:     resultChan,
-		Percentage:     percentageChan,
-		percentageChan: percentageChan,
-		notify:         make(chan int),
-		total:          size,
-		readErr:        nil,
+func NewUpload(reader io.Reader, size int, onProgress func(float64)) Upload {
+	return Upload{
+		reader:     reader,
+		onProgress: onProgress,
+		total:      size,
+		current:    0,
 	}
-
-	go upload.consumeNotifications()
-
-	return upload
 }
 
 func (upload *Upload) Read(p []byte) (n int, err error) {
-	if upload.readErr != nil {
-		return 0, upload.readErr
-	}
-	n, err = upload.input.Read(p)
+	n, err = upload.reader.Read(p)
 	if err != nil {
-		upload.readErr = err
-		upload.abort(err)
-	} else {
-		upload.notify <- n
+		upload.current += n
+		upload.onProgress(float64(upload.current) / float64(upload.total))
 	}
 	return n, err
-}
-
-func (upload *Upload) abort(err error) {
-	close(upload.notify)
-	upload.resultChan <- UploadResult{
-		Err: err,
-	}
-}
-
-func (upload *Upload) consumeNotifications() {
-	defer close(upload.percentageChan)
-	current := 0
-	for amount := range upload.notify {
-		current += amount
-		percentage := float64(current) / float64(upload.total)
-		upload.percentageChan <- common.Clamp(percentage, 0.0, 1.0)
-		if current >= amount {
-			upload.resultChan <- UploadResult{
-				Err: nil,
-			}
-			return
-		}
-	}
 }
