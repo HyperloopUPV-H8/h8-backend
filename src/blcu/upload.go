@@ -2,9 +2,8 @@ package blcu
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
-	"fmt"
-	"io"
 	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
@@ -17,58 +16,65 @@ type uploadRequest struct {
 	File  string `json:"file"`
 }
 
-func (blcu *BLCU) handleUpload(payload json.RawMessage) error {
+func (blcu *BLCU) upload(payload json.RawMessage) UploadResult {
 	blcu.trace.Debug().Msg("Handling upload")
 
 	var request uploadRequest
 	if err := json.Unmarshal(payload, &request); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Unmarshal payload")
-		return err
+		return UploadResult{Err: err}
 	}
 
-	id, ok := blcu.boardToId[request.Board]
-
-	if !ok {
-		err := fmt.Errorf("id not found for board %s", request.Board)
-		blcu.trace.Error().Err(err).Stack().Msg("Board not found")
-		return err
-	}
-
-	if err := blcu.requestUpload(id); err != nil {
+	if err := blcu.requestUpload(request.Board); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Request upload")
-		return err
+		return UploadResult{Err: err}
 	}
 
-	if err := blcu.WriteTFTP(bytes.NewReader([]byte(request.File))); err != nil {
-		blcu.trace.Error().Err(err).Stack().Msg("Write TFTP")
-		return err
+	decoded, err := base64.StdEncoding.DecodeString(request.File)
+	if err != nil {
+		blcu.trace.Error().Err(err).Stack().Msg("Decode payload")
+		return UploadResult{Err: err}
 	}
 
-	return nil
+	upload, err := blcu.WriteTFTP(bytes.NewReader(decoded))
+	if err != nil {
+		blcu.trace.Error().Err(err).Stack().Msg("Write payload")
+		return UploadResult{Err: err}
+	}
+
+	go blcu.consumeUploadPercentage(upload.Percentage)
+
+	return <-upload.Result
+}
+
+func (blcu *BLCU) consumeUploadPercentage(percentage <-chan float64) {
+	for p := range percentage {
+		blcu.notifyUploadProgress(p)
+	}
 }
 
 type uploadResponse struct {
-	Percentage int  `json:"percentage"`
-	IsSuccess  bool `json:"success"`
+	Percentage float64 `json:"percentage"`
+	IsSuccess  *bool   `json:"success,omitempty"`
 }
 
-func (blcu *BLCU) requestUpload(board uint16) error {
-	blcu.trace.Info().Uint16("board", board).Msg("Requesting upload")
+func (blcu *BLCU) requestUpload(board string) error {
+	blcu.trace.Info().Str("board", board).Msg("Requesting upload")
 
-	uploadOrder := blcu.createUploadOrder(float64(board))
+	uploadOrder := blcu.createUploadOrder(board)
 	if err := blcu.sendOrder(uploadOrder); err != nil {
 		return err
 	}
 
 	// TODO: remove hardcoded timeout
-	if _, err := common.ReadTimeout(blcu.ackChannel, time.Minute); err != nil {
+	if _, err := common.ReadTimeout(blcu.ackChannel, time.Second*10); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (blcu *BLCU) createUploadOrder(board float64) models.Order {
+func (blcu *BLCU) createUploadOrder(board string) models.Order {
 	return models.Order{
 		ID: blcu.config.Packets.Upload.Id,
 		Fields: map[string]models.Field{
@@ -80,34 +86,112 @@ func (blcu *BLCU) createUploadOrder(board float64) models.Order {
 	}
 }
 
-func (blcu *BLCU) WriteTFTP(reader io.Reader) error {
+func (blcu *BLCU) WriteTFTP(reader *bytes.Reader) (Upload, error) {
 	blcu.trace.Info().Msg("Writing TFTP")
 
 	client, err := tftp.NewClient(blcu.addr)
 	if err != nil {
-		return err
+		return Upload{}, err
 	}
 
 	sender, err := client.Send("a.bin", "octet")
 	if err != nil {
-		return err
+		return Upload{}, err
 	}
 
-	_, err = sender.ReadFrom(reader)
-	if err != nil {
-		return err
-	}
+	upload := NewUpload(reader, reader.Len())
 
-	return nil
+	go sender.ReadFrom(&upload)
+
+	return upload, nil
 }
 
-// the topic BLCU_STATE_TOPIC expects a number between 0 and 100, the idea is in the future to inform about the percentage of the file uploaded
 func (blcu *BLCU) notifyUploadFailure() {
 	blcu.trace.Warn().Msg("Upload failed")
-	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: 0, IsSuccess: false})
+	success := new(bool)
+	*success = false
+	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: 0.0, IsSuccess: success})
 }
 
 func (blcu *BLCU) notifyUploadSuccess() {
 	blcu.trace.Info().Msg("Upload success")
-	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: 100, IsSuccess: true})
+	success := new(bool)
+	*success = true
+	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: 1.0, IsSuccess: success})
+}
+
+func (blcu *BLCU) notifyUploadProgress(percentage float64) {
+	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: percentage, IsSuccess: nil})
+}
+
+type UploadResult struct {
+	Err error
+}
+
+type Upload struct {
+	input          *bytes.Reader
+	Result         <-chan UploadResult
+	resultChan     chan<- UploadResult
+	Percentage     <-chan float64
+	percentageChan chan<- float64
+	notify         chan int
+	total          int
+	readErr        error
+}
+
+func NewUpload(data *bytes.Reader, size int) Upload {
+	resultChan := make(chan UploadResult)
+	percentageChan := make(chan float64, 100)
+
+	upload := Upload{
+		input:          data,
+		Result:         resultChan,
+		resultChan:     resultChan,
+		Percentage:     percentageChan,
+		percentageChan: percentageChan,
+		notify:         make(chan int),
+		total:          size,
+		readErr:        nil,
+	}
+
+	go upload.consumeNotifications()
+
+	return upload
+}
+
+func (upload *Upload) Read(p []byte) (n int, err error) {
+	if upload.readErr != nil {
+		return 0, upload.readErr
+	}
+	n, err = upload.input.Read(p)
+	if err != nil {
+		upload.readErr = err
+		upload.abort(err)
+	} else {
+		upload.notify <- n
+	}
+	return n, err
+}
+
+func (upload *Upload) abort(err error) {
+	close(upload.notify)
+	upload.resultChan <- UploadResult{
+		Err: err,
+	}
+}
+
+func (upload *Upload) consumeNotifications() {
+	defer close(upload.percentageChan)
+	current := 0
+	for amount := range upload.notify {
+		current += amount
+		percentage := float64(current) / float64(upload.total)
+		upload.percentageChan <- common.Clamp(percentage, 0.0, 1.0)
+		if current >= amount {
+			upload.resultChan <- UploadResult{
+				Err: nil,
+			}
+			return
+		}
+	}
 }
