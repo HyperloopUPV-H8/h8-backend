@@ -90,25 +90,21 @@ func (blcu *BLCU) WriteTFTP(reader io.Reader, size int, onProgress func(float64)
 
 type uploadResponse struct {
 	Percentage float64 `json:"percentage"`
-	IsSuccess  *bool   `json:"success,omitempty"`
+	IsSuccess  bool    `json:"success,omitempty"`
 }
 
 func (blcu *BLCU) notifyUploadFailure() {
 	blcu.trace.Warn().Msg("Upload failed")
-	success := new(bool)
-	*success = false
-	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: 0.0, IsSuccess: success})
+	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: 0.0, IsSuccess: false})
 }
 
 func (blcu *BLCU) notifyUploadSuccess() {
 	blcu.trace.Info().Msg("Upload success")
-	success := new(bool)
-	*success = true
-	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: 1.0, IsSuccess: success})
+	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: 1.0, IsSuccess: true})
 }
 
 func (blcu *BLCU) notifyUploadProgress(percentage float64) {
-	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: percentage, IsSuccess: nil})
+	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: percentage, IsSuccess: false})
 }
 
 type Upload struct {
