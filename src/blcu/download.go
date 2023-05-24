@@ -88,7 +88,7 @@ func (blcu *BLCU) ReadTFTP(output io.Writer, onProgress func(float64)) error {
 
 type downloadResponse struct {
 	Percentage float64 `json:"percentage"`
-	IsSuccess  bool    `json:"success,omitempty"`
+	IsSuccess  bool    `json:"success"`
 	File       []byte  `json:"file,omitempty"`
 }
 

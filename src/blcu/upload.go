@@ -90,7 +90,7 @@ func (blcu *BLCU) WriteTFTP(reader io.Reader, size int, onProgress func(float64)
 
 type uploadResponse struct {
 	Percentage float64 `json:"percentage"`
-	IsSuccess  bool    `json:"success,omitempty"`
+	IsSuccess  bool    `json:"success"`
 }
 
 func (blcu *BLCU) notifyUploadFailure() {
