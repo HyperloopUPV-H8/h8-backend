@@ -131,12 +131,6 @@ func main() {
 		}
 	}()
 
-	go func() {
-		for id := range websocketBroker.CloseChan {
-			loggerHandler.NotifyDisconnect(id)
-		}
-	}()
-
 	uploadableBords := common.Filter(common.Keys(globalInfo.BoardToIP), func(item string) bool {
 		return item != config.Excel.Parse.Global.BLCUAddressKey
 	})

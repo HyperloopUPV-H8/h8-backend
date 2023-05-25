@@ -19,7 +19,6 @@ func New(connections ConnectionHandler, data EndpointData, config Config) (*Hand
 	}
 
 	for name, serverConfig := range config {
-		connections.AddServer(name)
 		server, err := NewWebServer(name, connections, data, serverConfig)
 		if err != nil {
 			return nil, err
