@@ -19,14 +19,18 @@ const (
 func New() (OrderTransfer, <-chan vehicle_models.Order) {
 	trace.Info().Msg("new order transfer")
 	channel := make(chan vehicle_models.Order, ORDER_CHAN_BUFFER)
+	stateOrders := make(map[string][]uint16)
 	return OrderTransfer{
-		channel: channel,
-		trace:   trace.With().Str("component", ORDER_TRASNFER_NAME).Logger(),
+		channel:               channel,
+		stateOrders:           stateOrders,
+		stateOrdersObservable: observable.NewReplayObservable(stateOrders),
+		trace:                 trace.With().Str("component", ORDER_TRASNFER_NAME).Logger(),
 	}, channel
 }
 
 type OrderTransfer struct {
-	stateOrdersObservable observable.ReplayObservable[vehicle_models.StateOrdersMessage]
+	stateOrders           map[string][]uint16
+	stateOrdersObservable observable.ReplayObservable[map[string][]uint16]
 	channel               chan<- vehicle_models.Order
 	sendMessage           func(topic string, payload any, target ...string) error
 	trace                 zerolog.Logger
@@ -50,13 +54,14 @@ func (orderTransfer *OrderTransfer) handleSubscription(topic string, payload jso
 		orderTransfer.trace.Error().Err(err).Msg("unmarshaling payload")
 	}
 
-	observable.HandleSubscribe[vehicle_models.StateOrdersMessage](&orderTransfer.stateOrdersObservable, source, sub, func(v vehicle_models.StateOrdersMessage, id string) error {
+	observable.HandleSubscribe[map[string][]uint16](&orderTransfer.stateOrdersObservable, source, sub, func(v map[string][]uint16, id string) error {
 		return orderTransfer.sendMessage(OrderTopic, v, id)
 	})
 }
 
 func (orderTransfer *OrderTransfer) UpdateStateOrders(stateOrders vehicle_models.StateOrdersMessage) {
-	orderTransfer.stateOrdersObservable.Next(stateOrders)
+	orderTransfer.stateOrders[stateOrders.BoardId] = stateOrders.Orders
+	orderTransfer.stateOrdersObservable.Next(orderTransfer.stateOrders)
 }
 
 func (orderTransfer *OrderTransfer) handleOrder(topic string, payload json.RawMessage, source string) {
