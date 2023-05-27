@@ -14,10 +14,6 @@ func NewOrderData(boards map[string]excelAdapterModels.Board, blcuName string) O
 	orderData := make(map[string]OrderDescription)
 
 	for _, board := range boards {
-		if board.Name == blcuName {
-			continue
-		}
-
 		for _, packet := range board.Packets {
 			if packet.Description.Type != "order" && packet.Description.Type != "stateOrder" {
 				continue

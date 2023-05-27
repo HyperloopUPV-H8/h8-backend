@@ -2,8 +2,9 @@ package blcu
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
 	"time"
 
@@ -17,7 +18,7 @@ type uploadRequest struct {
 	File  string `json:"file"`
 }
 
-func (blcu *BLCU) handleUpload(payload json.RawMessage) error {
+func (blcu *BLCU) upload(payload json.RawMessage) error {
 	blcu.trace.Debug().Msg("Handling upload")
 
 	var request uploadRequest
@@ -26,49 +27,38 @@ func (blcu *BLCU) handleUpload(payload json.RawMessage) error {
 		return err
 	}
 
-	id, ok := blcu.boardToId[request.Board]
-
-	if !ok {
-		err := fmt.Errorf("id not found for board %s", request.Board)
-		blcu.trace.Error().Err(err).Stack().Msg("Board not found")
-		return err
-	}
-
-	if err := blcu.requestUpload(id); err != nil {
+	if err := blcu.requestUpload(request.Board); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Request upload")
 		return err
 	}
 
-	if err := blcu.WriteTFTP(bytes.NewReader([]byte(request.File))); err != nil {
-		blcu.trace.Error().Err(err).Stack().Msg("Write TFTP")
+	decoded, err := base64.StdEncoding.DecodeString(request.File)
+	if err != nil {
+		blcu.trace.Error().Err(err).Stack().Msg("Decode payload")
 		return err
 	}
 
-	return nil
+	reader := bytes.NewReader(decoded)
+	return blcu.WriteTFTP(reader, int(reader.Size()), blcu.notifyUploadProgress)
 }
 
-type uploadResponse struct {
-	Percentage int  `json:"percentage"`
-	IsSuccess  bool `json:"success"`
-}
+func (blcu *BLCU) requestUpload(board string) error {
+	blcu.trace.Info().Str("board", board).Msg("Requesting upload")
 
-func (blcu *BLCU) requestUpload(board uint16) error {
-	blcu.trace.Info().Uint16("board", board).Msg("Requesting upload")
-
-	uploadOrder := blcu.createUploadOrder(float64(board))
+	uploadOrder := blcu.createUploadOrder(board)
 	if err := blcu.sendOrder(uploadOrder); err != nil {
 		return err
 	}
 
 	// TODO: remove hardcoded timeout
-	if _, err := common.ReadTimeout(blcu.ackChannel, time.Minute); err != nil {
+	if _, err := common.ReadTimeout(blcu.ackChannel, time.Second*10); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (blcu *BLCU) createUploadOrder(board float64) models.Order {
+func (blcu *BLCU) createUploadOrder(board string) models.Order {
 	return models.Order{
 		ID: blcu.config.Packets.Upload.Id,
 		Fields: map[string]models.Field{
@@ -80,7 +70,7 @@ func (blcu *BLCU) createUploadOrder(board float64) models.Order {
 	}
 }
 
-func (blcu *BLCU) WriteTFTP(reader io.Reader) error {
+func (blcu *BLCU) WriteTFTP(reader io.Reader, size int, onProgress func(float64)) error {
 	blcu.trace.Info().Msg("Writing TFTP")
 
 	client, err := tftp.NewClient(blcu.addr)
@@ -93,21 +83,52 @@ func (blcu *BLCU) WriteTFTP(reader io.Reader) error {
 		return err
 	}
 
-	_, err = sender.ReadFrom(reader)
-	if err != nil {
-		return err
-	}
+	upload := NewUpload(reader, size, onProgress)
+	_, err = sender.ReadFrom(&upload)
 
-	return nil
+	return err
 }
 
-// the topic BLCU_STATE_TOPIC expects a number between 0 and 100, the idea is in the future to inform about the percentage of the file uploaded
+type uploadResponse struct {
+	Percentage float64 `json:"percentage"`
+	Failure    bool    `json:"failure"`
+}
+
 func (blcu *BLCU) notifyUploadFailure() {
 	blcu.trace.Warn().Msg("Upload failed")
-	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: 0, IsSuccess: false})
+	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: 0, Failure: true})
 }
 
 func (blcu *BLCU) notifyUploadSuccess() {
 	blcu.trace.Info().Msg("Upload success")
-	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: 100, IsSuccess: true})
+	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: 100, Failure: false})
+}
+
+func (blcu *BLCU) notifyUploadProgress(percentage float64) {
+	blcu.sendMessage(blcu.config.Topics.Upload, uploadResponse{Percentage: percentage, Failure: false})
+}
+
+type Upload struct {
+	reader     io.Reader
+	onProgress func(float64)
+	total      int
+	current    int
+}
+
+func NewUpload(reader io.Reader, size int, onProgress func(float64)) Upload {
+	return Upload{
+		reader:     reader,
+		onProgress: onProgress,
+		total:      size,
+		current:    0,
+	}
+}
+
+func (upload *Upload) Read(p []byte) (n int, err error) {
+	n, err = upload.reader.Read(p)
+	if err == nil || errors.Is(err, io.EOF) {
+		upload.current += n
+		upload.onProgress(float64(upload.current) * 100 / float64(upload.total))
+	}
+	return n, err
 }

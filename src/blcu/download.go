@@ -3,6 +3,7 @@ package blcu
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -17,34 +18,23 @@ type downloadRequest struct {
 	Board string `json:"board"`
 }
 
-type downloadData struct {
-	Board   string
-	Payload []byte
-}
-
-func (blcu *BLCU) handleDownload(payload json.RawMessage) (downloadData, error) {
+func (blcu *BLCU) download(payload json.RawMessage) (string, []byte, error) {
 	blcu.trace.Debug().Msg("Handling download")
 	var request downloadRequest
 	if err := json.Unmarshal(payload, &request); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Unmarshal payload")
-		return downloadData{}, err
+		return "", nil, err
 	}
 
 	if err := blcu.requestDownload(request.Board); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Request download")
-		return downloadData{}, err
+		return request.Board, nil, err
 	}
 
-	buffer := bytes.NewBuffer([]byte{})
-	if err := blcu.ReadTFTP(buffer); err != nil {
-		blcu.trace.Error().Err(err).Stack().Msg("Read TFTP")
-		return downloadData{}, err
-	}
+	buffer := &bytes.Buffer{}
+	err := blcu.ReadTFTP(buffer, blcu.notifyDownloadProgress)
 
-	return downloadData{
-		Board:   request.Board,
-		Payload: buffer.Bytes(),
-	}, nil
+	return request.Board, buffer.Bytes(), err
 }
 
 func (blcu *BLCU) requestDownload(board string) error {
@@ -56,7 +46,7 @@ func (blcu *BLCU) requestDownload(board string) error {
 	}
 
 	// TODO: remove hardcoded timeout
-	if _, err := common.ReadTimeout(blcu.ackChannel, time.Minute); err != nil {
+	if _, err := common.ReadTimeout(blcu.ackChannel, time.Second*10); err != nil {
 		return err
 	}
 
@@ -75,7 +65,9 @@ func (blcu *BLCU) createDownloadOrder(board string) models.Order {
 	}
 }
 
-func (blcu *BLCU) ReadTFTP(writer io.Writer) error {
+const FlashMemorySize = 786432
+
+func (blcu *BLCU) ReadTFTP(output io.Writer, onProgress func(float64)) error {
 	blcu.trace.Info().Msg("Reading TFTP")
 
 	client, err := tftp.NewClient(blcu.addr)
@@ -88,30 +80,33 @@ func (blcu *BLCU) ReadTFTP(writer io.Writer) error {
 		return err
 	}
 
-	_, err = receiver.WriteTo(writer)
-	if err != nil {
-		return err
-	}
+	download := NewDownload(output, FlashMemorySize, onProgress)
+	_, err = receiver.WriteTo(&download)
 
-	return nil
+	return err
 }
 
 type downloadResponse struct {
-	IsSuccess bool   `json:"success"`
-	File      []byte `json:"file,omitempty"`
+	Percentage float64 `json:"percentage"`
+	IsSuccess  bool    `json:"success"`
+	File       []byte  `json:"file,omitempty"`
 }
 
 func (blcu *BLCU) notifyDownloadFailure() {
 	blcu.trace.Warn().Msg("Download failed")
-	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: false, File: nil})
+	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: false, File: nil, Percentage: 0.0})
 }
 
-func (blcu *BLCU) notifyDownloadSuccess(data downloadData) {
+func (blcu *BLCU) notifyDownloadSuccess(data []byte) {
 	blcu.trace.Info().Msg("Download success")
-	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: true, File: data.Payload})
+	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: true, File: data, Percentage: 1.0})
 }
 
-func (blcu *BLCU) writeDownloadFile(data downloadData) error {
+func (blcu *BLCU) notifyDownloadProgress(percentage float64) {
+	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: false, File: nil, Percentage: percentage})
+}
+
+func (blcu *BLCU) writeDownloadFile(board string, data []byte) error {
 	blcu.trace.Info().Msg("Creating download file")
 
 	err := os.MkdirAll(blcu.config.DownloadPath, 0777)
@@ -123,5 +118,30 @@ func (blcu *BLCU) writeDownloadFile(data downloadData) error {
 		return err
 	}
 
-	return os.WriteFile(path.Join(blcu.config.DownloadPath, data.Board+".bin"), data.Payload, 0777)
+	return os.WriteFile(path.Join(blcu.config.DownloadPath, fmt.Sprintf("%s-%d.bin", board, time.Now().Unix())), data, 0777)
+}
+
+type Download struct {
+	writer     io.Writer
+	onProgress func(float64)
+	total      int
+	current    int
+}
+
+func NewDownload(writer io.Writer, size int, onProgress func(float64)) Download {
+	return Download{
+		writer:     writer,
+		onProgress: onProgress,
+		total:      size,
+		current:    0,
+	}
+}
+
+func (download *Download) Write(p []byte) (n int, err error) {
+	n, err = download.writer.Write(p)
+	if err != nil {
+		download.current += n
+		download.onProgress(float64(download.current) / float64(download.total))
+	}
+	return n, err
 }

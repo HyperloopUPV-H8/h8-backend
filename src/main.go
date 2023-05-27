@@ -37,7 +37,6 @@ var traceLevel = flag.String("trace", "info", "set the trace level (\"fatal\", \
 var traceFile = flag.String("log", "trace.json", "set the trace log file")
 
 func main() {
-
 	traceFile := initTrace(*traceLevel, *traceFile)
 	defer traceFile.Close()
 
@@ -106,10 +105,10 @@ func main() {
 	defer websocketBroker.Close()
 
 	websocketBroker.RegisterHandle(&blcu, config.BLCU.Topics.Upload, config.BLCU.Topics.Download)
-	websocketBroker.RegisterHandle(&connectionTransfer, config.Connections.UpdateTopic)
-	websocketBroker.RegisterHandle(&dataTransfer)
+	websocketBroker.RegisterHandle(&connectionTransfer, config.Connections.UpdateTopic, "connection/update")
+	websocketBroker.RegisterHandle(&dataTransfer, "podData/update")
 	websocketBroker.RegisterHandle(&loggerHandler, config.LoggerHandler.Topics.Enable)
-	websocketBroker.RegisterHandle(&messageTransfer)
+	websocketBroker.RegisterHandle(&messageTransfer, "message/update")
 	websocketBroker.RegisterHandle(&orderTransfer, config.Orders.SendTopic)
 
 	go vehicle.Listen(vehicleUpdates, vehicleTransmittedOrders, vehicleProtections, blcuAckChan)
@@ -128,12 +127,6 @@ func main() {
 	go func() {
 		for range blcuAckChan {
 			blcu.NotifyAck()
-		}
-	}()
-
-	go func() {
-		for id := range websocketBroker.CloseChan {
-			loggerHandler.NotifyDisconnect(id)
 		}
 	}()
 

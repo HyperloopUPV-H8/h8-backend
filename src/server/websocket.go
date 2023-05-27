@@ -8,9 +8,7 @@ import (
 )
 
 type ConnectionHandler interface {
-	AddServer(string)
-	Add(string, *websocket.Conn) error
-	Remove(string) <-chan struct{}
+	Add(*websocket.Conn) error
 }
 
 func (server *WebServer) serveWebsocket(path string, upgrader *websocket.Upgrader, headers map[string]string) {
@@ -30,7 +28,12 @@ func (server *WebServer) serveWebsocket(path string, upgrader *websocket.Upgrade
 			return
 		}
 
-		err = server.connections.Add(server.name, conn)
+		conn.SetCloseHandler(func(code int, text string) error {
+			server.connected.Add(-1)
+			return nil
+		})
+
+		err = server.connHandler.Add(conn)
 		if err != nil {
 			return
 		}
@@ -39,11 +42,4 @@ func (server *WebServer) serveWebsocket(path string, upgrader *websocket.Upgrade
 	}
 
 	server.router.HandleFunc(path, handler)
-}
-
-func (server *WebServer) consumeRemoved() {
-	channel := server.connections.Remove(server.name)
-	for range channel {
-		server.connected.Add(-1)
-	}
 }
