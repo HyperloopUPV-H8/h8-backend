@@ -19,7 +19,7 @@ func NewOrderData(boards map[string]excelAdapterModels.Board, blcuName string) O
 		}
 
 		for _, packet := range board.Packets {
-			if packet.Description.Type != "order" {
+			if packet.Description.Type != "order" && packet.Description.Type != "stateOrder" {
 				continue
 			}
 
@@ -37,6 +37,7 @@ func NewOrderData(boards map[string]excelAdapterModels.Board, blcuName string) O
 				ID:     uint16(id),
 				Name:   packet.Description.Name,
 				Fields: fields,
+				State:  packet.Description.Type == "stateOrder",
 			}
 
 		}
@@ -91,6 +92,7 @@ type OrderDescription struct {
 	ID     uint16                      `json:"id"`
 	Name   string                      `json:"name"`
 	Fields map[string]FieldDescription `json:"fields"`
+	State  bool                        `json:"state"`
 }
 
 type FieldDescription struct {

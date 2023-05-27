@@ -1,5 +1,10 @@
 package models
 
+type StateOrdersMessage struct {
+	BoardId uint16
+	Orders  []uint16
+}
+
 type InfoMessage struct {
 	Board     string    `json:"board"`
 	Timestamp Timestamp `json:"timestamp"`
