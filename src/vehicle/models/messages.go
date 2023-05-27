@@ -1,8 +1,8 @@
 package models
 
 type StateOrdersMessage struct {
-	BoardId uint16
-	Orders  []uint16
+	BoardId string   `json:"board"`
+	Orders  []uint16 `json:"orders"`
 }
 
 type InfoMessage struct {

@@ -69,7 +69,7 @@ func (parser *MessageParser) toStateOrder(kind string, payload []byte) (models.S
 	}
 
 	return models.StateOrdersMessage{
-		BoardId: boardId,
+		BoardId: parser.boardIdToName[uint(boardId)],
 		Orders:  orders,
 	}, nil
 }

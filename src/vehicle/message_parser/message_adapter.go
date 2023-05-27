@@ -23,3 +23,8 @@ type ProtectionAdapter struct {
 	Type string           `json:"type"`
 	Data *json.RawMessage `json:"data"`
 }
+
+type StateOrdersAdapter struct {
+	BoardId uint16
+	Orders  []uint16
+}

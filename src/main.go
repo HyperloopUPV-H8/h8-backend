@@ -80,6 +80,7 @@ func main() {
 	vehicleProtections := make(chan any)
 	vehicleTransmittedOrders := make(chan vehicle_models.PacketUpdate)
 	blcuAckChan := make(chan struct{})
+	stateOrdersChan := make(chan vehicle_models.StateOrdersMessage)
 
 	dataTransfer := data_transfer.New(config.DataTransfer)
 	go dataTransfer.Run()
@@ -111,7 +112,7 @@ func main() {
 	websocketBroker.RegisterHandle(&messageTransfer, "message/update")
 	websocketBroker.RegisterHandle(&orderTransfer, config.Orders.SendTopic)
 
-	go vehicle.Listen(vehicleUpdates, vehicleTransmittedOrders, vehicleProtections, blcuAckChan)
+	go vehicle.Listen(vehicleUpdates, vehicleTransmittedOrders, vehicleProtections, blcuAckChan, stateOrdersChan)
 
 	go startPacketUpdateRoutine(vehicleUpdates, &dataTransfer, &loggerHandler)
 	go startMessagesRoutine(vehicleProtections, &messageTransfer, &loggerHandler)
@@ -127,6 +128,12 @@ func main() {
 	go func() {
 		for range blcuAckChan {
 			blcu.NotifyAck()
+		}
+	}()
+
+	go func() {
+		for stateOrders := range stateOrdersChan {
+			orderTransfer.UpdateStateOrders(stateOrders)
 		}
 	}()
 
@@ -286,10 +293,8 @@ func startMessagesRoutine(vehicleMessages <-chan any, messageTransfer *message_t
 		switch msg := message.(type) {
 		case vehicle_models.InfoMessage:
 			loggerHandler.Log(protection_logger.LoggableInfo(msg))
-			break
 		case vehicle_models.ProtectionMessage:
 			loggerHandler.Log(protection_logger.LoggableProtection(msg))
-			break
 		}
 	}
 }

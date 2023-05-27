@@ -3,6 +3,7 @@ package order_transfer
 import (
 	"encoding/json"
 
+	"github.com/HyperloopUPV-H8/Backend-H8/common/observable"
 	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
@@ -11,6 +12,8 @@ import (
 const (
 	ORDER_TRASNFER_NAME = "orderTransfer"
 	ORDER_CHAN_BUFFER   = 100
+
+	OrderTopic = "orders/enabled" // TODO: move to config
 )
 
 func New() (OrderTransfer, <-chan vehicle_models.Order) {
@@ -23,12 +26,40 @@ func New() (OrderTransfer, <-chan vehicle_models.Order) {
 }
 
 type OrderTransfer struct {
-	channel chan<- vehicle_models.Order
-	trace   zerolog.Logger
+	stateOrdersObservable observable.ReplayObservable[vehicle_models.StateOrdersMessage]
+	channel               chan<- vehicle_models.Order
+	sendMessage           func(topic string, payload any, target ...string) error
+	trace                 zerolog.Logger
 }
 
 func (orderTransfer *OrderTransfer) UpdateMessage(topic string, payload json.RawMessage, source string) {
 	orderTransfer.trace.Warn().Str("source", source).Str("topic", topic).Msg("got message")
+	switch topic {
+	case "order":
+		orderTransfer.handleOrder(topic, payload, source)
+	case "stateOrders":
+		orderTransfer.handleSubscription(topic, payload, source)
+	}
+}
+
+func (orderTransfer *OrderTransfer) handleSubscription(topic string, payload json.RawMessage, source string) {
+	var sub bool
+	err := json.Unmarshal(payload, &sub)
+
+	if err != nil {
+		orderTransfer.trace.Error().Err(err).Msg("unmarshaling payload")
+	}
+
+	observable.HandleSubscribe[vehicle_models.StateOrdersMessage](&orderTransfer.stateOrdersObservable, source, sub, func(v vehicle_models.StateOrdersMessage, id string) error {
+		return orderTransfer.sendMessage(OrderTopic, v, id)
+	})
+}
+
+func (orderTransfer *OrderTransfer) UpdateStateOrders(stateOrders vehicle_models.StateOrdersMessage) {
+	orderTransfer.stateOrdersObservable.Next(stateOrders)
+}
+
+func (orderTransfer *OrderTransfer) handleOrder(topic string, payload json.RawMessage, source string) {
 	var order vehicle_models.Order
 	if err := json.Unmarshal(payload, &order); err != nil {
 		orderTransfer.trace.Error().Stack().Err(err).Msg("")
