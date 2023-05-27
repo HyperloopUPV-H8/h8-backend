@@ -63,7 +63,6 @@ func (dataTransfer *DataTransfer) UpdateMessage(topic string, payload json.RawMe
 	observable.HandleSubscribe[map[uint16]models.Update](&dataTransfer.updateObservable, source, sub, func(v map[uint16]models.Update, id string) error {
 		return dataTransfer.sendMessage(UpdateTopic, v, id)
 	})
-
 }
 
 func (dataTransfer *DataTransfer) SetSendMessage(sendMessage func(topic string, payload any, target ...string) error) {
