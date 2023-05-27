@@ -13,17 +13,20 @@ import (
 	trace "github.com/rs/zerolog/log"
 )
 
-const LOG_HANDLER_HANDLER_NAME = "LoggerHandler"
+const (
+	LogHandlerHandlerName = "LoggerHandler"
+	ResponseTopic         = "logger/response"
+)
 
 type LoggerHandler struct {
-	loggers        map[string]Logger
-	loggableChan   chan Loggable
-	currentSession string
-	isRunning      bool
-	isRunningMx    *sync.Mutex
-	sendMessage    func(topic string, payload any, target ...string) error
-	config         Config
-	trace          zerolog.Logger
+	loggers       map[string]Logger
+	loggableChan  chan Loggable
+	currentClient string
+	isRunning     bool
+	isRunningMx   *sync.Mutex
+	sendMessage   func(topic string, payload any, target ...string) error
+	config        Config
+	trace         zerolog.Logger
 }
 
 func NewLoggerHandler(loggers map[string]Logger, config Config) LoggerHandler {
@@ -33,15 +36,15 @@ func NewLoggerHandler(loggers map[string]Logger, config Config) LoggerHandler {
 	os.Chmod(config.BasePath, 0777)
 
 	return LoggerHandler{
-		loggers:        loggers,
-		loggableChan:   make(chan Loggable),
-		currentSession: "",
-		isRunning:      false,
-		isRunningMx:    &sync.Mutex{},
+		loggers:       loggers,
+		loggableChan:  make(chan Loggable),
+		currentClient: "",
+		isRunning:     false,
+		isRunningMx:   &sync.Mutex{},
 
 		sendMessage: defaultSendMessage,
 		config:      config,
-		trace:       trace.With().Str("component", LOG_HANDLER_HANDLER_NAME).Logger(),
+		trace:       trace.With().Str("component", LogHandlerHandlerName).Logger(),
 	}
 }
 
@@ -67,13 +70,12 @@ func (handler *LoggerHandler) UpdateMessage(topic string, payload json.RawMessag
 		handler.handleEnable(enable, source)
 	}
 
-	handler.notifyState()
 }
 
 func (handler *LoggerHandler) handleEnable(enable bool, source string) error {
 	if !handler.verifySession(source) {
 		handler.trace.Warn().Str("source", source).Msg("tried to change running log session")
-		return fmt.Errorf("%s tried to change running log session of %s", source, handler.currentSession)
+		return fmt.Errorf("%s tried to change running log session of %s", source, handler.currentClient)
 	}
 
 	handler.changeState(enable)
@@ -92,15 +94,15 @@ func (handler *LoggerHandler) changeState(enable bool) {
 }
 
 func (handler *LoggerHandler) verifySession(session string) bool {
-	if handler.currentSession == "" {
-		handler.currentSession = session
+	if handler.currentClient == "" {
+		handler.currentClient = session
 	}
 
-	return handler.currentSession == session
+	return handler.currentClient == session
 }
 
 func (handler *LoggerHandler) start() {
-	handler.trace.Info().Str("logger session", handler.currentSession).Msg("Started logging")
+	handler.trace.Info().Str("logger session", handler.currentClient).Msg("Started logging")
 	handler.loggableChan = make(chan Loggable)
 	currentTime := time.Now()
 	sessionDirName := fmt.Sprintf("%d_%d_%d - %d_%dh", currentTime.Day(), currentTime.Month(), currentTime.Year(), currentTime.Hour(), currentTime.Minute())
@@ -112,6 +114,7 @@ func (handler *LoggerHandler) start() {
 
 	go startBroadcastRoutine(activeLoggers, handler.loggableChan)
 	handler.isRunning = true
+	handler.notifyState()
 }
 
 func (handler *LoggerHandler) createActiveLoggers(path string) []ActiveLogger {
@@ -146,10 +149,11 @@ func startBroadcastRoutine(activeLoggers []ActiveLogger, generalInput <-chan Log
 }
 
 func (handler *LoggerHandler) stop() {
-	handler.trace.Info().Str("logger session", handler.currentSession).Msg("Stoped logging")
+	handler.trace.Info().Str("logger session", handler.currentClient).Msg("Stoped logging")
 	handler.isRunning = false
 	close(handler.loggableChan) // triggers loggers clean-up
-	handler.currentSession = ""
+	handler.notifyState()
+	handler.currentClient = ""
 }
 
 func (handler *LoggerHandler) NotifyDisconnect(session string) {
@@ -161,16 +165,13 @@ func (handler *LoggerHandler) NotifyDisconnect(session string) {
 		}
 		handler.isRunningMx.Unlock()
 
-		handler.currentSession = ""
+		handler.currentClient = ""
 	}
 }
 
 func (handler *LoggerHandler) notifyState() error {
-	handler.isRunningMx.Lock()
-	runningCopy := handler.isRunning
-	handler.isRunningMx.Unlock()
 
-	if err := handler.sendMessage(handler.config.Topics.Enable, runningCopy); err != nil {
+	if err := handler.sendMessage(ResponseTopic, handler.isRunning, handler.currentClient); err != nil {
 		handler.trace.Error().Stack().Err(err).Msg("")
 		return err
 	}
@@ -184,7 +185,7 @@ func (handler *LoggerHandler) SetSendMessage(sendMessage func(topic string, payl
 }
 
 func (handler *LoggerHandler) HandlerName() string {
-	return LOG_HANDLER_HANDLER_NAME
+	return LogHandlerHandlerName
 }
 
 func defaultSendMessage(string, any, ...string) error {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"time"
 
@@ -90,21 +91,21 @@ func (blcu *BLCU) WriteTFTP(reader io.Reader, size int, onProgress func(float64)
 
 type uploadResponse struct {
 	Percentage float64 `json:"percentage"`
-	IsSuccess  bool    `json:"success"`
+	Failure    bool    `json:"failure"`
 }
 
 func (blcu *BLCU) notifyUploadFailure() {
 	blcu.trace.Warn().Msg("Upload failed")
-	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: 0.0, IsSuccess: false})
+	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: 0, Failure: true})
 }
 
 func (blcu *BLCU) notifyUploadSuccess() {
 	blcu.trace.Info().Msg("Upload success")
-	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: 1.0, IsSuccess: true})
+	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: 100, Failure: false})
 }
 
 func (blcu *BLCU) notifyUploadProgress(percentage float64) {
-	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: percentage, IsSuccess: false})
+	blcu.sendMessage(blcu.config.Topics.Upload, uploadResponse{Percentage: percentage, Failure: false})
 }
 
 type Upload struct {
@@ -125,9 +126,9 @@ func NewUpload(reader io.Reader, size int, onProgress func(float64)) Upload {
 
 func (upload *Upload) Read(p []byte) (n int, err error) {
 	n, err = upload.reader.Read(p)
-	if err != nil {
+	if err == nil || errors.Is(err, io.EOF) {
 		upload.current += n
-		upload.onProgress(float64(upload.current) / float64(upload.total))
+		upload.onProgress(float64(upload.current) * 100 / float64(upload.total))
 	}
 	return n, err
 }

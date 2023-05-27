@@ -4,18 +4,21 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/HyperloopUPV-H8/Backend-H8/common/observable"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
 
 const (
-	MESSAGE_TRANSFER_HANDLER_NAME = "messageTransfer"
+	MessageTransferHandlerName = "messageTransfer"
+	UpdateTopic                = "message/update"
 )
 
 type MessageTransfer struct {
-	updateTopic string
-	sendMessage func(topic string, payload any, targets ...string) error
-	trace       zerolog.Logger
+	updateTopic       string
+	messageObservable observable.NoReplayObservable[any]
+	sendMessage       func(topic string, payload any, target ...string) error
+	trace             zerolog.Logger
 }
 type MessageTransferConfig struct {
 	UpdateTopic string `toml:"update_topic"`
@@ -24,19 +27,33 @@ type MessageTransferConfig struct {
 func New(config MessageTransferConfig) MessageTransfer {
 	trace.Info().Msg("new message transfer")
 	return MessageTransfer{
-		updateTopic: config.UpdateTopic,
-		sendMessage: defaultSendMessage,
-		trace:       trace.With().Str("component", MESSAGE_TRANSFER_HANDLER_NAME).Logger(),
+		updateTopic:       config.UpdateTopic,
+		messageObservable: observable.NewNoReplayObservable[any](),
+		sendMessage:       defaultSendMessage,
+		// messageObservable: observable.NewWsObservable[any](struct{}{}, func(v any, id string) error { return defaultSendMessage(id, v) }), //FIXME: change struct{}{}
+		trace: trace.With().Str("component", MessageTransferHandlerName).Logger(),
 	}
 }
 
-func (messageTransfer *MessageTransfer) SendMessage(message interface{}) error {
+func (messageTransfer *MessageTransfer) SendMessage(message any) error {
 	// messageTransfer.trace.Warn().Uint16("id", message.ID).Str("type", message.Type).Str("desc", message.Description).Msg("send message")
-	return messageTransfer.sendMessage(messageTransfer.updateTopic, message)
+	messageTransfer.messageObservable.Next(message)
+	return nil
 }
 
 func (messageTransfer *MessageTransfer) UpdateMessage(topic string, payload json.RawMessage, source string) {
 	messageTransfer.trace.Warn().Str("source", source).Str("topic", topic).Msg("got message")
+
+	var sub MessageSubscription
+	err := json.Unmarshal(payload, &sub)
+
+	if err != nil {
+		messageTransfer.trace.Error().Err(err).Msg("unmarshaling payload")
+	}
+
+	observable.HandleSubscribe[any](&messageTransfer.messageObservable, source, sub, func(v any, id string) error {
+		return messageTransfer.sendMessage(UpdateTopic, v, id)
+	})
 }
 
 func (messageTransfer *MessageTransfer) SetSendMessage(sendMessage func(topic string, payload any, targets ...string) error) {
@@ -45,7 +62,7 @@ func (messageTransfer *MessageTransfer) SetSendMessage(sendMessage func(topic st
 }
 
 func (messageTransfer *MessageTransfer) HandlerName() string {
-	return MESSAGE_TRANSFER_HANDLER_NAME
+	return MessageTransferHandlerName
 }
 
 func defaultSendMessage(string, any, ...string) error {

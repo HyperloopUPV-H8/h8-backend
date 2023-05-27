@@ -55,10 +55,12 @@ func (broker *WebSocketBroker) readMessages(id string, conn *websocket.Conn) {
 func (broker *WebSocketBroker) ping(id string, conn *websocket.Conn) {
 	ticker := time.NewTicker(time.Second * 5)
 	for range ticker.C {
+		broker.clientsMx.Lock()
 		if err := conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
 			broker.removeClient(id)
 			return
 		}
+		broker.clientsMx.Unlock()
 	}
 }
 
@@ -89,21 +91,27 @@ func (broker *WebSocketBroker) sendMessage(topic string, payload any, targets ..
 
 func (broker *WebSocketBroker) sendToTargets(msg models.Message, targets []string) error {
 	failedTargets := make([]string, 0)
+	broker.clientsMx.Lock()
+	defer broker.clientsMx.Unlock()
+
 	for _, target := range targets {
 		conn, ok := broker.clients[target]
 
 		if !ok {
 			broker.trace.Warn().Str("target", target).Msg("target not found")
+			failedTargets = append(failedTargets, target)
 			continue
 		}
 
 		if err := conn.WriteJSON(msg); err != nil {
 			broker.trace.Error().Stack().Err(err).Msg("")
-			broker.clientsMx.Lock()
-			defer broker.clientsMx.Unlock()
-			broker.removeClient(target)
+			delete(broker.clients, target)
 			failedTargets = append(failedTargets, target)
 		}
+	}
+
+	if len(failedTargets) == 0 {
+		return nil
 	}
 
 	return fmt.Errorf("failed targets: %v", failedTargets)
@@ -112,21 +120,14 @@ func (broker *WebSocketBroker) sendToTargets(msg models.Message, targets []strin
 func (broker *WebSocketBroker) broadcastMessage(message models.Message) error {
 	broker.trace.Trace().Str("topic", message.Topic).Msg("broadcast message")
 	broker.clientsMx.Lock()
-	clientsToRemove := make([]string, 0)
+	defer broker.clientsMx.Unlock()
 	var err error
 	for id, conn := range broker.clients {
 		if err = conn.WriteJSON(message); err != nil {
-			clientsToRemove = append(clientsToRemove, id)
+			delete(broker.clients, id)
 			broker.trace.Error().Stack().Err(err).Msg("")
 		}
 	}
-	broker.clientsMx.Unlock()
-
-	broker.clientsMx.Lock()
-	for _, client := range clientsToRemove {
-		broker.removeClient(client)
-	}
-	broker.clientsMx.Unlock()
 
 	return err
 }
