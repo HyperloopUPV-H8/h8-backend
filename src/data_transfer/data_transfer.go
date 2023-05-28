@@ -6,22 +6,25 @@ import (
 	"sync"
 	"time"
 
+	"github.com/HyperloopUPV-H8/Backend-H8/common/observable"
 	"github.com/HyperloopUPV-H8/Backend-H8/update_factory/models"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
 
 const (
-	DATA_TRANSFER_HANDLER_NAME = "dataTransfer"
+	DataTransferHandlerName = "dataTransfer"
+	UpdateTopic             = "podData/update"
 )
 
 type DataTransfer struct {
-	bufMx       *sync.Mutex
-	packetBuf   map[uint16]models.Update
-	ticker      *time.Ticker
-	updateTopic string
-	sendMessage func(topic string, payload any, target ...string) error
-	trace       zerolog.Logger
+	bufMx            *sync.Mutex
+	updateBuf        map[uint16]models.Update
+	updateObservable observable.ReplayObservable[map[uint16]models.Update]
+	ticker           *time.Ticker
+	updateTopic      string
+	sendMessage      func(topic string, payload any, target ...string) error
+	trace            zerolog.Logger
 }
 type DataTransferTopics struct {
 	Update string
@@ -35,19 +38,31 @@ func New(config DataTransferConfig) DataTransfer {
 	trace.Info().Msg("create data transfer")
 
 	dataTransfer := DataTransfer{
-		bufMx:       &sync.Mutex{},
-		packetBuf:   make(map[uint16]models.Update),
-		ticker:      time.NewTicker(time.Second / time.Duration(config.Fps)),
-		updateTopic: config.Topics.Update,
-		sendMessage: defaultSendMessage,
-		trace:       trace.With().Str("component", DATA_TRANSFER_HANDLER_NAME).Logger(),
+		bufMx:            &sync.Mutex{},
+		updateBuf:        make(map[uint16]models.Update),
+		updateObservable: observable.NewReplayObservable(make(map[uint16]models.Update)),
+		ticker:           time.NewTicker(time.Second / time.Duration(config.Fps)),
+		updateTopic:      config.Topics.Update,
+		sendMessage:      defaultSendMessage,
+		trace:            trace.With().Str("component", DataTransferHandlerName).Logger(),
 	}
 
 	return dataTransfer
 }
 
 func (dataTransfer *DataTransfer) UpdateMessage(topic string, payload json.RawMessage, source string) {
-	dataTransfer.trace.Warn().Str("source", source).Str("topic", topic).Msg("got message")
+	dataTransfer.trace.Info().Str("source", source).Str("topic", topic).Msg("got message")
+
+	var sub UpdateSubscription
+	err := json.Unmarshal(payload, &sub)
+
+	if err != nil {
+		dataTransfer.trace.Error().Err(err).Msg("unmarshaling payload")
+	}
+
+	observable.HandleSubscribe[map[uint16]models.Update](&dataTransfer.updateObservable, source, sub, func(v map[uint16]models.Update, id string) error {
+		return dataTransfer.sendMessage(UpdateTopic, v, id)
+	})
 }
 
 func (dataTransfer *DataTransfer) SetSendMessage(sendMessage func(topic string, payload any, target ...string) error) {
@@ -56,7 +71,7 @@ func (dataTransfer *DataTransfer) SetSendMessage(sendMessage func(topic string, 
 }
 
 func (DataTransfer *DataTransfer) HandlerName() string {
-	return DATA_TRANSFER_HANDLER_NAME
+	return DataTransferHandlerName
 }
 
 func (dataTransfer *DataTransfer) Run() {
@@ -71,7 +86,7 @@ func (dataTransfer *DataTransfer) trySend() {
 	dataTransfer.bufMx.Lock()
 	defer dataTransfer.bufMx.Unlock()
 
-	if len(dataTransfer.packetBuf) == 0 {
+	if len(dataTransfer.updateBuf) == 0 {
 		return
 	}
 
@@ -80,12 +95,13 @@ func (dataTransfer *DataTransfer) trySend() {
 
 func (dataTransfer *DataTransfer) sendBuf() {
 	dataTransfer.trace.Trace().Msg("send buffer")
-	if err := dataTransfer.sendMessage(dataTransfer.updateTopic, dataTransfer.packetBuf); err != nil {
-		dataTransfer.trace.Error().Stack().Err(err).Msg("")
-		return
-	}
+	// if err := dataTransfer.sendMessage(dataTransfer.updateTopic, dataTransfer.updateBuf); err != nil {
+	// 	dataTransfer.trace.Error().Stack().Err(err).Msg("")
+	// 	return
+	// }
 
-	dataTransfer.packetBuf = make(map[uint16]models.Update, len(dataTransfer.packetBuf))
+	dataTransfer.updateObservable.Next(dataTransfer.updateBuf)
+	dataTransfer.updateBuf = make(map[uint16]models.Update, len(dataTransfer.updateBuf))
 }
 
 func (dataTransfer *DataTransfer) Update(update models.Update) {
@@ -93,7 +109,7 @@ func (dataTransfer *DataTransfer) Update(update models.Update) {
 	defer dataTransfer.bufMx.Unlock()
 
 	dataTransfer.trace.Trace().Uint16("id", update.ID).Msg("update")
-	dataTransfer.packetBuf[update.ID] = update
+	dataTransfer.updateBuf[update.ID] = update
 }
 
 func defaultSendMessage(string, any, ...string) error {

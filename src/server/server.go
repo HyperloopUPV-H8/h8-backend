@@ -12,7 +12,7 @@ import (
 type WebServer struct {
 	name        string
 	router      *mux.Router
-	connections ConnectionHandler
+	connHandler ConnectionHandler
 	connected   *atomic.Int32
 	config      ServerConfig
 }
@@ -21,7 +21,7 @@ func NewWebServer(name string, connectionHandle ConnectionHandler, staticData En
 	server := &WebServer{
 		name:        name,
 		router:      mux.NewRouter(),
-		connections: connectionHandle,
+		connHandler: connectionHandle,
 		connected:   &atomic.Int32{},
 		config:      config,
 	}
@@ -49,8 +49,6 @@ func NewWebServer(name string, connectionHandle ConnectionHandler, staticData En
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
 	server.serveWebsocket(config.Endpoints.Connections, upgrader, headers)
-	go server.consumeRemoved()
-
 	server.serveFiles(config.Endpoints.Files, config.StaticPath)
 
 	if err != nil {

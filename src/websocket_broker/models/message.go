@@ -4,7 +4,7 @@ import "encoding/json"
 
 type Message struct {
 	Topic   string          `json:"topic"`
-	Payload json.RawMessage `json:"msg"`
+	Payload json.RawMessage `json:"payload"`
 }
 
 func NewMessage(topic string, message any) (Message, error) {

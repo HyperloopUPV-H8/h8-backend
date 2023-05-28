@@ -6,21 +6,23 @@ import (
 	"sync"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
-	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer/models"
+	"github.com/HyperloopUPV-H8/Backend-H8/common/observable"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
 
 const (
-	CONNECTION_TRANSFER_HANDLER_NAME = "connectionTransfer"
+	ConnectionTransferHandlerName = "connectionTransfer"
+	UpdateTopic                   = "connection/update"
 )
 
 type ConnectionTransfer struct {
-	writeMx     *sync.Mutex
-	boardStatus map[string]models.Connection
-	sendMessage func(topic string, payload any, target ...string) error
-	updateTopic string
-	trace       zerolog.Logger
+	writeMx               *sync.Mutex
+	boardStatus           map[string]Connection
+	boardStatusObservable observable.ReplayObservable[[]Connection]
+	sendMessage           func(topic string, payload any, target ...string) error
+	updateTopic           string
+	trace                 zerolog.Logger
 }
 
 type ConnectionTransferConfig struct {
@@ -31,17 +33,34 @@ func New(config ConnectionTransferConfig) ConnectionTransfer {
 	trace.Info().Msg("new connection transfer")
 
 	return ConnectionTransfer{
-		writeMx:     &sync.Mutex{},
-		boardStatus: make(map[string]models.Connection),
-		sendMessage: defaultSendMessage,
-		updateTopic: config.UpdateTopic,
-		trace:       trace.With().Str("component", CONNECTION_TRANSFER_HANDLER_NAME).Logger(),
+		writeMx:               &sync.Mutex{},
+		boardStatus:           make(map[string]Connection),
+		boardStatusObservable: observable.NewReplayObservable(make([]Connection, 0)),
+		sendMessage:           defaultSendMessage,
+		updateTopic:           config.UpdateTopic,
+		trace:                 trace.With().Str("component", ConnectionTransferHandlerName).Logger(),
 	}
 }
 
 func (connectionTransfer *ConnectionTransfer) UpdateMessage(topic string, payload json.RawMessage, source string) {
 	connectionTransfer.trace.Trace().Str("source", source).Str("topic", topic).Msg("got message")
-	connectionTransfer.send()
+
+	var sub ConnectionSubscription
+	err := json.Unmarshal(payload, &sub)
+
+	if err != nil {
+		connectionTransfer.trace.Error().Err(err).Msg("unmarshaling payload")
+	}
+
+	observable.HandleSubscribe[[]Connection](&connectionTransfer.boardStatusObservable, source, sub, func(v []Connection, id string) error {
+		err := connectionTransfer.sendMessage(UpdateTopic, v, id)
+
+		if err != nil {
+			connectionTransfer.boardStatusObservable.Unsubscribe(id)
+		}
+
+		return err
+	})
 }
 
 func (connectionTransfer *ConnectionTransfer) SetSendMessage(sendMessage func(topic string, payload any, target ...string) error) {
@@ -50,7 +69,7 @@ func (connectionTransfer *ConnectionTransfer) SetSendMessage(sendMessage func(to
 }
 
 func (connectionTransfer *ConnectionTransfer) HandlerName() string {
-	return CONNECTION_TRANSFER_HANDLER_NAME
+	return ConnectionTransferHandlerName
 }
 
 func (connectionTransfer *ConnectionTransfer) Update(name string, IsConnected bool) {
@@ -59,23 +78,12 @@ func (connectionTransfer *ConnectionTransfer) Update(name string, IsConnected bo
 
 	connectionTransfer.trace.Debug().Str("connection", name).Bool("isConnected", IsConnected).Msg("update connection state")
 
-	connectionTransfer.boardStatus[name] = models.Connection{
+	connectionTransfer.boardStatus[name] = Connection{
 		Name:        name,
 		IsConnected: IsConnected,
 	}
 
-	connectionTransfer.send()
-}
-
-func (connectionTransfer *ConnectionTransfer) send() {
-	connectionTransfer.trace.Debug().Msg("send connections")
-
-	connArr := common.Values(connectionTransfer.boardStatus)
-
-	if err := connectionTransfer.sendMessage(connectionTransfer.updateTopic, connArr); err != nil {
-		connectionTransfer.trace.Error().Stack().Err(err).Msg("")
-		return
-	}
+	connectionTransfer.boardStatusObservable.Next(common.Values(connectionTransfer.boardStatus))
 }
 
 func defaultSendMessage(string, any, ...string) error {

@@ -37,3 +37,13 @@ func Every[T any](slice []T, predicate func(T) bool) bool {
 
 	return true
 }
+
+func FindIndex[T any](slice []T, predicate func(T) bool) int {
+	for index, item := range slice {
+		if predicate(item) {
+			return index
+		}
+	}
+
+	return -1
+}
