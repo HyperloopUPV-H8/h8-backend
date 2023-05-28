@@ -1,6 +1,8 @@
 package message_parser
 
 import (
+	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 
@@ -13,6 +15,7 @@ type MessageParser struct {
 	warningId     uint16
 	faultId       uint16
 	errorId       uint16
+	stateOrderId  uint16
 	boardIdToName map[uint]string
 	trace         zerolog.Logger
 }
@@ -31,8 +34,44 @@ func (parser *MessageParser) Parse(id uint16, raw []byte) (any, error) {
 		return parser.toInfoMessage(kind, payload)
 	}
 
+	if kind == "stateOrder" {
+		return parser.toStateOrder(kind, payload)
+	}
+
 	return parser.toProtectionMessage(kind, payload)
 
+}
+
+func (parser *MessageParser) toStateOrder(kind string, payload []byte) (models.StateOrdersMessage, error) {
+	reader := bytes.NewReader(payload)
+	var id uint16
+	err := binary.Read(reader, binary.LittleEndian, &id)
+	if err != nil {
+		return models.StateOrdersMessage{}, err
+	}
+
+	var boardId uint16
+	err = binary.Read(reader, binary.LittleEndian, &boardId)
+	if err != nil {
+		return models.StateOrdersMessage{}, err
+	}
+
+	var ordersLen uint16
+	err = binary.Read(reader, binary.LittleEndian, &ordersLen)
+	if err != nil {
+		return models.StateOrdersMessage{}, err
+	}
+
+	orders := make([]uint16, ordersLen)
+	err = binary.Read(reader, binary.LittleEndian, &orders)
+	if err != nil {
+		return models.StateOrdersMessage{}, err
+	}
+
+	return models.StateOrdersMessage{
+		BoardId: parser.boardIdToName[uint(boardId)],
+		Orders:  orders,
+	}, nil
 }
 
 func (parser *MessageParser) toInfoMessage(kind string, payload []byte) (models.InfoMessage, error) {
@@ -92,6 +131,10 @@ func (parser *MessageParser) toProtectionMessage(kind string, payload []byte) (m
 }
 
 func (parser *MessageParser) getKind(id uint16) (string, error) {
+	if id == parser.stateOrderId {
+		return "stateOrder", nil
+	}
+
 	if id == parser.faultId {
 		return "fault", nil
 	}

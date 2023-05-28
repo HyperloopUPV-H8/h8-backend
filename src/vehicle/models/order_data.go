@@ -8,14 +8,20 @@ import (
 	excelAdapterModels "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
 )
 
-type OrderData map[string]OrderDescription
+type OrderData struct {
+	Orders      map[string]OrderDescription `json:"orders"`
+	StateOrders map[string]OrderDescription `json:"stateOrders"`
+}
 
 func NewOrderData(boards map[string]excelAdapterModels.Board, blcuName string) OrderData {
-	orderData := make(map[string]OrderDescription)
+	orderData := OrderData{
+		Orders:      make(map[string]OrderDescription),
+		StateOrders: make(map[string]OrderDescription),
+	}
 
 	for _, board := range boards {
 		for _, packet := range board.Packets {
-			if packet.Description.Type != "order" {
+			if packet.Description.Type != "order" && packet.Description.Type != "stateOrder" {
 				continue
 			}
 
@@ -29,10 +35,16 @@ func NewOrderData(boards map[string]excelAdapterModels.Board, blcuName string) O
 				fields[value.Name] = getField(value.ID, value.Type, value.SafeRange, value.WarningRange)
 			}
 
-			orderData[packet.Description.Name] = OrderDescription{
+			desc := OrderDescription{
 				ID:     uint16(id),
 				Name:   packet.Description.Name,
 				Fields: fields,
+			}
+
+			if packet.Description.Type == "order" {
+				orderData.Orders[packet.Description.Name] = desc
+			} else {
+				orderData.StateOrders[packet.Description.Name] = desc
 			}
 
 		}

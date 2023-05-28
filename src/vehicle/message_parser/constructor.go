@@ -8,7 +8,7 @@ import (
 	trace "github.com/rs/zerolog/log"
 )
 
-func NewMessageParser(globalInfo excelAdapterModels.GlobalInfo, infoId uint16, faultId uint16, warningId uint16) MessageParser {
+func NewMessageParser(globalInfo excelAdapterModels.GlobalInfo, infoId uint16, faultId uint16, warningId uint16, stateOrdersId uint16) MessageParser {
 	parserLogger := trace.With().Str("component", "protection parser").Logger()
 
 	idToBoard := getIdToBoard(globalInfo.BoardToId, parserLogger)
@@ -19,6 +19,7 @@ func NewMessageParser(globalInfo excelAdapterModels.GlobalInfo, infoId uint16, f
 		faultId:       faultId,
 		boardIdToName: idToBoard,
 		trace:         parserLogger,
+		stateOrderId:  stateOrdersId,
 	}
 }
 
