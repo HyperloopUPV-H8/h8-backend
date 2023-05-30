@@ -16,6 +16,14 @@ const (
 	OrderTopic = "orders/enabled" // TODO: move to config
 )
 
+type OrderTransfer struct {
+	stateOrders           map[string][]uint16
+	stateOrdersObservable observable.ReplayObservable[map[string][]uint16]
+	channel               chan<- vehicle_models.Order
+	sendMessage           func(topic string, payload any, target ...string) error
+	trace                 zerolog.Logger
+}
+
 func New() (OrderTransfer, <-chan vehicle_models.Order) {
 	trace.Info().Msg("new order transfer")
 	channel := make(chan vehicle_models.Order, ORDER_CHAN_BUFFER)
@@ -26,14 +34,6 @@ func New() (OrderTransfer, <-chan vehicle_models.Order) {
 		stateOrdersObservable: observable.NewReplayObservable(stateOrders),
 		trace:                 trace.With().Str("component", ORDER_TRASNFER_NAME).Logger(),
 	}, channel
-}
-
-type OrderTransfer struct {
-	stateOrders           map[string][]uint16
-	stateOrdersObservable observable.ReplayObservable[map[string][]uint16]
-	channel               chan<- vehicle_models.Order
-	sendMessage           func(topic string, payload any, target ...string) error
-	trace                 zerolog.Logger
 }
 
 func (orderTransfer *OrderTransfer) UpdateMessage(topic string, payload json.RawMessage, source string) {

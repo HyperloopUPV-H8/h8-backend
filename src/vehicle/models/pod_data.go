@@ -42,7 +42,7 @@ func getPackets(excelPackets []excelAdapterModels.Packet) []Packet {
 		packets = append(packets, packet)
 	}
 
-	sortedPackets := SortedPackets(packets)
+	sortedPackets := SortablePacket(packets)
 	sort.Sort(sortedPackets)
 
 	return sortedPackets

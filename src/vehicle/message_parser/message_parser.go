@@ -44,16 +44,18 @@ func (parser *MessageParser) Parse(id uint16, raw []byte) (any, error) {
 
 func (parser *MessageParser) toStateOrder(kind string, payload []byte) (models.StateOrdersMessage, error) {
 	reader := bytes.NewReader(payload)
-	var id uint16
-	err := binary.Read(reader, binary.LittleEndian, &id)
+
+	var boardId uint16
+	err := binary.Read(reader, binary.LittleEndian, &boardId)
 	if err != nil {
 		return models.StateOrdersMessage{}, err
 	}
 
-	var boardId uint16
-	err = binary.Read(reader, binary.LittleEndian, &boardId)
-	if err != nil {
-		return models.StateOrdersMessage{}, err
+	if reader.Len() == 0 {
+		return models.StateOrdersMessage{
+			BoardId: parser.boardIdToName[uint(boardId)],
+			Orders:  make([]uint16, 0),
+		}, nil
 	}
 
 	var ordersLen uint16

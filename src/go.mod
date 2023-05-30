@@ -3,7 +3,7 @@ module github.com/HyperloopUPV-H8/Backend-H8
 go 1.19
 
 require (
-	github.com/HyperloopUPV-H8/ade-linter v0.0.0-20230502150353-66a5396676ec
+	github.com/HyperloopUPV-H8/ade-linter v0.0.0-20230530153315-3379f05a664f
 	github.com/google/gopacket v1.1.19
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0

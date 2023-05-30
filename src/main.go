@@ -64,7 +64,7 @@ func main() {
 	connectionTransfer := connection_transfer.New(config.Connections)
 
 	podData := vehicle_models.NewPodData(boards)
-	orderData := vehicle_models.NewOrderData(boards, config.Excel.Parse.Global.BLCUAddressKey)
+	vehicleOrders := vehicle_models.NewVehicleOrders(boards, config.Excel.Parse.Global.BLCUAddressKey)
 
 	vehicle := vehicle.New(vehicle.VehicleConstructorArgs{
 		Config:             config.Vehicle,
@@ -143,7 +143,7 @@ func main() {
 
 	endpointData := server.EndpointData{
 		PodData:           podData,
-		OrderData:         orderData,
+		OrderData:         vehicleOrders,
 		ProgramableBoards: uploadableBords,
 	}
 
