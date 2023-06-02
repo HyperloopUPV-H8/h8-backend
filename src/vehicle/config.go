@@ -22,7 +22,6 @@ type MessageConfig struct {
 	InfoIdKey        string `toml:"info_id_key"`
 	WarningIdKey     string `toml:"warning_id_key"`
 	FaultIdKey       string `toml:"fault_id_key"`
-	ErrorIdKey       string `toml:"error_id_key"`
 	BlcuAckId        string `toml:"blcu_ack_id_key"`
 	StateOrdersIdKey string `toml:"state_orders_id_key"`
 }

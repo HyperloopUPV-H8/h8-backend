@@ -58,7 +58,7 @@ func (parser *MessageParser) toStateOrder(kind string, payload []byte) (models.S
 		}, nil
 	}
 
-	var ordersLen uint16
+	var ordersLen uint8
 	err = binary.Read(reader, binary.LittleEndian, &ordersLen)
 	if err != nil {
 		return models.StateOrdersMessage{}, err
@@ -69,6 +69,8 @@ func (parser *MessageParser) toStateOrder(kind string, payload []byte) (models.S
 	if err != nil {
 		return models.StateOrdersMessage{}, err
 	}
+
+	//TODO: check if board exists
 
 	return models.StateOrdersMessage{
 		BoardId: parser.boardIdToName[uint(boardId)],

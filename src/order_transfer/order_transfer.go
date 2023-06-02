@@ -39,22 +39,16 @@ func New() (OrderTransfer, <-chan vehicle_models.Order) {
 func (orderTransfer *OrderTransfer) UpdateMessage(topic string, payload json.RawMessage, source string) {
 	orderTransfer.trace.Warn().Str("source", source).Str("topic", topic).Msg("got message")
 	switch topic {
-	case "order":
+	case "order/send":
 		orderTransfer.handleOrder(topic, payload, source)
-	case "stateOrders":
+	case "order/stateOrders":
 		orderTransfer.handleSubscription(topic, payload, source)
 	}
 }
 
 func (orderTransfer *OrderTransfer) handleSubscription(topic string, payload json.RawMessage, source string) {
-	var sub bool
-	err := json.Unmarshal(payload, &sub)
 
-	if err != nil {
-		orderTransfer.trace.Error().Err(err).Msg("unmarshaling payload")
-	}
-
-	observable.HandleSubscribe[map[string][]uint16](&orderTransfer.stateOrdersObservable, source, sub, func(v map[string][]uint16, id string) error {
+	observable.HandleSubscribe[map[string][]uint16](&orderTransfer.stateOrdersObservable, source, payload, func(v map[string][]uint16, id string) error {
 		return orderTransfer.sendMessage(OrderTopic, v, id)
 	})
 }

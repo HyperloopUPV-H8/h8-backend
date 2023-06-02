@@ -10,12 +10,12 @@ import (
 	trace "github.com/rs/zerolog/log"
 )
 
-func CreatePipes(global excel_models.GlobalInfo, dataChan chan<- packet.Packet, onConnectionChange func(string, bool), config Config, trace zerolog.Logger) map[string]*Pipe {
+func CreatePipes(global excel_models.GlobalInfo, dataChan chan<- packet.Packet, onConnectionChange func(string, bool), config Config, readers map[uint16]common.ReaderFrom, trace zerolog.Logger) map[string]*Pipe {
 	laddr := common.AddrWithPort(global.BackendIP, global.ProtocolToPort[config.TcpClientTag])
 	pipes := make(map[string]*Pipe)
 	for board, ip := range global.BoardToIP {
 		raddr := common.AddrWithPort(ip, global.ProtocolToPort[config.TcpServerTag])
-		pipe, err := newPipe(laddr, raddr, config.Mtu, dataChan, getOnConnectionChange(board, onConnectionChange))
+		pipe, err := newPipe(laddr, raddr, config.Mtu, dataChan, readers, getOnConnectionChange(board, onConnectionChange))
 		if err != nil {
 			trace.Fatal().Stack().Err(err).Msg("error creating pipe")
 		}
@@ -25,7 +25,7 @@ func CreatePipes(global excel_models.GlobalInfo, dataChan chan<- packet.Packet, 
 	return pipes
 }
 
-func newPipe(laddr string, raddr string, mtu uint, outputChan chan<- packet.Packet, onConnectionChange func(bool)) (*Pipe, error) {
+func newPipe(laddr string, raddr string, mtu uint, outputChan chan<- packet.Packet, readers map[uint16]common.ReaderFrom, onConnectionChange func(bool)) (*Pipe, error) {
 	trace.Info().Str("laddr", laddr).Str("raddr", raddr).Msg("new pipe")
 	localAddr, err := net.ResolveTCPAddr("tcp", laddr)
 	if err != nil {
@@ -43,6 +43,8 @@ func newPipe(laddr string, raddr string, mtu uint, outputChan chan<- packet.Pack
 		laddr:  localAddr,
 		raddr:  remoteAddr,
 		output: outputChan,
+
+		readers: readers,
 
 		isClosed: true,
 		mtu:      int(mtu),

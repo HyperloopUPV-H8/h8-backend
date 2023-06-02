@@ -6,15 +6,20 @@ import (
 	"net"
 	"time"
 
+	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet"
 	"github.com/rs/zerolog"
 )
+
+const IdSize = 2
 
 type Pipe struct {
 	conn *net.TCPConn
 
 	laddr *net.TCPAddr
 	raddr *net.TCPAddr
+
+	readers map[uint16]common.ReaderFrom
 
 	isClosed bool
 	mtu      int
@@ -50,8 +55,25 @@ func (pipe *Pipe) open(conn *net.TCPConn) {
 func (pipe *Pipe) listen() {
 	pipe.trace.Info().Msg("start listening")
 	for {
-		buffer := make([]byte, pipe.mtu)
-		n, err := pipe.conn.Read(buffer)
+		idBuf := make([]byte, IdSize)
+		_, err := pipe.conn.Read(idBuf)
+
+		if err != nil {
+			pipe.trace.Error().Stack().Err(err).Msg("")
+			pipe.Close(true)
+			return
+		}
+
+		id := binary.LittleEndian.Uint16(idBuf)
+		reader, ok := pipe.readers[id]
+
+		if !ok {
+			pipe.trace.Error().Uint16("id", id).Msg("unknown id")
+			continue
+		}
+
+		payloadBuf, err := reader.ReadFrom(pipe.conn)
+
 		if err != nil {
 			pipe.trace.Error().Stack().Err(err).Msg("")
 			pipe.Close(true)
@@ -65,8 +87,11 @@ func (pipe *Pipe) listen() {
 
 		pipe.trace.Trace().Msg("new message")
 
-		raw := pipe.getRaw(buffer[:n])
+		totalMsg := make([]byte, 0)
+		totalMsg = append(totalMsg, idBuf...)
+		totalMsg = append(totalMsg, payloadBuf...)
 
+		raw := pipe.getRaw(totalMsg)
 		pipe.output <- raw
 	}
 }

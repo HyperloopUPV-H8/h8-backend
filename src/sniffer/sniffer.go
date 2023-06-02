@@ -27,7 +27,6 @@ type Sniffer struct {
 
 func CreateSniffer(global excel_models.GlobalInfo, config Config, trace zerolog.Logger) Sniffer {
 	ips := common.Values(global.BoardToIP)
-	ips = append(ips, global.BackendIP)
 	filter := getFilter(ips, global.ProtocolToPort, config.TcpClientTag, config.TcpServerTag, config.UdpTag)
 	sniffer, err := newSniffer(filter, config)
 
@@ -55,11 +54,9 @@ func newSniffer(filter string, config Config) (*Sniffer, error) {
 }
 
 func getFilter(addrs []string, protocolToPort map[string]string, tcpClientTag string, tcpServerTag string, udpTag string) string {
-
 	ipipFilter := getIPIPfilter()
 	udpFilter := getUDPFilter(addrs, protocolToPort, udpTag)
 	tcpFilter := getTCPFilter(addrs, protocolToPort, tcpClientTag, tcpServerTag)
-	// tcpFilter := "(tcp port 50500 or 50501) and (src host 127.0.0.9) and (tcp[tcpflags] & (tcp-fin | tcp-syn) == 0)"
 	filter := fmt.Sprintf("(%s) or (%s) or (%s)", ipipFilter, udpFilter, tcpFilter)
 
 	trace.Trace().Strs("addrs", addrs).Str("filter", filter).Msg("new filter")
@@ -81,7 +78,6 @@ func getUDPFilter(addrs []string, protocolToPort map[string]string, udpTag strin
 }
 
 func getTCPFilter(addrs []string, protocolToPort map[string]string, tcpClientTag string, tcpServerTag string) string {
-
 	ports := fmt.Sprintf("tcp port %s or %s", protocolToPort[tcpClientTag], protocolToPort[tcpServerTag])
 	flags := "tcp[tcpflags] & (tcp-fin | tcp-syn | tcp-rst) == 0"
 	nonZeroPayload := "tcp[tcpflags] & tcp-push != 0"
