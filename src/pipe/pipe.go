@@ -29,6 +29,7 @@ func (pipe *Pipe) connect() {
 	pipe.trace.Debug().Msg("connecting")
 	dialer := net.Dialer{
 		LocalAddr: pipe.laddr,
+		KeepAlive: time.Second * 3,
 	}
 	for pipe.isClosed {
 		pipe.trace.Trace().Msg("dial")
