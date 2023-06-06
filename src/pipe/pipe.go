@@ -32,10 +32,15 @@ type Pipe struct {
 
 func (pipe *Pipe) connect() {
 	pipe.trace.Debug().Msg("connecting")
+	dialer := net.Dialer{
+		LocalAddr: pipe.laddr,
+		KeepAlive: time.Second * 3,
+	}
 	for pipe.isClosed {
 		pipe.trace.Trace().Msg("dial")
-		if conn, err := net.DialTCP("tcp", pipe.laddr, pipe.raddr); err == nil {
-			pipe.open(conn)
+		dialer.Deadline = time.Now().Add(time.Millisecond * 2500)
+		if conn, err := dialer.Dial("tcp", pipe.raddr.String()); err == nil {
+			pipe.open(conn.(*net.TCPConn))
 		} else {
 			pipe.trace.Trace().Stack().Err(err).Msg("dial failed")
 		}
@@ -114,6 +119,7 @@ func (pipe *Pipe) Write(data []byte) (int, error) {
 	}
 
 	pipe.trace.Trace().Msg("write")
+	pipe.conn.SetWriteDeadline(time.Now().Add(time.Millisecond * 2500))
 	return pipe.conn.Write(data)
 }
 
