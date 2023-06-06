@@ -48,6 +48,10 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmitte
 		payloadCopy := make([]byte, len(packet.Payload))
 		copy(payloadCopy, packet.Payload)
 
+		if packet.Metadata.ID == 0 {
+			continue
+		}
+
 		//TODO: add order decoding
 		switch id := packet.Metadata.ID; {
 		case vehicle.dataIds.Has(id):
