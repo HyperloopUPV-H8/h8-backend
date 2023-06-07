@@ -10,10 +10,22 @@ import (
 	trace "github.com/rs/zerolog/log"
 )
 
-func CreatePipes(global excel_models.GlobalInfo, dataChan chan<- packet.Packet, onConnectionChange func(string, bool), config Config, trace zerolog.Logger) map[string]*Pipe {
+func contains(boards []string, board string) bool {
+	for _, b := range boards {
+		if b == board {
+			return true
+		}
+	}
+	return false
+}
+
+func CreatePipes(global excel_models.GlobalInfo, boards []string, dataChan chan<- packet.Packet, onConnectionChange func(string, bool), config Config, trace zerolog.Logger) map[string]*Pipe {
 	laddr := common.AddrWithPort(global.BackendIP, global.ProtocolToPort[config.TcpClientTag])
 	pipes := make(map[string]*Pipe)
 	for board, ip := range global.BoardToIP {
+		if boards != nil && !contains(boards, board) {
+			continue
+		}
 		raddr := common.AddrWithPort(ip, global.ProtocolToPort[config.TcpServerTag])
 		pipe, err := newPipe(laddr, raddr, config.Mtu, dataChan, getOnConnectionChange(board, onConnectionChange))
 		if err != nil {
