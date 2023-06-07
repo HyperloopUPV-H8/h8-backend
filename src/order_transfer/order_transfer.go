@@ -2,6 +2,7 @@ package order_transfer
 
 import (
 	"encoding/json"
+	"sync"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/common/observable"
@@ -18,6 +19,7 @@ const (
 )
 
 type OrderTransfer struct {
+	stateOrdersMx         *sync.Mutex
 	stateOrders           map[string][]uint16
 	stateOrdersObservable observable.ReplayObservable[map[string][]uint16]
 	channel               chan<- vehicle_models.Order
@@ -30,6 +32,7 @@ func New() (OrderTransfer, <-chan vehicle_models.Order) {
 	channel := make(chan vehicle_models.Order, ORDER_CHAN_BUFFER)
 	stateOrders := make(map[string][]uint16)
 	return OrderTransfer{
+		stateOrdersMx:         &sync.Mutex{},
 		channel:               channel,
 		stateOrders:           stateOrders,
 		stateOrdersObservable: observable.NewReplayObservable(stateOrders),
@@ -54,11 +57,15 @@ func (orderTransfer *OrderTransfer) handleSubscription(topic string, payload jso
 }
 
 func (orderTransfer *OrderTransfer) AddStateOrders(stateOrders vehicle_models.StateOrdersMessage) {
+	orderTransfer.stateOrdersMx.Lock()
+	defer orderTransfer.stateOrdersMx.Unlock()
 	orderTransfer.stateOrders[stateOrders.BoardId] = common.Union(orderTransfer.stateOrders[stateOrders.BoardId], stateOrders.Orders...)
 	orderTransfer.stateOrdersObservable.Next(orderTransfer.stateOrders)
 }
 
 func (orderTransfer *OrderTransfer) RemoveStateOrders(stateOrders vehicle_models.StateOrdersMessage) {
+	orderTransfer.stateOrdersMx.Lock()
+	defer orderTransfer.stateOrdersMx.Unlock()
 	orderTransfer.stateOrders[stateOrders.BoardId] = common.Subtract(orderTransfer.stateOrders[stateOrders.BoardId], stateOrders.Orders...)
 	orderTransfer.stateOrdersObservable.Next(orderTransfer.stateOrders)
 }
