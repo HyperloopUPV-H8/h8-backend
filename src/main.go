@@ -25,6 +25,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/update_factory"
 	"github.com/HyperloopUPV-H8/Backend-H8/value_logger"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle"
+	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/message_parser"
 	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/websocket_broker"
 	"github.com/fatih/color"
@@ -80,7 +81,7 @@ func main() {
 	vehicleProtections := make(chan any)
 	vehicleTransmittedOrders := make(chan vehicle_models.PacketUpdate)
 	blcuAckChan := make(chan struct{})
-	stateOrdersChan := make(chan vehicle_models.StateOrdersMessage)
+	stateOrdersChan := make(chan message_parser.StateOrdersAdapter)
 
 	dataTransfer := data_transfer.New(config.DataTransfer)
 	go dataTransfer.Run()
@@ -133,7 +134,12 @@ func main() {
 
 	go func() {
 		for stateOrders := range stateOrdersChan {
-			orderTransfer.UpdateStateOrders(stateOrders)
+			switch stateOrders.Action {
+			case "addStateOrders":
+				orderTransfer.AddStateOrders(stateOrders.StateOrders)
+			case "removeStateOrders":
+				orderTransfer.RemoveStateOrders(stateOrders.StateOrders)
+			}
 		}
 	}()
 

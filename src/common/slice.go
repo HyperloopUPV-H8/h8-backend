@@ -47,3 +47,38 @@ func FindIndex[T any](slice []T, predicate func(T) bool) int {
 
 	return -1
 }
+
+func Contains[T comparable](slice []T, element T) bool {
+	for _, item := range slice {
+		if item == element {
+			return true
+		}
+	}
+	return false
+}
+
+func Union[T comparable](slice []T, elements ...T) []T {
+	set := NewSet[T]()
+	for _, item := range slice {
+		set.Add(item)
+	}
+
+	for _, element := range elements {
+		set.Add(element)
+	}
+
+	return set.AsSlice()
+}
+
+func Subtract[T comparable](slice []T, elements ...T) []T {
+	set := NewSet[T]()
+	for _, item := range slice {
+		set.Add(item)
+	}
+
+	for _, element := range elements {
+		set.Remove(element)
+	}
+
+	return set.AsSlice()
+}

@@ -3,6 +3,7 @@ package order_transfer
 import (
 	"encoding/json"
 
+	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/common/observable"
 	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/rs/zerolog"
@@ -52,8 +53,13 @@ func (orderTransfer *OrderTransfer) handleSubscription(topic string, payload jso
 	})
 }
 
-func (orderTransfer *OrderTransfer) UpdateStateOrders(stateOrders vehicle_models.StateOrdersMessage) {
-	orderTransfer.stateOrders[stateOrders.BoardId] = stateOrders.Orders
+func (orderTransfer *OrderTransfer) AddStateOrders(stateOrders vehicle_models.StateOrdersMessage) {
+	orderTransfer.stateOrders[stateOrders.BoardId] = common.Union(orderTransfer.stateOrders[stateOrders.BoardId], stateOrders.Orders...)
+	orderTransfer.stateOrdersObservable.Next(orderTransfer.stateOrders)
+}
+
+func (orderTransfer *OrderTransfer) RemoveStateOrders(stateOrders vehicle_models.StateOrdersMessage) {
+	orderTransfer.stateOrders[stateOrders.BoardId] = common.Subtract(orderTransfer.stateOrders[stateOrders.BoardId], stateOrders.Orders...)
 	orderTransfer.stateOrdersObservable.Next(orderTransfer.stateOrders)
 }
 

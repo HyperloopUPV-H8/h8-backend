@@ -25,6 +25,6 @@ type ProtectionAdapter struct {
 }
 
 type StateOrdersAdapter struct {
-	BoardId uint16
-	Orders  []uint16
+	Action      string
+	StateOrders models.StateOrdersMessage
 }

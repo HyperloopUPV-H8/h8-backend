@@ -23,11 +23,12 @@ type Vehicle struct {
 	displayConverter unit_converter.UnitConverter
 	podConverter     unit_converter.UnitConverter
 
-	dataIds       common.Set[uint16]
-	orderIds      common.Set[uint16]
-	messageIds    common.Set[uint16]
-	blcuAckId     uint16
-	stateOrdersId uint16
+	dataIds             common.Set[uint16]
+	orderIds            common.Set[uint16]
+	messageIds          common.Set[uint16]
+	blcuAckId           uint16
+	addStateOrdersId    uint16
+	removeStateOrdersId uint16
 
 	packetParser   packet_parser.PacketParser
 	messageParser  message_parser.MessageParser
@@ -42,7 +43,7 @@ type Vehicle struct {
 	trace zerolog.Logger
 }
 
-func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmittedOrderChan chan<- models.PacketUpdate, messageChan chan<- any, blcuAckChan chan<- struct{}, stateOrdersChan chan<- models.StateOrdersMessage) {
+func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmittedOrderChan chan<- models.PacketUpdate, messageChan chan<- any, blcuAckChan chan<- struct{}, stateOrdersChan chan<- message_parser.StateOrdersAdapter) {
 	vehicle.trace.Debug().Msg("vehicle listening")
 	for packet := range vehicle.dataChan {
 		payloadCopy := make([]byte, len(packet.Payload))
@@ -83,8 +84,8 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmitte
 				continue
 			}
 
-			if id == vehicle.stateOrdersId {
-				stateOrders, ok := message.(models.StateOrdersMessage)
+			if id == vehicle.addStateOrdersId || id == vehicle.removeStateOrdersId {
+				stateOrders, ok := message.(message_parser.StateOrdersAdapter)
 				if !ok {
 					vehicle.trace.Error().Type("type", message).Uint16("id", id).Msg("invalid type for state orders")
 					continue

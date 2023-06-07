@@ -28,3 +28,11 @@ func (set *Set[T]) ForEach(callback func(item T)) {
 		callback(item)
 	}
 }
+
+func (set *Set[T]) AsSlice() []T {
+	slice := make([]T, 0, len(set.set))
+	for item := range set.set {
+		slice = append(slice, item)
+	}
+	return slice
+}

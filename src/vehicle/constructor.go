@@ -57,8 +57,10 @@ func New(args VehicleConstructorArgs) Vehicle {
 	messageIds.Add(infoId)
 	blcuAckId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Messages.BlcuAckId, vehicleTrace)
 	messageIds.Add(blcuAckId)
-	stateOrdersId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Messages.StateOrdersIdKey, vehicleTrace)
-	messageIds.Add(stateOrdersId)
+	addStateOrdersId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Messages.AddStateOrdersIdKey, vehicleTrace)
+	messageIds.Add(addStateOrdersId)
+	removeStateOrdersId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Messages.RemoveStateOrdersIdKey, vehicleTrace)
+	messageIds.Add(removeStateOrdersId)
 
 	vehicle := Vehicle{
 		podConverter:     unit_converter.NewUnitConverter("pod", args.Boards, args.GlobalInfo.UnitToOperations),
@@ -67,14 +69,15 @@ func New(args VehicleConstructorArgs) Vehicle {
 		sniffer: sniffer.CreateSniffer(args.GlobalInfo, snifferConfig, vehicleTrace),
 		pipes:   pipe.CreatePipes(args.GlobalInfo, dataChan, args.OnConnectionChange, pipesConfig, pipeReaders, vehicleTrace),
 
-		dataIds:       getBoardIdsFromType(args.Boards, "data", vehicleTrace),
-		orderIds:      getBoardIdsFromType(args.Boards, "order", vehicleTrace),
-		messageIds:    messageIds,
-		blcuAckId:     blcuAckId,
-		stateOrdersId: stateOrdersId,
+		dataIds:             getBoardIdsFromType(args.Boards, "data", vehicleTrace),
+		orderIds:            getBoardIdsFromType(args.Boards, "order", vehicleTrace),
+		messageIds:          messageIds,
+		blcuAckId:           blcuAckId,
+		addStateOrdersId:    addStateOrdersId,
+		removeStateOrdersId: removeStateOrdersId,
 
 		packetParser:   packetParser,
-		messageParser:  protection_parser.NewMessageParser(args.GlobalInfo, infoId, faultId, warningId, stateOrdersId),
+		messageParser:  protection_parser.NewMessageParser(args.GlobalInfo, infoId, faultId, warningId, addStateOrdersId, removeStateOrdersId),
 		bitarrayParser: NewBitarrayParser(names),
 
 		dataChan: dataChan,

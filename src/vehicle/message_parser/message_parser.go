@@ -11,13 +11,14 @@ import (
 )
 
 type MessageParser struct {
-	infoId        uint16
-	warningId     uint16
-	faultId       uint16
-	errorId       uint16
-	stateOrderId  uint16
-	boardIdToName map[uint]string
-	trace         zerolog.Logger
+	infoId             uint16
+	warningId          uint16
+	faultId            uint16
+	errorId            uint16
+	addStateOrderId    uint16
+	removeStateOrderId uint16
+	boardIdToName      map[uint]string
+	trace              zerolog.Logger
 }
 
 func (parser *MessageParser) Parse(id uint16, raw []byte) (any, error) {
@@ -34,8 +35,9 @@ func (parser *MessageParser) Parse(id uint16, raw []byte) (any, error) {
 		return parser.toInfoMessage(kind, payload)
 	}
 
-	if kind == "stateOrder" {
-		return parser.toStateOrder(kind, raw)
+	if kind == "addStateOrder" || kind == "removeStateOrder" {
+		parsed, err := parser.toStateOrder(kind, raw)
+		return StateOrdersAdapter{kind, parsed}, err
 	}
 
 	return parser.toProtectionMessage(kind, payload)
@@ -135,23 +137,18 @@ func (parser *MessageParser) toProtectionMessage(kind string, payload []byte) (m
 }
 
 func (parser *MessageParser) getKind(id uint16) (string, error) {
-	if id == parser.stateOrderId {
-		return "stateOrder", nil
-	}
-
-	if id == parser.faultId {
+	switch id {
+	case parser.addStateOrderId:
+		return "addStateOrder", nil
+	case parser.removeStateOrderId:
+		return "removeStateOrder", nil
+	case parser.faultId:
 		return "fault", nil
-	}
-
-	if id == parser.warningId {
+	case parser.warningId:
 		return "warning", nil
-	}
-
-	if id == parser.errorId {
+	case parser.errorId:
 		return "error", nil
-	}
-
-	if id == parser.infoId {
+	case parser.infoId:
 		return "info", nil
 	}
 
