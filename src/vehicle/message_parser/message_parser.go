@@ -29,15 +29,18 @@ func (parser *MessageParser) Parse(id uint16, raw []byte) (any, error) {
 		return models.ProtectionMessage{}, err
 	}
 
+	if kind == "addStateOrder" || kind == "removeStateOrder" {
+		parsed, err := parser.toStateOrder(kind, raw)
+		return StateOrdersAdapter{kind, parsed}, err
+	}
+
+	if len(raw) < 2 {
+		return nil, fmt.Errorf("message too short (length %d)", len(raw))
+	}
 	payload := raw[2:]
 
 	if kind == "info" {
 		return parser.toInfoMessage(kind, payload)
-	}
-
-	if kind == "addStateOrder" || kind == "removeStateOrder" {
-		parsed, err := parser.toStateOrder(kind, raw)
-		return StateOrdersAdapter{kind, parsed}, err
 	}
 
 	return parser.toProtectionMessage(kind, payload)

@@ -14,6 +14,7 @@ var pipeReaders map[uint16]common.ReaderFrom = map[uint16]common.ReaderFrom{
 	3: NewDelimReaderFrom(0x00),
 	4: NewDelimReaderFrom(0x00),
 	5: NewStateOrderReaderFrom(),
+	6: NewStateOrderReaderFrom(),
 }
 
 func NewDelimReaderFrom(delim byte) DelimReaderFrom {
