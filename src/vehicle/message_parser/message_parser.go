@@ -29,7 +29,7 @@ func (parser *MessageParser) Parse(id uint16, raw []byte) (any, error) {
 		return models.ProtectionMessage{}, err
 	}
 
-	if kind == "addStateOrder" || kind == "removeStateOrder" {
+	if kind == AddStateOrderKind || kind == RemoveStateOrderKind {
 		parsed, err := parser.toStateOrder(kind, raw)
 		return StateOrdersAdapter{kind, parsed}, err
 	}
@@ -39,7 +39,7 @@ func (parser *MessageParser) Parse(id uint16, raw []byte) (any, error) {
 	}
 	payload := raw[2:]
 
-	if kind == "info" {
+	if kind == infoKind {
 		return parser.toInfoMessage(kind, payload)
 	}
 
@@ -139,20 +139,27 @@ func (parser *MessageParser) toProtectionMessage(kind string, payload []byte) (m
 	}, nil
 }
 
+const AddStateOrderKind string = "addStateOrder"
+const RemoveStateOrderKind string = "removeStateOrder"
+const faultKind string = "fault"
+const warningKind string = "warning"
+const errorKind string = "error"
+const infoKind string = "info"
+
 func (parser *MessageParser) getKind(id uint16) (string, error) {
 	switch id {
 	case parser.addStateOrderId:
-		return "addStateOrder", nil
+		return AddStateOrderKind, nil
 	case parser.removeStateOrderId:
-		return "removeStateOrder", nil
+		return RemoveStateOrderKind, nil
 	case parser.faultId:
-		return "fault", nil
+		return faultKind, nil
 	case parser.warningId:
-		return "warning", nil
+		return warningKind, nil
 	case parser.errorId:
-		return "error", nil
+		return errorKind, nil
 	case parser.infoId:
-		return "info", nil
+		return infoKind, nil
 	}
 
 	parser.trace.Error().Uint16("id", id).Msg("unrecognized message id")

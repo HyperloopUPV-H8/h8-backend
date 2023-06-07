@@ -135,9 +135,9 @@ func main() {
 	go func() {
 		for stateOrders := range stateOrdersChan {
 			switch stateOrders.Action {
-			case "addStateOrder":
+			case message_parser.AddStateOrderKind:
 				orderTransfer.AddStateOrders(stateOrders.StateOrders)
-			case "removeStateOrder":
+			case message_parser.RemoveStateOrderKind:
 				orderTransfer.RemoveStateOrders(stateOrders.StateOrders)
 			}
 		}
