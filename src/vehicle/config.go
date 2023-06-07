@@ -5,6 +5,7 @@ import (
 )
 
 type Config struct {
+	Boards       []string             `toml:"boards,omitempty"`
 	Network      NetworkConfig        `toml:"network"`
 	PacketParser packet_parser.Config `toml:"packet_parser"`
 	Messages     MessageConfig        `toml:"messages"`
