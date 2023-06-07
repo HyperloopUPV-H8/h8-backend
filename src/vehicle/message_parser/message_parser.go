@@ -35,7 +35,7 @@ func (parser *MessageParser) Parse(id uint16, raw []byte) (any, error) {
 	}
 
 	if kind == "stateOrder" {
-		return parser.toStateOrder(kind, payload)
+		return parser.toStateOrder(kind, raw)
 	}
 
 	return parser.toProtectionMessage(kind, payload)

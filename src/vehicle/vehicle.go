@@ -90,6 +90,7 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmitte
 					continue
 				}
 				stateOrdersChan <- stateOrders
+				continue
 			}
 
 			messageChan <- message

@@ -47,9 +47,8 @@ func (orderTransfer *OrderTransfer) UpdateMessage(topic string, payload json.Raw
 }
 
 func (orderTransfer *OrderTransfer) handleSubscription(topic string, payload json.RawMessage, source string) {
-
 	observable.HandleSubscribe[map[string][]uint16](&orderTransfer.stateOrdersObservable, source, payload, func(v map[string][]uint16, id string) error {
-		return orderTransfer.sendMessage(OrderTopic, v, id)
+		return orderTransfer.sendMessage("order/stateOrders", v, id)
 	})
 }
 
@@ -68,8 +67,8 @@ func (orderTransfer *OrderTransfer) handleOrder(topic string, payload json.RawMe
 	orderTransfer.channel <- order
 }
 
-func (orderTransfer *OrderTransfer) SetSendMessage(func(topic string, payload any, targets ...string) error) {
-	orderTransfer.trace.Debug().Msg("set send message")
+func (orderTransfer *OrderTransfer) SetSendMessage(sendMessage func(topic string, payload any, targets ...string) error) {
+	orderTransfer.sendMessage = sendMessage
 }
 
 func (orderTransfer *OrderTransfer) HandlerName() string {

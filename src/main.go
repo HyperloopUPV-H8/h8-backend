@@ -110,7 +110,7 @@ func main() {
 	websocketBroker.RegisterHandle(&dataTransfer, "podData/update")
 	websocketBroker.RegisterHandle(&loggerHandler, config.LoggerHandler.Topics.Enable)
 	websocketBroker.RegisterHandle(&messageTransfer, "message/update")
-	websocketBroker.RegisterHandle(&orderTransfer, config.Orders.SendTopic)
+	websocketBroker.RegisterHandle(&orderTransfer, config.Orders.SendTopic, "order/stateOrders")
 
 	go vehicle.Listen(vehicleUpdates, vehicleTransmittedOrders, vehicleProtections, blcuAckChan, stateOrdersChan)
 

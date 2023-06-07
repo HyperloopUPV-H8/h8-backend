@@ -45,29 +45,29 @@ func NewStateOrderReaderFrom() StateOrderReaderFrom {
 	return StateOrderReaderFrom{}
 }
 
-const Id_BoardId_Size_Len = 5
+const BoardIdSizeLen = 3
 
 type StateOrderReaderFrom struct{}
 
 func (rf StateOrderReaderFrom) ReadFrom(r io.Reader) ([]byte, error) {
 	reader := bufio.NewReader(r)
-	idBoardIdAndSize, err := reader.Peek(Id_BoardId_Size_Len)
+	idBoardIdAndSize, err := reader.Peek(BoardIdSizeLen)
 
 	if err != nil {
 		return nil, err
 	}
 
-	orderNum := idBoardIdAndSize[4]
+	orderNum := idBoardIdAndSize[2]
 
-	payload := make([]byte, Id_BoardId_Size_Len+orderNum*2)
+	payload := make([]byte, BoardIdSizeLen+(orderNum*2))
 	n, err := reader.Read(payload)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if n != Id_BoardId_Size_Len+int(orderNum) {
-		return nil, fmt.Errorf("expected %d bytes, got %d", Id_BoardId_Size_Len+orderNum, n)
+	if n != len(payload) {
+		return nil, fmt.Errorf("expected %d bytes, got %d", len(payload), n)
 	}
 
 	return payload, nil
