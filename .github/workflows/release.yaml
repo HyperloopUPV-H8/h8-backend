@@ -22,11 +22,13 @@ jobs:
         uses: actions/checkout@v2
 
       - name: "Load secret"
+        shell: alpine.sh {0}
         run: |
             echo $SECRET > ./src/excel_adapter/internals/secret.json
 
       - name: "Build for linux"
         working-directory: ./src
+        shell: alpine.sh {0}
         run: |
           CGO_ENABLED=1 GOARCH=amd64 GOOS=linux go build -ldflags '-linkmode external -extldflags "-static"' -o backend-linux
 
