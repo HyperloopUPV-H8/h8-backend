@@ -1,0 +1,37 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  build-binary:
+    name: "Release app"
+    runs-on: alpine-latest
+
+    steps:
+      - name: "Download dependencies"
+        run: |
+          apk add --no-cache libpcap-dev musl-dev gcc
+
+      - name: "Checkout"
+        uses: actions/checkout@v2
+
+      - name: "Build for linux"
+        run: |
+          CGO_ENABLED=1 GOARCH=amd64 GOOS=linux go build -ldflags '-linkmode external -extldflags "-static"' -o backend-linux
+
+    #   - name: "Build for windows"
+    #     run: |
+    #       CGO_ENABLED=1 GOOS=windows go build -ldflags '-linkmode external -extldflags "-static"' -o backend-windows.exe
+
+      - uses: marvinpinto/action-automatic-releases@latest
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: false
+          files: |
+            backend-linux
+            # backend-windows.exe
+
+      
