@@ -13,9 +13,10 @@ jobs:
         SECRET: ${{ secrets.GOOGLE_DRIVE_API }}
 
     steps:
-      - name: "Download dependencies"
-        run: |
-          sudo apt-get update && sudo apt-get install libpcap-dev musl-dev gcc -y
+      - name: "Prepare env"
+        uses: jirutka/setup-alpine@v1
+        with:
+          packages: libpcap-dev musl-dev gcc
 
       - name: "Checkout"
         uses: actions/checkout@v2
