@@ -9,6 +9,8 @@ jobs:
   build-binary:
     name: "Release app"
     runs-on: ubuntu-latest
+    env:
+        SECRET: ${{ secrets.GOOGLE_DRIVE_API }}
 
     steps:
       - name: "Download dependencies"
@@ -17,6 +19,10 @@ jobs:
 
       - name: "Checkout"
         uses: actions/checkout@v2
+
+      - name: "Load secret"
+        run: |
+            echo $SECRET > ./src/excel/secret.json
 
       - name: "Build for linux"
         working-directory: ./src
