@@ -2,7 +2,9 @@ package ade
 
 import (
 	"errors"
+	"fmt"
 
+	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	doc "github.com/HyperloopUPV-H8/Backend-H8/excel/document"
 )
 
@@ -15,59 +17,59 @@ const (
 	BackendKey = "Backend"
 )
 
-func getInfo(sheet doc.Sheet) (Info, error) {
-	tables, err := getTables(sheet)
+func getInfo(doc doc.Document) (Info, error) {
+	infoSheet, ok := doc.Sheets[InfoName]
+
+	if !ok {
+		return Info{}, common.NewStackError(errors.New("InfoSheet not found"))
+	}
+
+	tableErrors := common.NewErrorList()
+	tables, err := getTables(infoSheet)
 
 	if err != nil {
-		return Info{}, err
+		tableErrors.Add(err)
 	}
 
-	addresses, ok := tables[Addresses]
+	addresses, err := getTableMap(tables, Addresses)
 
-	if !ok {
-		return Info{}, errors.New("addresses table not found")
+	if err != nil {
+		tableErrors.Add(err)
 	}
 
-	addresses = removeHeaders(addresses)
+	units, err := getTableMap(tables, Units)
 
-	units, ok := tables[Units]
-
-	if !ok {
-		return Info{}, errors.New("units table not found")
+	if err != nil {
+		tableErrors.Add(err)
 	}
 
-	units = removeHeaders(units)
+	ports, err := getTableMap(tables, Ports)
 
-	ports, ok := tables[Ports]
-
-	if !ok {
-		return Info{}, errors.New("ports table not found")
+	if err != nil {
+		tableErrors.Add(err)
 	}
 
-	ports = removeHeaders(ports)
+	boardIds, err := getTableMap(tables, BoardIds)
 
-	boardIds, ok := tables[BoardIds]
-
-	if !ok {
-		return Info{}, errors.New("boardIds table not found")
+	if err != nil {
+		tableErrors.Add(err)
 	}
 
-	boardIds = removeHeaders(boardIds)
-
-	messageIds, ok := tables[MessageIds]
-
-	if !ok {
-		return Info{}, errors.New("messageIds table not found")
+	messageIds, err := getTableMap(tables, MessageIds)
+	if err != nil {
+		tableErrors.Add(err)
 	}
 
-	messageIds = removeHeaders(messageIds)
+	if len(tableErrors) > 0 {
+		return Info{}, tableErrors
+	}
 
 	return Info{
-		Addresses:  tableToMap(addresses),
-		Units:      tableToMap(units),
-		Ports:      tableToMap(ports),
-		BoardIds:   tableToMap(boardIds),
-		MessageIds: tableToMap(messageIds),
+		Addresses:  addresses,
+		Units:      units,
+		Ports:      ports,
+		BoardIds:   boardIds,
+		MessageIds: messageIds,
 	}, nil
 }
 
@@ -77,6 +79,18 @@ func removeHeaders(table Table) Table {
 	}
 
 	return table[1:]
+}
+
+func getTableMap(tables map[string][][]string, id string) (map[string]string, error) {
+	table, ok := tables[id]
+
+	if !ok {
+		return map[string]string{}, fmt.Errorf("getting %s table", id)
+	}
+
+	table = removeHeaders(table)
+
+	return tableToMap(table), nil
 }
 
 func tableToMap(table [][]string) map[string]string {

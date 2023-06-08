@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	doc "github.com/HyperloopUPV-H8/Backend-H8/excel/document"
 )
 
@@ -20,27 +21,50 @@ var (
 	MeasurementHeaders = []string{"ID", "Name", "Type", "PodUnits", "DisplayUnits", "SafeRange", "WarningRange"}
 )
 
-func getBoards(sheets map[string]doc.Sheet) map[string]Board {
+func getBoards(sheets map[string]doc.Sheet) (map[string]Board, error) {
 	boards := make(map[string]Board)
-
+	boardErrs := common.NewErrorList()
 	for name, sheet := range sheets {
 		name := strings.TrimPrefix(name, BoardPrefix)
 		board, err := getBoard(name, sheet)
 
 		if err != nil {
-			continue
+			boardErrs.Add(err)
 		}
 
 		boards[name] = board
 	}
 
-	return boards
+	if len(boardErrs) > 0 {
+		return nil, boardErrs
+	}
+
+	return boards, nil
 }
 
 func getBoard(name string, sheet doc.Sheet) (Board, error) {
-	packets := getPackets(sheet)
-	measurements := getMeasurements(sheet)
-	structures := getStructures(sheet)
+	boardErrs := common.NewErrorList()
+	packets, err := getPackets(sheet)
+
+	if err != nil {
+		boardErrs.Add(err)
+	}
+
+	measurements, err := getMeasurements(sheet)
+
+	if err != nil {
+		boardErrs.Add(err)
+	}
+
+	structures, err := getStructures(sheet)
+
+	if err != nil {
+		boardErrs.Add(err)
+	}
+
+	if len(boardErrs) > 0 {
+		return Board{}, boardErrs
+	}
 
 	return Board{
 		Name:         name,
@@ -50,11 +74,11 @@ func getBoard(name string, sheet doc.Sheet) (Board, error) {
 	}, nil
 }
 
-func getPackets(sheet doc.Sheet) []Packet {
+func getPackets(sheet doc.Sheet) ([]Packet, error) {
 	packetTable, err := getTable(PacketTable, sheet, PacketHeaders)
 
 	if err != nil {
-		return make([]Packet, 0)
+		return make([]Packet, 0), err
 	}
 
 	packets := make([]Packet, 0)
@@ -67,14 +91,14 @@ func getPackets(sheet doc.Sheet) []Packet {
 		})
 	}
 
-	return packets
+	return packets, nil
 }
 
-func getMeasurements(sheet doc.Sheet) []Measurement {
+func getMeasurements(sheet doc.Sheet) ([]Measurement, error) {
 	measurementTable, err := getTable(MeasurementTable, sheet, MeasurementHeaders)
 
 	if err != nil {
-		return make([]Measurement, 0)
+		return make([]Measurement, 0), err
 	}
 
 	measurements := make([]Measurement, 0)
@@ -91,14 +115,14 @@ func getMeasurements(sheet doc.Sheet) []Measurement {
 		})
 	}
 
-	return measurements
+	return measurements, nil
 }
 
-func getStructures(sheet doc.Sheet) []Structure {
+func getStructures(sheet doc.Sheet) ([]Structure, error) {
 	structuresTable, err := findTableAutoSize(sheet, Structures)
 
 	if err != nil {
-		return make([]Structure, 0)
+		return make([]Structure, 0), err
 	}
 
 	structuresTable = getStructureColumns(structuresTable)
@@ -119,7 +143,7 @@ func getStructures(sheet doc.Sheet) []Structure {
 		}
 	}
 
-	return structures
+	return structures, nil
 }
 
 func getTable(name string, sheet doc.Sheet, headers []string) (Table, error) {
@@ -138,7 +162,6 @@ func getTable(name string, sheet doc.Sheet, headers []string) (Table, error) {
 	} else {
 		return table[1:], nil
 	}
-
 }
 
 func getStructureColumns(rows [][]string) [][]string {

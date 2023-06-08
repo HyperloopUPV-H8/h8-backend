@@ -1,8 +1,7 @@
 package ade
 
 import (
-	"errors"
-
+	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	doc "github.com/HyperloopUPV-H8/Backend-H8/excel/document"
 	"github.com/xuri/excelize/v2"
 )
@@ -13,28 +12,29 @@ const (
 
 func CreateADE(file *excelize.File) (ADE, error) {
 	document := doc.CreateDocument(file)
-	infoSheet, ok := document.Sheets[InfoName]
 
-	if !ok {
-		return ADE{}, errors.New("info sheet not found")
-	}
+	adeErrors := common.NewErrorList()
 
-	info, err := getInfo(infoSheet)
+	info, err := getInfo(document)
 
 	if err != nil {
-		return ADE{}, err
+		adeErrors.Add(err)
 	}
 
 	boardSheets := FilterMap(document.Sheets, func(name string, _ doc.Sheet) bool {
 		return name != InfoName
 	})
 
-	boards := getBoards(boardSheets)
+	boards, err := getBoards(boardSheets)
+
+	if err != nil {
+		adeErrors.Add(err)
+	}
 
 	return ADE{
 		Info:   info,
 		Boards: boards,
-	}, nil
+	}, adeErrors
 }
 
 func FilterMap[K comparable, V any](myMap map[K]V, predicate func(key K, value V) bool) map[K]V {
