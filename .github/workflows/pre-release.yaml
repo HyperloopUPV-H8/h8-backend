@@ -23,7 +23,7 @@ jobs:
 
       - name: "Load secret"
         run: |
-            echo $SECRET > ./src/excel/secret.json
+            echo $SECRET > ./src/excel_adapter/internals/secret.json
 
       - name: "Build for linux"
         working-directory: ./src
