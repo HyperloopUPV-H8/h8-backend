@@ -8,20 +8,48 @@ import (
 	excelAdapterModels "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
 )
 
+const (
+	OrderType      = "order"
+	StateOrderType = "stateOrder"
+	NumericKind    = "numeric"
+	BooleanKind    = "boolean"
+	EnumKind       = "enum"
+)
+
 type OrderData struct {
 	Orders      map[string]OrderDescription `json:"orders"`
 	StateOrders map[string]OrderDescription `json:"stateOrders"`
 }
 
-func NewOrderData(boards map[string]excelAdapterModels.Board, blcuName string) OrderData {
-	orderData := OrderData{
-		Orders:      make(map[string]OrderDescription),
-		StateOrders: make(map[string]OrderDescription),
+type VehicleOrders struct {
+	Boards []BoardOrders `json:"boards"`
+}
+
+type BoardOrders struct {
+	Name        string                  `json:"name"`
+	Orders      []OrderDescription      `json:"orders"`
+	StateOrders []StateOrderDescription `json:"stateOrders"`
+}
+
+type StateOrderDescription struct {
+	OrderDescription
+	Enabled bool `json:"enabled"`
+}
+
+func NewVehicleOrders(boards map[string]excelAdapterModels.Board, blcuName string) VehicleOrders {
+	vehicleOrders := VehicleOrders{
+		Boards: make([]BoardOrders, 0),
 	}
 
 	for _, board := range boards {
+		boardOrders := BoardOrders{
+			Name:        board.Name,
+			Orders:      make([]OrderDescription, 0),
+			StateOrders: make([]StateOrderDescription, 0),
+		}
+
 		for _, packet := range board.Packets {
-			if packet.Description.Type != "order" && packet.Description.Type != "stateOrder" {
+			if packet.Description.Type != OrderType && packet.Description.Type != StateOrderType {
 				continue
 			}
 
@@ -30,7 +58,7 @@ func NewOrderData(boards map[string]excelAdapterModels.Board, blcuName string) O
 				log.Fatalf("order transfer: AddPacket: %s\n", err)
 			}
 
-			fields := make(map[string]FieldDescription, len(packet.Values))
+			fields := make(map[string]any, len(packet.Values))
 			for _, value := range packet.Values {
 				fields[value.Name] = getField(value.ID, value.Type, value.SafeRange, value.WarningRange)
 			}
@@ -41,48 +69,48 @@ func NewOrderData(boards map[string]excelAdapterModels.Board, blcuName string) O
 				Fields: fields,
 			}
 
-			if packet.Description.Type == "order" {
-				orderData.Orders[packet.Description.Name] = desc
+			if packet.Description.Type == OrderType {
+				boardOrders.Orders = append(boardOrders.Orders, desc)
 			} else {
-				orderData.StateOrders[packet.Description.Name] = desc
+				boardOrders.StateOrders = append(boardOrders.StateOrders, StateOrderDescription{OrderDescription: desc, Enabled: false})
 			}
 
 		}
+		vehicleOrders.Boards = append(vehicleOrders.Boards, boardOrders)
 	}
 
-	return orderData
+	return vehicleOrders
 }
 
-func getField(name string, valueType string, safeRangeStr string, warningRangeStr string) FieldDescription {
+func getField(name string, valueType string, safeRangeStr string, warningRangeStr string) any {
 	if IsNumeric(valueType) {
 
-		SafeRange := parseRange(safeRangeStr)
-		WarningRange := parseRange(warningRangeStr)
+		safeRange := parseRange(safeRangeStr)
+		warningRange := parseRange(warningRangeStr)
 
-		return FieldDescription{
-			Name: name,
-			ValueDescription: NumericValue{
-				Kind:         "numeric",
-				Value:        valueType,
-				SafeRange:    SafeRange,
-				WarningRange: WarningRange,
+		return NumericDescription{
+			fieldDescription: fieldDescription{
+				Kind: NumericKind,
+				Name: name,
 			},
+			VarType:      valueType,
+			SafeRange:    safeRange,
+			WarningRange: warningRange,
 		}
 	} else if valueType == "bool" {
-		return FieldDescription{
-			Name: name,
-			ValueDescription: Value{
-				Kind:  "boolean",
-				Value: "",
+		return BooleanDescription{
+			fieldDescription: fieldDescription{
+				Kind: BooleanKind,
+				Name: name,
 			},
 		}
 	} else {
-		return FieldDescription{
-			Name: name,
-			ValueDescription: Value{
-				Kind:  "enum",
-				Value: getEnumMembers(valueType),
+		return EnumDescription{
+			fieldDescription: fieldDescription{
+				Kind: EnumKind,
+				Name: name,
 			},
+			Options: getEnumMembers(valueType),
 		}
 	}
 }
@@ -96,24 +124,28 @@ func getEnumMembers(enumExp string) []string {
 }
 
 type OrderDescription struct {
-	ID     uint16                      `json:"id"`
-	Name   string                      `json:"name"`
-	Fields map[string]FieldDescription `json:"fields"`
+	ID     uint16         `json:"id"`
+	Name   string         `json:"name"`
+	Fields map[string]any `json:"fields"`
 }
 
-type FieldDescription struct {
-	Name             string `json:"name"`
-	ValueDescription any    `json:"valueDescription"`
+type fieldDescription struct {
+	Kind string `json:"kind"`
+	Name string `json:"name"`
 }
 
-type Value struct {
-	Kind  string `json:"kind"`
-	Value any    `json:"value"`
-}
-
-type NumericValue struct {
-	Kind         string     `json:"kind"`
-	Value        string     `json:"value"`
+type NumericDescription struct {
+	fieldDescription
+	VarType      string     `json:"type"`
 	SafeRange    []*float64 `json:"safeRange"`
 	WarningRange []*float64 `json:"warningRange"`
+}
+
+type BooleanDescription struct {
+	fieldDescription
+}
+
+type EnumDescription struct {
+	fieldDescription
+	Options []string `json:"options"`
 }

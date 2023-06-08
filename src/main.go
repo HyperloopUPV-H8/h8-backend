@@ -25,6 +25,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/update_factory"
 	"github.com/HyperloopUPV-H8/Backend-H8/value_logger"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle"
+	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/message_parser"
 	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/websocket_broker"
 	"github.com/fatih/color"
@@ -64,7 +65,7 @@ func main() {
 	connectionTransfer := connection_transfer.New(config.Connections)
 
 	podData := vehicle_models.NewPodData(boards)
-	orderData := vehicle_models.NewOrderData(boards, config.Excel.Parse.Global.BLCUAddressKey)
+	vehicleOrders := vehicle_models.NewVehicleOrders(boards, config.Excel.Parse.Global.BLCUAddressKey)
 
 	vehicle := vehicle.New(vehicle.VehicleConstructorArgs{
 		Config:             config.Vehicle,
@@ -80,7 +81,7 @@ func main() {
 	vehicleProtections := make(chan any)
 	vehicleTransmittedOrders := make(chan vehicle_models.PacketUpdate)
 	blcuAckChan := make(chan struct{})
-	stateOrdersChan := make(chan vehicle_models.StateOrdersMessage)
+	stateOrdersChan := make(chan message_parser.StateOrdersAdapter)
 
 	dataTransfer := data_transfer.New(config.DataTransfer)
 	go dataTransfer.Run()
@@ -91,7 +92,7 @@ func main() {
 	packetLogger := packet_logger.NewPacketLogger(boards, config.PacketLogger)
 	valueLogger := value_logger.NewValueLogger(boards, config.ValueLogger)
 	orderLogger := order_logger.NewOrderLogger(boards, config.OrderLogger)
-	protectionLogger := protection_logger.NewMessageLogger(config.Vehicle.Messages.InfoIdKey, config.Vehicle.Messages.FaultIdKey, config.Vehicle.Messages.WarningIdKey, config.Vehicle.Messages.ErrorIdKey, config.ProtectionLogger)
+	protectionLogger := protection_logger.NewMessageLogger(config.Vehicle.Messages.InfoIdKey, config.Vehicle.Messages.FaultIdKey, config.Vehicle.Messages.WarningIdKey, config.ProtectionLogger)
 
 	loggers := map[string]logger_handler.Logger{
 		"packets":     &packetLogger,
@@ -110,7 +111,7 @@ func main() {
 	websocketBroker.RegisterHandle(&dataTransfer, "podData/update")
 	websocketBroker.RegisterHandle(&loggerHandler, config.LoggerHandler.Topics.Enable)
 	websocketBroker.RegisterHandle(&messageTransfer, "message/update")
-	websocketBroker.RegisterHandle(&orderTransfer, config.Orders.SendTopic)
+	websocketBroker.RegisterHandle(&orderTransfer, config.Orders.SendTopic, "order/stateOrders")
 
 	go vehicle.Listen(vehicleUpdates, vehicleTransmittedOrders, vehicleProtections, blcuAckChan, stateOrdersChan)
 
@@ -133,7 +134,12 @@ func main() {
 
 	go func() {
 		for stateOrders := range stateOrdersChan {
-			orderTransfer.UpdateStateOrders(stateOrders)
+			switch stateOrders.Action {
+			case message_parser.AddStateOrderKind:
+				orderTransfer.AddStateOrders(stateOrders.StateOrders)
+			case message_parser.RemoveStateOrderKind:
+				orderTransfer.RemoveStateOrders(stateOrders.StateOrders)
+			}
 		}
 	}()
 
@@ -143,7 +149,7 @@ func main() {
 
 	endpointData := server.EndpointData{
 		PodData:           podData,
-		OrderData:         orderData,
+		OrderData:         vehicleOrders,
 		ProgramableBoards: uploadableBords,
 	}
 

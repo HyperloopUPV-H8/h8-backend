@@ -45,21 +45,8 @@ func New(config ConnectionTransferConfig) ConnectionTransfer {
 func (connectionTransfer *ConnectionTransfer) UpdateMessage(topic string, payload json.RawMessage, source string) {
 	connectionTransfer.trace.Trace().Str("source", source).Str("topic", topic).Msg("got message")
 
-	var sub ConnectionSubscription
-	err := json.Unmarshal(payload, &sub)
-
-	if err != nil {
-		connectionTransfer.trace.Error().Err(err).Msg("unmarshaling payload")
-	}
-
-	observable.HandleSubscribe[[]Connection](&connectionTransfer.boardStatusObservable, source, sub, func(v []Connection, id string) error {
-		err := connectionTransfer.sendMessage(UpdateTopic, v, id)
-
-		if err != nil {
-			connectionTransfer.boardStatusObservable.Unsubscribe(id)
-		}
-
-		return err
+	observable.HandleSubscribe[[]Connection](&connectionTransfer.boardStatusObservable, source, payload, func(v []Connection, id string) error {
+		return connectionTransfer.sendMessage(UpdateTopic, v, id)
 	})
 }
 

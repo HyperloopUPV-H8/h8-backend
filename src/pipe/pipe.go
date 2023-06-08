@@ -6,15 +6,20 @@ import (
 	"net"
 	"time"
 
+	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet"
 	"github.com/rs/zerolog"
 )
+
+const IdSize = 2
 
 type Pipe struct {
 	conn *net.TCPConn
 
 	laddr *net.TCPAddr
 	raddr *net.TCPAddr
+
+	readers map[uint16]common.ReaderFrom
 
 	isClosed bool
 	mtu      int
@@ -27,10 +32,15 @@ type Pipe struct {
 
 func (pipe *Pipe) connect() {
 	pipe.trace.Debug().Msg("connecting")
+	dialer := net.Dialer{
+		LocalAddr: pipe.laddr,
+		KeepAlive: time.Second * 3,
+	}
 	for pipe.isClosed {
 		pipe.trace.Trace().Msg("dial")
-		if conn, err := net.DialTCP("tcp", pipe.laddr, pipe.raddr); err == nil {
-			pipe.open(conn)
+		dialer.Deadline = time.Now().Add(time.Millisecond * 2500)
+		if conn, err := dialer.Dial("tcp", pipe.raddr.String()); err == nil {
+			pipe.open(conn.(*net.TCPConn))
 		} else {
 			pipe.trace.Trace().Stack().Err(err).Msg("dial failed")
 		}
@@ -50,8 +60,25 @@ func (pipe *Pipe) open(conn *net.TCPConn) {
 func (pipe *Pipe) listen() {
 	pipe.trace.Info().Msg("start listening")
 	for {
-		buffer := make([]byte, pipe.mtu)
-		n, err := pipe.conn.Read(buffer)
+		idBuf := make([]byte, IdSize)
+		_, err := pipe.conn.Read(idBuf)
+
+		if err != nil {
+			pipe.trace.Error().Stack().Err(err).Msg("")
+			pipe.Close(true)
+			return
+		}
+
+		id := binary.LittleEndian.Uint16(idBuf)
+		reader, ok := pipe.readers[id]
+
+		if !ok {
+			pipe.trace.Error().Uint16("id", id).Msg("unknown id")
+			continue
+		}
+
+		payloadBuf, err := reader.ReadFrom(pipe.conn)
+
 		if err != nil {
 			pipe.trace.Error().Stack().Err(err).Msg("")
 			pipe.Close(true)
@@ -65,8 +92,11 @@ func (pipe *Pipe) listen() {
 
 		pipe.trace.Trace().Msg("new message")
 
-		raw := pipe.getRaw(buffer[:n])
+		totalMsg := make([]byte, 0)
+		totalMsg = append(totalMsg, idBuf...)
+		totalMsg = append(totalMsg, payloadBuf...)
 
+		raw := pipe.getRaw(totalMsg)
 		pipe.output <- raw
 	}
 }
@@ -89,6 +119,7 @@ func (pipe *Pipe) Write(data []byte) (int, error) {
 	}
 
 	pipe.trace.Trace().Msg("write")
+	pipe.conn.SetWriteDeadline(time.Now().Add(time.Millisecond * 2500))
 	return pipe.conn.Write(data)
 }
 

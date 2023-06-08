@@ -57,7 +57,8 @@ func (broker *WebSocketBroker) ping(id string, conn *websocket.Conn) {
 	for range ticker.C {
 		broker.clientsMx.Lock()
 		if err := conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
-			broker.removeClient(id)
+			broker.unsafeRemoveClient(id)
+			broker.clientsMx.Unlock()
 			return
 		}
 		broker.clientsMx.Unlock()
@@ -175,7 +176,11 @@ func (broker *WebSocketBroker) Close() error {
 func (broker *WebSocketBroker) removeClient(id string) {
 	broker.clientsMx.Lock()
 	defer broker.clientsMx.Unlock()
+	broker.unsafeRemoveClient(id)
 
+}
+
+func (broker *WebSocketBroker) unsafeRemoveClient(id string) {
 	_, ok := broker.clients[id]
 
 	if !ok {
@@ -185,5 +190,4 @@ func (broker *WebSocketBroker) removeClient(id string) {
 
 	delete(broker.clients, id)
 	broker.trace.Error().Str("clientId", id).Msg("remove client")
-
 }

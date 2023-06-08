@@ -11,13 +11,14 @@ import (
 )
 
 type MessageParser struct {
-	infoId        uint16
-	warningId     uint16
-	faultId       uint16
-	errorId       uint16
-	stateOrderId  uint16
-	boardIdToName map[uint]string
-	trace         zerolog.Logger
+	infoId             uint16
+	warningId          uint16
+	faultId            uint16
+	errorId            uint16
+	addStateOrderId    uint16
+	removeStateOrderId uint16
+	boardIdToName      map[uint]string
+	trace              zerolog.Logger
 }
 
 func (parser *MessageParser) Parse(id uint16, raw []byte) (any, error) {
@@ -28,14 +29,18 @@ func (parser *MessageParser) Parse(id uint16, raw []byte) (any, error) {
 		return models.ProtectionMessage{}, err
 	}
 
-	payload := raw[2:]
-
-	if kind == "info" {
-		return parser.toInfoMessage(kind, payload)
+	if kind == AddStateOrderKind || kind == RemoveStateOrderKind {
+		parsed, err := parser.toStateOrder(kind, raw)
+		return StateOrdersAdapter{kind, parsed}, err
 	}
 
-	if kind == "stateOrder" {
-		return parser.toStateOrder(kind, payload)
+	if len(raw) < 2 {
+		return nil, fmt.Errorf("message too short (length %d)", len(raw))
+	}
+	payload := raw[2:]
+
+	if kind == infoKind {
+		return parser.toInfoMessage(kind, payload)
 	}
 
 	return parser.toProtectionMessage(kind, payload)
@@ -44,19 +49,21 @@ func (parser *MessageParser) Parse(id uint16, raw []byte) (any, error) {
 
 func (parser *MessageParser) toStateOrder(kind string, payload []byte) (models.StateOrdersMessage, error) {
 	reader := bytes.NewReader(payload)
-	var id uint16
-	err := binary.Read(reader, binary.LittleEndian, &id)
-	if err != nil {
-		return models.StateOrdersMessage{}, err
-	}
 
 	var boardId uint16
-	err = binary.Read(reader, binary.LittleEndian, &boardId)
+	err := binary.Read(reader, binary.LittleEndian, &boardId)
 	if err != nil {
 		return models.StateOrdersMessage{}, err
 	}
 
-	var ordersLen uint16
+	if reader.Len() == 0 {
+		return models.StateOrdersMessage{
+			BoardId: parser.boardIdToName[uint(boardId)],
+			Orders:  make([]uint16, 0),
+		}, nil
+	}
+
+	var ordersLen uint8
 	err = binary.Read(reader, binary.LittleEndian, &ordersLen)
 	if err != nil {
 		return models.StateOrdersMessage{}, err
@@ -67,6 +74,8 @@ func (parser *MessageParser) toStateOrder(kind string, payload []byte) (models.S
 	if err != nil {
 		return models.StateOrdersMessage{}, err
 	}
+
+	//TODO: check if board exists
 
 	return models.StateOrdersMessage{
 		BoardId: parser.boardIdToName[uint(boardId)],
@@ -130,25 +139,27 @@ func (parser *MessageParser) toProtectionMessage(kind string, payload []byte) (m
 	}, nil
 }
 
+const AddStateOrderKind string = "addStateOrder"
+const RemoveStateOrderKind string = "removeStateOrder"
+const faultKind string = "fault"
+const warningKind string = "warning"
+const errorKind string = "error"
+const infoKind string = "info"
+
 func (parser *MessageParser) getKind(id uint16) (string, error) {
-	if id == parser.stateOrderId {
-		return "stateOrder", nil
-	}
-
-	if id == parser.faultId {
-		return "fault", nil
-	}
-
-	if id == parser.warningId {
-		return "warning", nil
-	}
-
-	if id == parser.errorId {
-		return "error", nil
-	}
-
-	if id == parser.infoId {
-		return "info", nil
+	switch id {
+	case parser.addStateOrderId:
+		return AddStateOrderKind, nil
+	case parser.removeStateOrderId:
+		return RemoveStateOrderKind, nil
+	case parser.faultId:
+		return faultKind, nil
+	case parser.warningId:
+		return warningKind, nil
+	case parser.errorId:
+		return errorKind, nil
+	case parser.infoId:
+		return infoKind, nil
 	}
 
 	parser.trace.Error().Uint16("id", id).Msg("unrecognized message id")

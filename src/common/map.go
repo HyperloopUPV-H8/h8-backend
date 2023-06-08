@@ -15,3 +15,15 @@ func Values[K comparable, V any](input map[K]V) []V {
 	}
 	return values
 }
+
+func FilterMap[K comparable, V any](input map[K]V, predicate func(K, V) bool) map[K]V {
+	filteredMap := make(map[K]V)
+
+	for key, value := range input {
+		if predicate(key, value) {
+			filteredMap[key] = value
+		}
+	}
+
+	return filteredMap
+}

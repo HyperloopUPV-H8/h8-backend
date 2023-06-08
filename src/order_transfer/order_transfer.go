@@ -2,7 +2,9 @@ package order_transfer
 
 import (
 	"encoding/json"
+	"sync"
 
+	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/common/observable"
 	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/rs/zerolog"
@@ -16,19 +18,8 @@ const (
 	OrderTopic = "orders/enabled" // TODO: move to config
 )
 
-func New() (OrderTransfer, <-chan vehicle_models.Order) {
-	trace.Info().Msg("new order transfer")
-	channel := make(chan vehicle_models.Order, ORDER_CHAN_BUFFER)
-	stateOrders := make(map[string][]uint16)
-	return OrderTransfer{
-		channel:               channel,
-		stateOrders:           stateOrders,
-		stateOrdersObservable: observable.NewReplayObservable(stateOrders),
-		trace:                 trace.With().Str("component", ORDER_TRASNFER_NAME).Logger(),
-	}, channel
-}
-
 type OrderTransfer struct {
+	stateOrdersMx         *sync.Mutex
 	stateOrders           map[string][]uint16
 	stateOrdersObservable observable.ReplayObservable[map[string][]uint16]
 	channel               chan<- vehicle_models.Order
@@ -36,31 +27,46 @@ type OrderTransfer struct {
 	trace                 zerolog.Logger
 }
 
+func New() (OrderTransfer, <-chan vehicle_models.Order) {
+	trace.Info().Msg("new order transfer")
+	channel := make(chan vehicle_models.Order, ORDER_CHAN_BUFFER)
+	stateOrders := make(map[string][]uint16)
+	return OrderTransfer{
+		stateOrdersMx:         &sync.Mutex{},
+		channel:               channel,
+		stateOrders:           stateOrders,
+		stateOrdersObservable: observable.NewReplayObservable(stateOrders),
+		trace:                 trace.With().Str("component", ORDER_TRASNFER_NAME).Logger(),
+	}, channel
+}
+
 func (orderTransfer *OrderTransfer) UpdateMessage(topic string, payload json.RawMessage, source string) {
 	orderTransfer.trace.Warn().Str("source", source).Str("topic", topic).Msg("got message")
 	switch topic {
-	case "order":
+	case "order/send":
 		orderTransfer.handleOrder(topic, payload, source)
-	case "stateOrders":
+	case "order/stateOrders":
 		orderTransfer.handleSubscription(topic, payload, source)
 	}
 }
 
 func (orderTransfer *OrderTransfer) handleSubscription(topic string, payload json.RawMessage, source string) {
-	var sub bool
-	err := json.Unmarshal(payload, &sub)
-
-	if err != nil {
-		orderTransfer.trace.Error().Err(err).Msg("unmarshaling payload")
-	}
-
-	observable.HandleSubscribe[map[string][]uint16](&orderTransfer.stateOrdersObservable, source, sub, func(v map[string][]uint16, id string) error {
-		return orderTransfer.sendMessage(OrderTopic, v, id)
+	observable.HandleSubscribe[map[string][]uint16](&orderTransfer.stateOrdersObservable, source, payload, func(v map[string][]uint16, id string) error {
+		return orderTransfer.sendMessage("order/stateOrders", v, id)
 	})
 }
 
-func (orderTransfer *OrderTransfer) UpdateStateOrders(stateOrders vehicle_models.StateOrdersMessage) {
-	orderTransfer.stateOrders[stateOrders.BoardId] = stateOrders.Orders
+func (orderTransfer *OrderTransfer) AddStateOrders(stateOrders vehicle_models.StateOrdersMessage) {
+	orderTransfer.stateOrdersMx.Lock()
+	defer orderTransfer.stateOrdersMx.Unlock()
+	orderTransfer.stateOrders[stateOrders.BoardId] = common.Union(orderTransfer.stateOrders[stateOrders.BoardId], stateOrders.Orders...)
+	orderTransfer.stateOrdersObservable.Next(orderTransfer.stateOrders)
+}
+
+func (orderTransfer *OrderTransfer) RemoveStateOrders(stateOrders vehicle_models.StateOrdersMessage) {
+	orderTransfer.stateOrdersMx.Lock()
+	defer orderTransfer.stateOrdersMx.Unlock()
+	orderTransfer.stateOrders[stateOrders.BoardId] = common.Subtract(orderTransfer.stateOrders[stateOrders.BoardId], stateOrders.Orders...)
 	orderTransfer.stateOrdersObservable.Next(orderTransfer.stateOrders)
 }
 
@@ -74,8 +80,8 @@ func (orderTransfer *OrderTransfer) handleOrder(topic string, payload json.RawMe
 	orderTransfer.channel <- order
 }
 
-func (orderTransfer *OrderTransfer) SetSendMessage(func(topic string, payload any, targets ...string) error) {
-	orderTransfer.trace.Debug().Msg("set send message")
+func (orderTransfer *OrderTransfer) SetSendMessage(sendMessage func(topic string, payload any, targets ...string) error) {
+	orderTransfer.sendMessage = sendMessage
 }
 
 func (orderTransfer *OrderTransfer) HandlerName() string {

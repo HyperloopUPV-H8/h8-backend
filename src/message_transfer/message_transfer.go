@@ -42,18 +42,12 @@ func (messageTransfer *MessageTransfer) SendMessage(message any) error {
 }
 
 func (messageTransfer *MessageTransfer) UpdateMessage(topic string, payload json.RawMessage, source string) {
-	messageTransfer.trace.Warn().Str("source", source).Str("topic", topic).Msg("got message")
+	messageTransfer.trace.Info().Str("source", source).Str("topic", topic).Msg("got message")
 
-	var sub MessageSubscription
-	err := json.Unmarshal(payload, &sub)
-
-	if err != nil {
-		messageTransfer.trace.Error().Err(err).Msg("unmarshaling payload")
-	}
-
-	observable.HandleSubscribe[any](&messageTransfer.messageObservable, source, sub, func(v any, id string) error {
-		return messageTransfer.sendMessage(UpdateTopic, v, id)
-	})
+	observable.HandleSubscribe[any](&messageTransfer.messageObservable, source, payload,
+		func(v any, id string) error {
+			return messageTransfer.sendMessage(UpdateTopic, v, id)
+		})
 }
 
 func (messageTransfer *MessageTransfer) SetSendMessage(sendMessage func(topic string, payload any, targets ...string) error) {

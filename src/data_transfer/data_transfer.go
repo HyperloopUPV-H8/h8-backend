@@ -53,14 +53,7 @@ func New(config DataTransferConfig) DataTransfer {
 func (dataTransfer *DataTransfer) UpdateMessage(topic string, payload json.RawMessage, source string) {
 	dataTransfer.trace.Info().Str("source", source).Str("topic", topic).Msg("got message")
 
-	var sub UpdateSubscription
-	err := json.Unmarshal(payload, &sub)
-
-	if err != nil {
-		dataTransfer.trace.Error().Err(err).Msg("unmarshaling payload")
-	}
-
-	observable.HandleSubscribe[map[uint16]models.Update](&dataTransfer.updateObservable, source, sub, func(v map[uint16]models.Update, id string) error {
+	observable.HandleSubscribe[map[uint16]models.Update](&dataTransfer.updateObservable, source, payload, func(v map[uint16]models.Update, id string) error {
 		return dataTransfer.sendMessage(UpdateTopic, v, id)
 	})
 }

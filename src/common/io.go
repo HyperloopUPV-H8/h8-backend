@@ -14,3 +14,7 @@ func WriteAll(writer io.Writer, data []byte) (written int, err error) {
 	}
 	return written, err
 }
+
+type ReaderFrom interface {
+	ReadFrom(r io.Reader) ([]byte, error)
+}
