@@ -20,10 +20,12 @@ jobs:
         uses: actions/checkout@v2
 
       - name: "Build for linux"
+        working-directory: ./src
         run: |
           CGO_ENABLED=1 GOARCH=amd64 GOOS=linux go build -ldflags '-linkmode external -extldflags "-static"' -o backend-linux
 
     #   - name: "Build for windows"
+    #     working-directory: ./src
     #     run: |
     #       CGO_ENABLED=1 GOOS=windows go build -ldflags '-linkmode external -extldflags "-static"' -o backend-windows.exe
 
