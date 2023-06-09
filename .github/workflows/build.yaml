@@ -26,6 +26,7 @@ jobs:
         SECRET: ${( secrets.SECRET )}
       run: |
         echo "$SECRET" > ./src/excel_adapter/internals/secret.json
+        cat ./src/excel_adapter/internals/secret.json
 
     - name: "Create output path"
       run: mkdir ./output
