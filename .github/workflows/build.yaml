@@ -56,11 +56,10 @@ jobs:
       uses: actions/checkout@v2
 
     - name: "Load secret"
-      shell: cmd
       env:
         SECRET: ${{ secrets.SECRET }}
       run: |
-        echo "%SECRET%" > .\src\excel_adapter\internals\secret.json
+        echo "$env:SECRET" > .\src\excel_adapter\internals\secret.json
 
     - name: "Create output path"
       run: mkdir .\output
