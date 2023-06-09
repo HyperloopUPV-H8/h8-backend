@@ -10,26 +10,25 @@ jobs:
   build-binary:
     name: "Release app"
     runs-on: ubuntu-latest
-    env:
-        SECRET: ${{ secrets.GOOGLE_DRIVE_API }}
+    container:
+        image: go:alpine-latest
+        env:
+            SECRET: ${{ secrets.GOOGLE_DRIVE_API}}
+
 
     steps:
-      - name: "Prepare env"
-        uses: jirutka/setup-alpine@v1
-        with:
-          packages: libpcap-dev musl-dev gcc go
+      - name: "Install packages"
+        run: sudo apk update && sudo apk add --no-cache libpcap-dev musl-dev gcc
 
       - name: "Checkout"
         uses: actions/checkout@v2
 
       - name: "Load secret"
-        shell: alpine.sh {0}
         run: |
             echo $SECRET > ./src/excel_adapter/internals/secret.json
 
       - name: "Build for linux"
         working-directory: ./src
-        shell: alpine.sh {0}
         run: |
           CGO_ENABLED=1 GOARCH=amd64 GOOS=linux go build -ldflags '-linkmode external -extldflags "-static"' -o backend-linux
 
