@@ -34,10 +34,11 @@ jobs:
       run: |
         CGO_ENABLED=1 GOARCH=amd64 go build -ldflags '-linkmode external -extldflags "-static"' -o ../output/backend-linux-64
 
-    - name: "Build for 386 (32 bit)"
-      working-directory: ./src
-      run: |
-        CGO_ENABLED=1 GOARCH=386 go build -ldflags '-linkmode external -extldflags "-static"' -o ../output/backend-linux-32
+    # - name: "Build for 386 (32 bit)"
+    #   working-directory: ./src
+    #   run: |
+    #     CGO_ENABLED=1 GOARCH=386 go build -ldflags '-linkmode external -extldflags "-static"' -o ../output/backend-linux-32
+
     - name: "Uplaod artifacts"
       uses: actions/upload-artifact@v2
       with:
@@ -62,12 +63,12 @@ jobs:
     - name: "Build for amd46 (64 bit)"
       working-directory: .\src
       run: |
-        CGO_ENABLED=1 GOARCH=amd64 go build -ldflags '-linkmode external -extldflags "-static"' -o ..\output\backend-windows-64.exe
+        set "CGO_ENABLED=1" && set "GOARCH=amd64" && go build -ldflags '-linkmode external -extldflags "-static"' -o ..\output\backend-windows-64.exe
 
-    - name: "Build for 386 (32 bit)"
-      working-directory: ./src
-      run: |
-        CGO_ENABLED=1 GOARCH=386 go build -ldflags '-linkmode external -extldflags "-static"' -o ..\output\backend-windows-32.exe
+    # - name: "Build for 386 (32 bit)"
+    #   working-directory: ./src
+    #   run: |
+    #     set "CGO_ENABLED=1" && set "GOARCH=386" && go build -ldflags '-linkmode external -extldflags "-static"' -o ..\output\backend-windows-32.exe
 
     - name: "Uplaod artifacts"
       uses: actions/upload-artifact@v2
