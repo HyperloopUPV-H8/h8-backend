@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: "Install packages"
-        run: sudo apk update && sudo apk add --no-cache libpcap-dev musl-dev gcc
+        run: apk update && apk add --no-cache libpcap-dev musl-dev gcc
 
       - name: "Checkout"
         uses: actions/checkout@v2
