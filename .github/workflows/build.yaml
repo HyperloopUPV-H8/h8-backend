@@ -23,7 +23,7 @@ jobs:
 
     - name: "Load secret"
       env:
-        SECRET: "${( secrets.SECRET )}"
+        SECRET: ${{ secrets.SECRET }}
       run: |
         echo "$SECRET" > ./src/excel_adapter/internals/secret.json
         cat ./src/excel_adapter/internals/secret.json
@@ -58,7 +58,7 @@ jobs:
     - name: "Load secret"
       shell: cmd
       env:
-        SECRET: "${( secrets.SECRET )}"
+        SECRET: ${{ secrets.SECRET }}
       run: |
         echo "%SECRET%" > .\src\excel_adapter\internals\secret.json
 
