@@ -43,7 +43,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: backend-linux
-        path: ./output
+        path: ./output/backend-linux-64
 
   build-windows:
     name: "Build for windows"
@@ -73,6 +73,6 @@ jobs:
     - name: "Uplaod artifacts"
       uses: actions/upload-artifact@v2
       with:
-        name: backend-windows
-        path: ./output
+        name: backend-windows.exe
+        path: ./output/backend-windows-64.exe
 
