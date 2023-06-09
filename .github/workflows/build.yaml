@@ -1,0 +1,75 @@
+name: Build
+
+on:
+  workflow_call:
+    secrets:
+      SECRET:
+        required: true
+
+jobs:
+  build-linux:
+    name: "Build for linux"
+    runs-on: ubuntu-latest
+    container:
+      image: golang:alpine
+
+    steps:
+    - name: "Install packages"
+      run: apk update && apk add --no-cache libpcap-dev musl-dev gcc
+
+    - name: "Checkout"
+      uses: actions/checkout@v2
+
+    - name: "Load secret"
+      run: |
+        echo $({ secrets.SECRET }) > ./src/excel_adapter/internals/secret.json
+
+    - name: "Create output path"
+      run: mkdir ./output
+
+    - name: "Build for amd46 (64 bit)"
+      working-directory: ./src
+      run: |
+        CGO_ENABLED=1 GOARCH=amd64 go build -ldflags '-linkmode external -extldflags "-static"' -o ../output/backend-linux-64
+
+    # - name: "Build for 386 (32 bit)"
+    #   working-directory: ./src
+    #   run: |
+    #     CGO_ENABLED=1 GOARCH=386 go build -ldflags '-linkmode external -extldflags "-static"' -o ../output/backend-linux-32
+
+    - name: "Uplaod artifacts"
+      uses: actions/upload-artifact@v2
+      with:
+        name: backend-linux
+        path: ./output/backend-linux-64
+
+  build-windows:
+    name: "Build for windows"
+    runs-on: windows-latest
+
+    steps:
+    - name: "Checkout"
+      uses: actions/checkout@v2
+
+    - name: "Load secret"
+      run: |
+        echo $({ secrets.SECRET }) > .\src\excel_adapter\internals\secret.json
+
+    - name: "Create output path"
+      run: mkdir .\output
+
+    - name: "Build for amd46 (64 bit)"
+      working-directory: .\src
+      run: |
+        set "CGO_ENABLED=1" && set "GOARCH=amd64" && go build -ldflags '-linkmode external -extldflags "-static"' -o ..\output\backend-windows-64.exe
+
+    # - name: "Build for 386 (32 bit)"
+    #   working-directory: ./src
+    #   run: |
+    #     set "CGO_ENABLED=1" && set "GOARCH=386" && go build -ldflags '-linkmode external -extldflags "-static"' -o ..\output\backend-windows-32.exe
+
+    - name: "Uplaod artifacts"
+      uses: actions/upload-artifact@v2
+      with:
+        name: backend-windows
+        path: ./output/backend-windows-64.exe
