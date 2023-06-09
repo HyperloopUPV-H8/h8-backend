@@ -12,6 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: golang:alpine
+      env:
+        CGO_ENABLED: 1
+        GOARCH: amd64
+        GOOS: linux
+        SECRET: ${( secrets.SECRET )}
 
     steps:
     - name: "Install packages"
@@ -22,7 +27,7 @@ jobs:
 
     - name: "Load secret"
       run: |
-        echo ${( secrets.SECRET )} > ./src/excel_adapter/internals/secret.json
+        echo $SECRET > ./src/excel_adapter/internals/secret.json
 
     - name: "Create output path"
       run: mkdir ./output
@@ -30,7 +35,7 @@ jobs:
     - name: "Build for amd46 (64 bit)"
       working-directory: ./src
       run: |
-        CGO_ENABLED=1 GOARCH=amd64 go build -ldflags '-linkmode external -extldflags "-static"' -o ../output/backend-linux-64
+        go build -ldflags '-linkmode external -extldflags "-static"' -o ../output/backend-linux-64
 
     # - name: "Build for 386 (32 bit)"
     #   working-directory: ./src
@@ -46,6 +51,11 @@ jobs:
   build-windows:
     name: "Build for windows"
     runs-on: windows-latest
+    env:
+      CGO_ENABLED: 1
+      GOARCH: amd64
+      GOOS: windows
+      SECRET: ${( secrets.SECRET )}
 
     steps:
     - name: "Checkout"
@@ -53,7 +63,7 @@ jobs:
 
     - name: "Load secret"
       run: |
-        echo ${( secrets.SECRET )} > .\src\excel_adapter\internals\secret.json
+        echo $SECRET > .\src\excel_adapter\internals\secret.json
 
     - name: "Create output path"
       run: mkdir .\output
@@ -61,7 +71,7 @@ jobs:
     - name: "Build for amd46 (64 bit)"
       working-directory: .\src
       run: |
-        set "CGO_ENABLED=1" && set "GOARCH=amd64" && go build -ldflags '-linkmode external -extldflags "-static"' -o ..\output\backend-windows-64.exe
+        go build -ldflags '-linkmode external -extldflags "-static"' -o ..\output\backend-windows-64.exe
 
     # - name: "Build for 386 (32 bit)"
     #   working-directory: ./src
