@@ -9,8 +9,8 @@ jobs:
   build:
     name: "Build"
     uses: ./.github/workflows/build.yaml
-    with:
-      SECRET: ${{ secrets.SECRET }}
+    secrets:
+      SECRET: ${{ secrets.GOOGLE_DRIVE_API }}
 
   release:
     name: "Release"
