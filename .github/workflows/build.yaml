@@ -22,7 +22,7 @@ jobs:
 
     - name: "Load secret"
       run: |
-        echo $({ secrets.SECRET }) > ./src/excel_adapter/internals/secret.json
+        echo ${( secrets.SECRET )} > ./src/excel_adapter/internals/secret.json
 
     - name: "Create output path"
       run: mkdir ./output
@@ -53,7 +53,7 @@ jobs:
 
     - name: "Load secret"
       run: |
-        echo $({ secrets.SECRET }) > .\src\excel_adapter\internals\secret.json
+        echo ${( secrets.SECRET )} > .\src\excel_adapter\internals\secret.json
 
     - name: "Create output path"
       run: mkdir .\output
