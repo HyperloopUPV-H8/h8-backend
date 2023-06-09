@@ -11,7 +11,7 @@ jobs:
     name: "Release app"
     runs-on: ubuntu-latest
     container:
-        image: go:alpine-latest
+        image: golang:alpine-latest
         env:
             SECRET: ${{ secrets.GOOGLE_DRIVE_API}}
 
