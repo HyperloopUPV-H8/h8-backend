@@ -30,14 +30,14 @@ jobs:
     - name: "Create output path"
       run: mkdir ./output
 
-    - uses: actions/cache@v3
+    - name: "Restore cache"
+      uses: actions/cache/restore@v3
+      id: restore-cache
       with:
         path: |
           ~/.cache/go-build
           ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
 
     - name: "Build for amd46 (64 bit)"
       working-directory: ./src
@@ -47,6 +47,14 @@ jobs:
         GOOS: linux
       run: |
         go build -ldflags '-linkmode external -extldflags "-static"' -o ../output/backend-linux-64
+
+    - name: "Save cache"
+      uses: actions/cache/save@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ steps.restore-cache.outputs.cache-primary-key }}
 
     - name: "Uplaod artifacts"
       uses: actions/upload-artifact@v2
@@ -71,14 +79,14 @@ jobs:
     - name: "Create output path"
       run: mkdir .\output
 
-    - uses: actions/cache@v3
+    - name: "Restore cache"
+      uses: actions/cache/restore@v3
+      id: restore-cache
       with:
         path: |
           ~\AppData\Local\go-build
           ~\go\pkg\mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
 
     - name: "Build for amd46 (64 bit)"
       working-directory: .\src
@@ -88,6 +96,14 @@ jobs:
         GOOS: windows
       run: |
         go build -ldflags '-linkmode external -extldflags "-static"' -o ..\output\backend-windows-64.exe
+
+    - name: "Save cache"
+      uses: actions/cache/save@v3
+      with:
+        path: |
+          ~\AppData\Local\go-build
+          ~\go\pkg\mod
+        key: ${{ steps.restore-cache.outputs.cache-primary-key }}
 
     - name: "Uplaod artifacts"
       uses: actions/upload-artifact@v2
