@@ -42,5 +42,3 @@ jobs:
           output/backend-linux-64
           output/backend-windows-64.exe
           examples/config.toml
-
-
