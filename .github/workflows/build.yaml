@@ -11,21 +11,14 @@ jobs:
     name: "Build for linux"
     runs-on: ubuntu-latest
 
-    # container:
-    #   image: golang:alpine
+    container:
+      image: golang:alpine
 
     steps:
     - name: "Install packages"
-      run: sudo apt-get install libpcap-dev libc6-dev
+      run: apk update && apk add --no-cache libpcap-dev musl-dev gcc
 
     - uses: actions/checkout@v3
-
-    - name: "Load secret"
-      env:
-        SECRET: ${{ secrets.SECRET }}
-      run: |
-        echo "$SECRET" > ./src/excel_adapter/internals/secret.json
-        cat ./src/excel_adapter/internals/secret.json
 
     - name: "Create output path"
       run: mkdir ./output
@@ -48,14 +41,6 @@ jobs:
       run: |
         go build -ldflags '-linkmode external -extldflags "-static"' -o ../output/backend-linux-64
 
-    - name: "Save cache"
-      uses: actions/cache/save@v3
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ steps.restore-cache.outputs.cache-primary-key }}
-
     - name: "Uplaod artifacts"
       uses: actions/upload-artifact@v2
       with:
@@ -65,6 +50,7 @@ jobs:
   build-windows:
     name: "Build for windows"
     runs-on: windows-latest
+
 
     steps:
     - uses: actions/checkout@v3
