@@ -27,7 +27,7 @@ jobs:
       env:
         SECRET: ${{ secrets.SECRET }}
       run: |
-        echo "$SECRET" > .\src\excel_adapter\internals\secret.json
+        echo "$SECRET" > ./src/excel_adapter/internals/secret.json
 
     - name: "Build for amd46 (64 bit)"
       working-directory: ./src
