@@ -18,8 +18,7 @@ jobs:
     - name: "Install packages"
       run: apk update && apk add --no-cache libpcap-dev musl-dev gcc
 
-    - name: "Checkout"
-      uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: "Load secret"
       env:
@@ -30,6 +29,15 @@ jobs:
 
     - name: "Create output path"
       run: mkdir ./output
+
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
 
     - name: "Build for amd46 (64 bit)"
       working-directory: ./src
@@ -52,8 +60,7 @@ jobs:
 
 
     steps:
-    - name: "Checkout"
-      uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: "Load secret"
       env:
@@ -63,6 +70,15 @@ jobs:
 
     - name: "Create output path"
       run: mkdir .\output
+
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~\AppData\Local\go-build
+          ~\go\pkg\mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
 
     - name: "Build for amd46 (64 bit)"
       working-directory: .\src
