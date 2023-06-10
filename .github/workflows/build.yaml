@@ -23,14 +23,11 @@ jobs:
     - name: "Create output path"
       run: mkdir ./output
 
-    - name: "Restore cache"
-      uses: actions/cache/restore@v3
-      id: restore-cache
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+    - name: "Load secret"
+      env:
+        SECRET: ${{ secrets.SECRET }}
+      run: |
+        echo "$SECRET" > .\src\excel_adapter\internals\secret.json
 
     - name: "Build for amd46 (64 bit)"
       working-directory: ./src
