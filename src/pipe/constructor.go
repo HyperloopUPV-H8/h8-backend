@@ -19,7 +19,7 @@ func contains(boards []string, board string) bool {
 	return false
 }
 
-func CreatePipes(global excel_models.GlobalInfo, boards []string, dataChan chan<- packet.Packet, onConnectionChange func(string, bool), config Config, trace zerolog.Logger) map[string]*Pipe {
+func CreatePipes(global excel_models.GlobalInfo, boards []string, dataChan chan<- packet.Packet, onConnectionChange func(string, bool), config Config, readers map[uint16]common.ReaderFrom, trace zerolog.Logger) map[string]*Pipe {
 	laddr := common.AddrWithPort(global.BackendIP, global.ProtocolToPort[config.TcpClientTag])
 	pipes := make(map[string]*Pipe)
 	for board, ip := range global.BoardToIP {

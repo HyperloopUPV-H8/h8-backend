@@ -1,0 +1,48 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  build-binary:
+    name: "Release app"
+    runs-on: ubuntu-latest
+    env:
+        SECRET: ${{ secrets.GOOGLE_DRIVE_API }}
+
+    steps:
+      - name: "Prepare env"
+        uses: jirutka/setup-alpine@v1
+        with:
+          packages: libpcap-dev musl-dev gcc
+
+      - name: "Checkout"
+        uses: actions/checkout@v2
+
+      - name: "Load secret"
+        shell: alpine.sh {0}
+        run: |
+            echo $SECRET > ./src/excel_adapter/internals/secret.json
+
+      - name: "Build for linux"
+        working-directory: ./src
+        shell: alpine.sh {0}
+        run: |
+          CGO_ENABLED=1 GOARCH=amd64 GOOS=linux go build -ldflags '-linkmode external -extldflags "-static"' -o backend-linux
+
+    #   - name: "Build for windows"
+    #     run: |
+    #     working-directory: ./src
+    #       CGO_ENABLED=1 GOOS=windows go build -ldflags '-linkmode external -extldflags "-static"' -o backend-windows.exe
+
+      - uses: marvinpinto/action-automatic-releases@latest
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: false
+          files: |
+            backend-linux
+            # backend-windows.exe
+
+      

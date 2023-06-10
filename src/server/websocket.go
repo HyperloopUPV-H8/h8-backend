@@ -12,7 +12,7 @@ type ConnectionHandler interface {
 }
 
 func (server *WebServer) serveWebsocket(path string, upgrader *websocket.Upgrader, headers map[string]string) {
-	handler := func(w http.ResponseWriter, r *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		trace.Info().Str("server", server.name).Msg("websocket connection")
 		for key, value := range headers {
 			w.Header().Set(key, value)
@@ -39,7 +39,7 @@ func (server *WebServer) serveWebsocket(path string, upgrader *websocket.Upgrade
 		}
 		server.connected.Add(1)
 
-	}
+	})
 
-	server.router.HandleFunc(path, handler)
+	server.router.Handle(path, NoCacheMiddleware(handler))
 }

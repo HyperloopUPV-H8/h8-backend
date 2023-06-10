@@ -17,6 +17,14 @@ type WebServer struct {
 	config      ServerConfig
 }
 
+func NoCacheMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Pragma", "no-cache")
+		next.ServeHTTP(w, r)
+	})
+}
+
 func NewWebServer(name string, connectionHandle ConnectionHandler, staticData EndpointData, config ServerConfig) (*WebServer, error) {
 	server := &WebServer{
 		name:        name,
@@ -64,21 +72,21 @@ func (server *WebServer) serveJSON(path string, data any, headers map[string]str
 		return err
 	}
 
-	handler := func(w http.ResponseWriter, r *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		for key, value := range headers {
 			w.Header().Set(key, value)
 		}
 		w.Write(jsonData)
-	}
+	})
 
-	server.router.HandleFunc(path, handler)
+	server.router.Handle(path, NoCacheMiddleware(handler))
 
 	return nil
 }
 
 func (server *WebServer) serveFiles(path string, staticPath string) {
-	server.router.PathPrefix(path).Handler(http.FileServer(http.Dir(staticPath)))
+	server.router.PathPrefix(path).Handler(NoCacheMiddleware(http.FileServer(http.Dir(staticPath))))
 }
 
 func (server *WebServer) ListenAndServe() <-chan error {
