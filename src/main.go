@@ -248,7 +248,7 @@ func acceptInput(limit int) (int, error) {
 		}
 
 		if dev < 0 || dev >= limit {
-			red.Println("invalid device selected\n")
+			red.Println("invalid device selected")
 			continue
 		} else {
 			return dev, nil
