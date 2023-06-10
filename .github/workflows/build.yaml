@@ -16,7 +16,7 @@ jobs:
 
     steps:
     - name: "Install packages"
-      run: apk update && apk add --no-cache libpcap-dev musl-dev gcc
+      run: apk update && apk add --no-cache libpcap-dev musl-dev gcc go
 
     - uses: actions/checkout@v3
 
@@ -49,8 +49,15 @@ jobs:
     runs-on: windows-latest
 
 
+
     steps:
     - uses: actions/checkout@v3
+
+    - name: "Setup Go"
+      uses: actions/setup-go@v4
+      with:
+        go-version: "1.20"
+        cache-dependency-path: ".\\src\\go.sum"
 
     - name: "Load secret"
       env:
@@ -61,15 +68,6 @@ jobs:
     - name: "Create output path"
       run: mkdir .\output
 
-    - name: "Restore cache"
-      uses: actions/cache/restore@v3
-      id: restore-cache
-      with:
-        path: |
-          ~\AppData\Local\go-build
-          ~\go\pkg\mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-
     - name: "Build for amd46 (64 bit)"
       working-directory: .\src
       env:
@@ -78,14 +76,6 @@ jobs:
         GOOS: windows
       run: |
         go build -ldflags '-linkmode external -extldflags "-static"' -o ..\output\backend-windows-64.exe
-
-    - name: "Save cache"
-      uses: actions/cache/save@v3
-      with:
-        path: |
-          ~\AppData\Local\go-build
-          ~\go\pkg\mod
-        key: ${{ steps.restore-cache.outputs.cache-primary-key }}
 
     - name: "Uplaod artifacts"
       uses: actions/upload-artifact@v2
