@@ -11,12 +11,12 @@ jobs:
     name: "Build for linux"
     runs-on: ubuntu-latest
 
-    container:
-      image: golang:alpine
+    # container:
+    #   image: golang:alpine
 
     steps:
     - name: "Install packages"
-      run: apk update && apk add --no-cache libpcap-dev musl-dev gcc
+      run: sudo apt-get install libpcap-dev musl-dev gcc go
 
     - uses: actions/checkout@v3
 
