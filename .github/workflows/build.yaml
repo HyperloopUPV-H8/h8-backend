@@ -16,7 +16,7 @@ jobs:
 
     steps:
     - name: "Install packages"
-      run: apk update && apk add --no-cache libpcap-dev musl-dev gcc
+      run: apk update && apk add --no-cache libpcap-dev musl-dev gcc go
 
     - uses: actions/checkout@v3
 
