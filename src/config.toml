@@ -10,6 +10,9 @@ programable_boards = "/uploadableBoards"
 connections = "/backend"
 file_server = "/"
 
+[vehicle]
+boards = ["VCU"]
+
 [vehicle.network]
 tcp_client_tag = "TCP_CLIENT"
 tcp_server_tag = "TCP_SERVER"
