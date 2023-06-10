@@ -16,7 +16,7 @@ jobs:
 
     steps:
     - name: "Install packages"
-      run: sudo apt-get install libpcap-dev musl-dev gcc
+      run: sudo apt-get install libpcap-dev glibc-dev
 
     - uses: actions/checkout@v3
 
