@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/rs/zerolog"
-	trace "github.com/rs/zerolog/log"
+	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
 )
 
@@ -38,20 +38,20 @@ func initTrace(traceLevel string, traceFile string) *os.File {
 
 	file, err := os.Create(traceFile)
 	if err != nil {
-		trace.Logger = trace.Logger.Output(consoleWriter)
-		trace.Fatal().Stack().Err(err).Msg("")
+		log.Logger = log.Logger.Output(consoleWriter)
+		log.Fatal().Stack().Err(err).Msg("")
 		return nil
 	}
 
 	multi := zerolog.MultiLevelWriter(consoleWriter, file)
 
 	global_logger := zerolog.New(multi).With().Timestamp().Caller().Logger()
-	trace.Logger = global_logger
+	log.Logger = global_logger
 
 	if level, ok := traceLevelMap[traceLevel]; ok {
 		zerolog.SetGlobalLevel(level)
 	} else {
-		trace.Fatal().Msg("invalid log level selected")
+		log.Fatal().Msg("invalid log level selected")
 		file.Close()
 		return nil
 	}

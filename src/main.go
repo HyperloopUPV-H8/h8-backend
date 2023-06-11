@@ -38,6 +38,8 @@ var traceLevel = flag.String("trace", "info", "set the trace level (\"fatal\", \
 var traceFile = flag.String("log", "trace.json", "set the trace log file")
 
 func main() {
+	flag.Parse()
+
 	traceFile := initTrace(*traceLevel, *traceFile)
 	defer traceFile.Close()
 
@@ -47,7 +49,6 @@ func main() {
 	defer RemovePid(pidPath)
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	flag.Parse()
 
 	config := getConfig("./config.toml")
 

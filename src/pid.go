@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -14,6 +16,7 @@ var (
 )
 
 func WritePid(filename string) error {
+	log.Debug().Str("filename", filename).Msg("writing pid")
 	oldPid, err := getOldPid(filename)
 
 	if err == nil && isProcessRunning(oldPid) {
@@ -37,6 +40,7 @@ func WritePid(filename string) error {
 }
 
 func getOldPid(filename string) (int, error) {
+	log.Debug().Str("filename", filename).Msg("getting old pid")
 	oldPidFile, err := os.Open(filename)
 	if err != nil {
 		return 0, err
@@ -67,5 +71,6 @@ func isProcessRunning(pid int) bool {
 }
 
 func RemovePid(filename string) error {
+	log.Debug().Str("filename", filename).Msg("removing pid")
 	return os.RemoveAll(filename)
 }
