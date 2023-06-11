@@ -61,6 +61,8 @@ func New(args VehicleConstructorArgs) Vehicle {
 	messageIds.Add(addStateOrdersId)
 	removeStateOrdersId := mustGetId(args.GlobalInfo.MessageToId, args.Config.Messages.RemoveStateOrdersIdKey, vehicleTrace)
 	messageIds.Add(removeStateOrdersId)
+	stateSpaceIdKey := mustGetId(args.GlobalInfo.MessageToId, args.Config.Messages.RemoveStateOrdersIdKey, vehicleTrace)
+	messageIds.Add(stateSpaceIdKey)
 
 	vehicle := Vehicle{
 		podConverter:     unit_converter.NewUnitConverter("pod", args.Boards, args.GlobalInfo.UnitToOperations),
