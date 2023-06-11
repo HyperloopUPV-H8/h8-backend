@@ -2,6 +2,7 @@ package update_factory
 
 import (
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
@@ -59,7 +60,7 @@ func (factory *UpdateFactory) NewUpdate(packetUpdate vehicle_models.PacketUpdate
 	defer factory.averageMx.Unlock()
 
 	return models.Update{
-		ID:        packetUpdate.Metadata.ID,
+		Id:        packetUpdate.Metadata.ID,
 		HexValue:  fmt.Sprintf("%x", packetUpdate.HexValue),
 		Values:    factory.getFields(packetUpdate.Metadata.ID, packetUpdate.Values),
 		Count:     factory.getCount(packetUpdate.Metadata.ID),
@@ -144,11 +145,35 @@ func (factory *UpdateFactory) getFields(id uint16, fields map[string]packet.Valu
 	return updateFields
 }
 
-func (factory *UpdateFactory) getNumericField(id uint16, name string, value packet.Numeric) models.UpdateValue {
-	avg := factory.getAverage(id, name)
+func replaceInvalidNumber(num float64) float64 {
+	if math.IsInf(num, 1) {
+		return replaceInf(1)
+	} else if math.IsInf(num, -1) {
+		return replaceInf(-1)
+	} else if math.IsNaN(num) {
+		return replaceNaN()
+	}
 
-	numAvg := avg.Add(float64(value))
-	return models.NumericValue{Value: float64(value), Average: numAvg}
+	return num
+}
+
+func replaceInf(sign int) float64 {
+	if sign >= 1 {
+		return math.MaxFloat64
+	} else {
+		return -math.MaxFloat64
+	}
+}
+
+func replaceNaN() float64 {
+	return 0
+}
+
+func (factory *UpdateFactory) getNumericField(id uint16, name string, value packet.Numeric) models.NumericValue {
+	lastVal := replaceInvalidNumber(float64(value))
+	avg := factory.getAverage(id, name)
+	lastAvg := avg.Add(lastVal)
+	return models.NumericValue{Value: lastVal, Average: lastAvg}
 }
 
 func (factory *UpdateFactory) getAverage(id uint16, name string) *common.MovingAverage[float64] {

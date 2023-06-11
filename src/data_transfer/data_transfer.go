@@ -53,9 +53,10 @@ func New(config DataTransferConfig) DataTransfer {
 func (dataTransfer *DataTransfer) UpdateMessage(topic string, payload json.RawMessage, source string) {
 	dataTransfer.trace.Info().Str("source", source).Str("topic", topic).Msg("got message")
 
-	observable.HandleSubscribe[map[uint16]models.Update](&dataTransfer.updateObservable, source, payload, func(v map[uint16]models.Update, id string) error {
-		return dataTransfer.sendMessage(UpdateTopic, v, id)
-	})
+	observable.HandleSubscribe[map[uint16]models.Update](&dataTransfer.updateObservable, source, payload,
+		func(v map[uint16]models.Update, id string) error {
+			return dataTransfer.sendMessage(UpdateTopic, v, id)
+		})
 }
 
 func (dataTransfer *DataTransfer) SetSendMessage(sendMessage func(topic string, payload any, target ...string) error) {
@@ -88,11 +89,6 @@ func (dataTransfer *DataTransfer) trySend() {
 
 func (dataTransfer *DataTransfer) sendBuf() {
 	dataTransfer.trace.Trace().Msg("send buffer")
-	// if err := dataTransfer.sendMessage(dataTransfer.updateTopic, dataTransfer.updateBuf); err != nil {
-	// 	dataTransfer.trace.Error().Stack().Err(err).Msg("")
-	// 	return
-	// }
-
 	dataTransfer.updateObservable.Next(dataTransfer.updateBuf)
 	dataTransfer.updateBuf = make(map[uint16]models.Update, len(dataTransfer.updateBuf))
 }
@@ -100,9 +96,8 @@ func (dataTransfer *DataTransfer) sendBuf() {
 func (dataTransfer *DataTransfer) Update(update models.Update) {
 	dataTransfer.bufMx.Lock()
 	defer dataTransfer.bufMx.Unlock()
-
-	dataTransfer.trace.Trace().Uint16("id", update.ID).Msg("update")
-	dataTransfer.updateBuf[update.ID] = update
+	dataTransfer.trace.Trace().Uint16("id", update.Id).Msg("update")
+	dataTransfer.updateBuf[update.Id] = update
 }
 
 func defaultSendMessage(string, any, ...string) error {

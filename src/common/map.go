@@ -27,3 +27,13 @@ func FilterMap[K comparable, V any](input map[K]V, predicate func(K, V) bool) ma
 
 	return filteredMap
 }
+
+func MapMap[K comparable, V any](input map[K]V, mapFn func(K, V) V) map[K]V {
+	mappedMap := make(map[K]V, len(input))
+
+	for key, value := range input {
+		mappedMap[key] = mapFn(key, value)
+	}
+
+	return mappedMap
+}
