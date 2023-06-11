@@ -2,17 +2,15 @@ package blcu
 
 import (
 	"encoding/json"
-	"fmt"
-	"strconv"
+	"net"
 
-	excel_models "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
 
 type BLCU struct {
-	addr       string
+	addr       net.TCPAddr
 	boardToId  map[string]uint16
 	ackChannel chan struct{}
 
@@ -24,36 +22,18 @@ type BLCU struct {
 	trace zerolog.Logger
 }
 
-func NewBLCU(global excel_models.GlobalInfo, config BLCUConfig) BLCU {
+func NewBLCU(laddr net.TCPAddr, boardIds map[string]uint16, config BLCUConfig) BLCU {
 	trace.Info().Msg("New BLCU")
-	blcu := BLCU{
-		addr:        fmt.Sprintf("%s:%s", global.BoardToIP["BLCU"], global.ProtocolToPort["TFTP"]),
-		boardToId:   getBoardToId(global.BoardToId),
+
+	return BLCU{
+		addr:        laddr,
+		boardToId:   boardIds,
 		ackChannel:  make(chan struct{}, BLCU_ACK_CHAN_BUF),
 		trace:       trace.With().Str("component", BLCU_COMPONENT_NAME).Logger(),
 		config:      config,
 		sendOrder:   func(o models.Order) error { return nil },
 		sendMessage: func(topic string, payload any, targets ...string) error { return nil },
 	}
-
-	return blcu
-}
-
-func getBoardToId(boardToIdStr map[string]string) map[string]uint16 {
-	boardToId := make(map[string]uint16)
-
-	for name, idStr := range boardToIdStr {
-		id, err := strconv.Atoi(idStr)
-
-		if err != nil {
-			trace.Error().Err(err).Stack().Msg("Convert board id")
-			continue
-		}
-
-		boardToId[name] = uint16(id)
-	}
-
-	return boardToId
 }
 
 func (blcu *BLCU) HandlerName() string {

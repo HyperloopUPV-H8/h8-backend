@@ -2,38 +2,34 @@ package unit_converter
 
 import (
 	"fmt"
-	"strings"
 
-	excelAdapterModels "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
-	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter/models"
-	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
+	"github.com/HyperloopUPV-H8/Backend-H8/excel/utils"
+	"github.com/HyperloopUPV-H8/Backend-H8/pod_data"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
 
 type UnitConverter struct {
-	operations map[string]models.Operations
+	operations map[string]utils.Operations
 	trace      zerolog.Logger
 }
 
-func NewUnitConverter(kind string, boards map[string]excelAdapterModels.Board, unitToOperations map[string]string) UnitConverter {
+func NewUnitConverter(kind string, boards []pod_data.Board, unitToOperations map[string]utils.Operations) UnitConverter {
 	trace.Info().Str("kind", kind).Msg("new unit converter")
 
-	operations := make(map[string]models.Operations)
+	operations := make(map[string]utils.Operations)
 
 	for _, board := range boards {
 		for _, packet := range board.Packets {
-			for _, val := range packet.Values {
-				if vehicle_models.IsNumeric(val.Type) {
-					var ops string
+			for _, meas := range packet.Measurements {
+				if numericMeas, ok := meas.(pod_data.NumericMeasurement); ok {
 					if kind == "pod" {
-						ops = getCustomOrGlobalOperations(val.PodUnits, unitToOperations)
+						operations[numericMeas.Id] = numericMeas.PodUnits.Operations
 					} else if kind == "display" {
-						ops = getCustomOrGlobalOperations(val.DisplayUnits, unitToOperations)
+						operations[numericMeas.Id] = numericMeas.DisplayUnits.Operations
 					} else {
 						continue
 					}
-					operations[val.ID] = models.NewOperations(ops)
 				}
 			}
 		}
@@ -43,24 +39,6 @@ func NewUnitConverter(kind string, boards map[string]excelAdapterModels.Board, u
 		operations: operations,
 		trace:      trace.With().Str("component", "unitConverter").Str("kind", kind).Logger(),
 	}
-}
-
-func getCustomOrGlobalOperations(nameOrCustomOperations string, unitToOperations map[string]string) string {
-	if strings.Contains(nameOrCustomOperations, "#") {
-		return getCustomOperations(nameOrCustomOperations)
-	} else {
-		operationsStr, ok := unitToOperations[nameOrCustomOperations]
-
-		if !ok {
-			return ""
-		}
-
-		return operationsStr
-	}
-}
-
-func getCustomOperations(operationsStr string) string {
-	return strings.Split(operationsStr, "#")[1]
 }
 
 func (converter *UnitConverter) Convert(name string, value float64) (float64, error) {

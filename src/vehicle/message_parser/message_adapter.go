@@ -7,13 +7,13 @@ import (
 )
 
 type InfoMessageAdapter struct {
-	BoardId   uint             `json:"boardId"`
+	BoardId   uint16           `json:"boardId"`
 	Timestamp models.Timestamp `json:"timestamp"`
 	Msg       string           `json:"msg"`
 }
 
 type ProtectionMessageAdapter struct {
-	BoardId    uint              `json:"boardId"`
+	BoardId    uint16            `json:"boardId"`
 	Timestamp  models.Timestamp  `json:"timestamp"`
 	Protection ProtectionAdapter `json:"protection"`
 }

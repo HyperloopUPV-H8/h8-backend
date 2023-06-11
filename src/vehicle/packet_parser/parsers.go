@@ -47,7 +47,7 @@ func (parser booleanParser) encode(descriptor packet.ValueDescriptor, order bina
 }
 
 type enumParser struct {
-	descriptors map[string]packet.EnumDescriptor
+	descriptors map[string][]string
 }
 
 func (parser enumParser) decode(descriptor packet.ValueDescriptor, order binary.ByteOrder, data io.Reader) (packet.Value, error) {

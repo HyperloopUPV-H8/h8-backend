@@ -4,7 +4,7 @@ import (
 	"net"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
-	excel_models "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
+	"github.com/HyperloopUPV-H8/Backend-H8/info"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
@@ -19,14 +19,22 @@ func contains(boards []string, board string) bool {
 	return false
 }
 
-func CreatePipes(global excel_models.GlobalInfo, boards []string, dataChan chan<- packet.Packet, onConnectionChange func(string, bool), config Config, readers map[uint16]common.ReaderFrom, trace zerolog.Logger) map[string]*Pipe {
-	laddr := common.AddrWithPort(global.BackendIP, global.ProtocolToPort[config.TcpClientTag])
+func CreatePipes(info info.Info, boards []string, dataChan chan<- packet.Packet, onConnectionChange func(string, bool), config Config, readers map[uint16]common.ReaderFrom, trace zerolog.Logger) map[string]*Pipe {
+	laddr := net.TCPAddr{
+		IP:   info.Addresses.Backend,
+		Port: int(info.Ports.TcpClient),
+	}
+
 	pipes := make(map[string]*Pipe)
 
-	for board, ip := range global.BoardToIP {
-		raddr := common.AddrWithPort(ip, global.ProtocolToPort[config.TcpServerTag])
+	for board, ip := range info.Addresses.Boards {
+		raddr := net.TCPAddr{
+			IP:   ip,
+			Port: int(info.Ports.TcpServer),
+		}
 		pipe, err := newPipe(laddr, raddr, config.Mtu, dataChan, readers, getOnConnectionChange(board, onConnectionChange))
 		if err != nil {
+			//TODO: how to handle this error
 			trace.Fatal().Stack().Err(err).Msg("error creating pipe")
 		}
 
@@ -37,23 +45,12 @@ func CreatePipes(global excel_models.GlobalInfo, boards []string, dataChan chan<
 	return pipes
 }
 
-func newPipe(laddr string, raddr string, mtu uint, outputChan chan<- packet.Packet, readers map[uint16]common.ReaderFrom, onConnectionChange func(bool)) (*Pipe, error) {
-	trace.Info().Str("laddr", laddr).Str("raddr", raddr).Msg("new pipe")
-	localAddr, err := net.ResolveTCPAddr("tcp", laddr)
-	if err != nil {
-		trace.Error().Str("laddr", laddr).Stack().Err(err).Msg("")
-		return nil, err
-	}
-
-	remoteAddr, err := net.ResolveTCPAddr("tcp", raddr)
-	if err != nil {
-		trace.Error().Str("raddr", raddr).Stack().Err(err).Msg("")
-		return nil, err
-	}
+func newPipe(laddr net.TCPAddr, raddr net.TCPAddr, mtu uint, outputChan chan<- packet.Packet, readers map[uint16]common.ReaderFrom, onConnectionChange func(bool)) (*Pipe, error) {
+	trace.Info().Str("laddr", laddr.String()).Str("raddr", raddr.String()).Msg("new pipe")
 
 	pipe := &Pipe{
-		laddr:  localAddr,
-		raddr:  remoteAddr,
+		laddr:  &laddr,
+		raddr:  &raddr,
 		output: outputChan,
 
 		readers: readers,
@@ -63,7 +60,7 @@ func newPipe(laddr string, raddr string, mtu uint, outputChan chan<- packet.Pack
 
 		onConnectionChange: onConnectionChange,
 
-		trace: trace.With().Str("component", "pipe").IPAddr("addr", remoteAddr.IP).Logger(),
+		trace: trace.With().Str("component", "pipe").IPAddr("addr", raddr.IP).Logger(),
 	}
 
 	go pipe.connect()

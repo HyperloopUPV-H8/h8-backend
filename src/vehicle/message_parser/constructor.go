@@ -1,40 +1,33 @@
 package message_parser
 
 import (
-	"strconv"
-
-	excelAdapterModels "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
+	"github.com/HyperloopUPV-H8/Backend-H8/info"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
 
-func NewMessageParser(globalInfo excelAdapterModels.GlobalInfo, infoId uint16, faultId uint16, warningId uint16, addStateOrdersId uint16, removeStateOrdersId uint16) MessageParser {
+func NewMessageParser(info info.Info) MessageParser {
 	parserLogger := trace.With().Str("component", "protection parser").Logger()
 
-	idToBoard := getIdToBoard(globalInfo.BoardToId, parserLogger)
+	idToBoard := getIdToBoard(info.BoardIds, parserLogger)
 
 	return MessageParser{
-		infoId:             infoId,
-		warningId:          warningId,
-		faultId:            faultId,
+		infoId:             info.MessageIds.Info,
+		warningId:          info.MessageIds.Warning,
+		faultId:            info.MessageIds.Fault,
 		boardIdToName:      idToBoard,
 		trace:              parserLogger,
-		addStateOrderId:    addStateOrdersId,
-		removeStateOrderId: removeStateOrdersId,
+		addStateOrderId:    info.MessageIds.AddStateOrder,
+		removeStateOrderId: info.MessageIds.RemoveStateOrder,
 	}
 }
 
-func getIdToBoard(boardToId map[string]string, trace zerolog.Logger) map[uint]string {
-	idToBoard := make(map[uint]string)
+func getIdToBoard(boardToId map[string]uint16, trace zerolog.Logger) map[uint16]string {
+	idToBoard := make(map[uint16]string)
 
-	for board, idStr := range boardToId {
-		id, err := strconv.Atoi(idStr)
+	for board, id := range boardToId {
 
-		if err != nil {
-			trace.Error().Err(err).Str("id", idStr).Msg("error parsing board id")
-		}
-
-		idToBoard[uint(id)] = board
+		idToBoard[id] = board
 	}
 
 	return idToBoard

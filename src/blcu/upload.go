@@ -73,7 +73,7 @@ func (blcu *BLCU) createUploadOrder(board string) models.Order {
 func (blcu *BLCU) WriteTFTP(reader io.Reader, size int, onProgress func(float64)) error {
 	blcu.trace.Info().Msg("Writing TFTP")
 
-	client, err := tftp.NewClient(blcu.addr)
+	client, err := tftp.NewClient(blcu.addr.String())
 	if err != nil {
 		return err
 	}

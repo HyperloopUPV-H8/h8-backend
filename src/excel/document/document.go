@@ -1,31 +1,43 @@
 package document
 
 import (
+	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/xuri/excelize/v2"
 )
 
-func CreateDocument(file *excelize.File) Document {
-	fileSheets := getFileSheets(file)
+func CreateDocument(file *excelize.File) (Document, error) {
+	fileSheets, err := getFileSheets(file)
+
+	if err != nil {
+		return Document{}, err
+	}
 
 	return Document{
 		Sheets: getRectSheets(fileSheets),
-	}
+	}, nil
 }
 
-func getFileSheets(file *excelize.File) map[string][][]string {
+func getFileSheets(file *excelize.File) (map[string][][]string, error) {
 	fileSheets := make(map[string][][]string)
 	sheetMap := file.GetSheetMap()
+	sheetsErrs := common.NewErrorList()
+
 	for _, name := range sheetMap {
 		sheet, err := file.GetRows(name)
 
 		if err != nil {
+			sheetsErrs.Add(err)
 			continue
 		}
 
 		fileSheets[name] = sheet
 	}
 
-	return fileSheets
+	if len(sheetsErrs) > 0 {
+		return nil, sheetsErrs
+	}
+
+	return fileSheets, nil
 }
 
 func getRectSheets(sheets map[string][][]string) map[string][][]string {

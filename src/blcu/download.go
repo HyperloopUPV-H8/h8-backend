@@ -70,7 +70,7 @@ const FlashMemorySize = 786432
 func (blcu *BLCU) ReadTFTP(output io.Writer, onProgress func(float64)) error {
 	blcu.trace.Info().Msg("Reading TFTP")
 
-	client, err := tftp.NewClient(blcu.addr)
+	client, err := tftp.NewClient(blcu.addr.String())
 	if err != nil {
 		return err
 	}

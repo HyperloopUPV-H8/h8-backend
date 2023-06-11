@@ -1,11 +1,11 @@
 package models
 
 import (
-	"log"
-	"strconv"
+	"errors"
 	"strings"
 
-	excelAdapterModels "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
+	"github.com/HyperloopUPV-H8/Backend-H8/common"
+	"github.com/HyperloopUPV-H8/Backend-H8/pod_data"
 )
 
 const (
@@ -36,11 +36,12 @@ type StateOrderDescription struct {
 	Enabled bool `json:"enabled"`
 }
 
-func NewVehicleOrders(boards map[string]excelAdapterModels.Board, blcuName string) VehicleOrders {
+func NewVehicleOrders(boards []pod_data.Board, blcuName string) (VehicleOrders, error) {
 	vehicleOrders := VehicleOrders{
 		Boards: make([]BoardOrders, 0),
 	}
 
+	boardErrs := common.NewErrorList()
 	for _, board := range boards {
 		boardOrders := BoardOrders{
 			Name:        board.Name,
@@ -48,70 +49,88 @@ func NewVehicleOrders(boards map[string]excelAdapterModels.Board, blcuName strin
 			StateOrders: make([]StateOrderDescription, 0),
 		}
 
+		packetErrs := common.NewErrorList()
 		for _, packet := range board.Packets {
-			if packet.Description.Type != OrderType && packet.Description.Type != StateOrderType {
+			if packet.Type != OrderType && packet.Type != StateOrderType {
 				continue
 			}
 
-			id, err := strconv.ParseUint(packet.Description.ID, 10, 16)
-			if err != nil {
-				log.Fatalf("order transfer: AddPacket: %s\n", err)
+			fields := make(map[string]any, len(packet.Measurements))
+			fieldErrs := common.NewErrorList()
+			for _, m := range packet.Measurements {
+				field, err := getField(m)
+
+				if err != nil {
+					fieldErrs.Add(err)
+					continue
+				}
+
+				fields[m.GetId()] = field
 			}
 
-			fields := make(map[string]any, len(packet.Values))
-			for _, value := range packet.Values {
-				fields[value.Name] = getField(value.ID, value.Type, value.SafeRange, value.WarningRange)
+			if len(fieldErrs) > 0 {
+				packetErrs.Add(fieldErrs)
+				continue
 			}
 
 			desc := OrderDescription{
-				ID:     uint16(id),
-				Name:   packet.Description.Name,
+				ID:     packet.Id,
+				Name:   packet.Name,
 				Fields: fields,
 			}
 
-			if packet.Description.Type == OrderType {
+			if packet.Type == OrderType {
 				boardOrders.Orders = append(boardOrders.Orders, desc)
 			} else {
 				boardOrders.StateOrders = append(boardOrders.StateOrders, StateOrderDescription{OrderDescription: desc, Enabled: false})
 			}
 
 		}
+
+		if len(packetErrs) > 0 {
+			boardErrs.Add(packetErrs)
+			continue
+		}
+
 		vehicleOrders.Boards = append(vehicleOrders.Boards, boardOrders)
 	}
 
-	return vehicleOrders
+	if len(boardErrs) > 0 {
+		return VehicleOrders{}, boardErrs
+	}
+
+	return vehicleOrders, nil
 }
 
-func getField(name string, valueType string, safeRangeStr string, warningRangeStr string) any {
-	if IsNumeric(valueType) {
-
-		safeRange := parseRange(safeRangeStr)
-		warningRange := parseRange(warningRangeStr)
-
+func getField(m pod_data.Measurement) (any, error) {
+	switch typedMeas := m.(type) {
+	case pod_data.NumericMeasurement:
 		return NumericDescription{
 			fieldDescription: fieldDescription{
 				Kind: NumericKind,
-				Name: name,
+				Name: typedMeas.Name,
 			},
-			VarType:      valueType,
-			SafeRange:    safeRange,
-			WarningRange: warningRange,
-		}
-	} else if valueType == "bool" {
+			VarType:      typedMeas.Type,
+			SafeRange:    typedMeas.SafeRange,
+			WarningRange: typedMeas.WarningRange,
+		}, nil
+	case pod_data.BooleanMeasurement:
 		return BooleanDescription{
 			fieldDescription: fieldDescription{
 				Kind: BooleanKind,
-				Name: name,
+				Name: typedMeas.Name,
 			},
-		}
-	} else {
+		}, nil
+	case pod_data.EnumMeasurement:
 		return EnumDescription{
 			fieldDescription: fieldDescription{
 				Kind: EnumKind,
-				Name: name,
+				Name: typedMeas.Name,
 			},
-			Options: getEnumMembers(valueType),
-		}
+			Options: typedMeas.Options,
+		}, nil
+	default:
+		return struct{}{}, errors.New("unrecognized measurement type")
 	}
 }
 

@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
-	excel_adapter_models "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/logger_handler"
+	"github.com/HyperloopUPV-H8/Backend-H8/pod_data"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
@@ -25,7 +25,7 @@ type Config struct {
 	FlushInterval string `toml:"flush_interval"`
 }
 
-func NewValueLogger(boards map[string]excel_adapter_models.Board, config Config) ValueLogger {
+func NewValueLogger(boards []pod_data.Board, config Config) ValueLogger {
 	trace := trace.With().Str("component", "valueLogger").Logger()
 
 	ids := getValueIds(boards)
@@ -45,13 +45,13 @@ func NewValueLogger(boards map[string]excel_adapter_models.Board, config Config)
 	}
 }
 
-func getValueIds(boards map[string]excel_adapter_models.Board) common.Set[string] {
+func getValueIds(boards []pod_data.Board) common.Set[string] {
 	ids := common.NewSet[string]()
 
 	for _, board := range boards {
 		for _, packet := range board.Packets {
-			for _, value := range packet.Values {
-				ids.Add(value.ID)
+			for _, meas := range packet.Measurements {
+				ids.Add(meas.GetId())
 			}
 		}
 	}

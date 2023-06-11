@@ -1,18 +1,20 @@
 package order_logger
 
 import (
+	"strconv"
+
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
-	excel_adapter_models "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
 	"github.com/HyperloopUPV-H8/Backend-H8/file_logger"
+	"github.com/HyperloopUPV-H8/Backend-H8/pod_data"
 )
 
-func NewOrderLogger(boards map[string]excel_adapter_models.Board, config file_logger.Config) file_logger.FileLogger {
+func NewOrderLogger(boards []pod_data.Board, config file_logger.Config) file_logger.FileLogger {
 	ids := common.NewSet[string]()
 
 	for _, board := range boards {
 		for _, packet := range board.Packets {
-			if packet.Description.Type == "order" {
-				ids.Add(packet.Description.ID)
+			if packet.Type == "order" {
+				ids.Add(strconv.Itoa(int(packet.Id)))
 			}
 		}
 	}

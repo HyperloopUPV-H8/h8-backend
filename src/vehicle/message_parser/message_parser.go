@@ -17,7 +17,7 @@ type MessageParser struct {
 	errorId            uint16
 	addStateOrderId    uint16
 	removeStateOrderId uint16
-	boardIdToName      map[uint]string
+	boardIdToName      map[uint16]string
 	trace              zerolog.Logger
 }
 
@@ -58,7 +58,7 @@ func (parser *MessageParser) toStateOrder(kind string, payload []byte) (models.S
 
 	if reader.Len() == 0 {
 		return models.StateOrdersMessage{
-			BoardId: parser.boardIdToName[uint(boardId)],
+			BoardId: parser.boardIdToName[boardId],
 			Orders:  make([]uint16, 0),
 		}, nil
 	}
@@ -78,7 +78,7 @@ func (parser *MessageParser) toStateOrder(kind string, payload []byte) (models.S
 	//TODO: check if board exists
 
 	return models.StateOrdersMessage{
-		BoardId: parser.boardIdToName[uint(boardId)],
+		BoardId: parser.boardIdToName[boardId],
 		Orders:  orders,
 	}, nil
 }
@@ -95,7 +95,7 @@ func (parser *MessageParser) toInfoMessage(kind string, payload []byte) (models.
 	name, ok := parser.boardIdToName[adapter.BoardId]
 
 	if !ok {
-		parser.trace.Error().Uint("board id", adapter.BoardId).Msg("board id not found")
+		parser.trace.Error().Uint16("board id", adapter.BoardId).Msg("board id not found")
 		name = "DEFAULT"
 	}
 
@@ -126,7 +126,7 @@ func (parser *MessageParser) toProtectionMessage(kind string, payload []byte) (m
 	name, ok := parser.boardIdToName[adapter.BoardId]
 
 	if !ok {
-		parser.trace.Error().Uint("board id", adapter.BoardId).Msg("board id not found")
+		parser.trace.Error().Uint16("board id", adapter.BoardId).Msg("board id not found")
 		name = "DEFAULT"
 	}
 
