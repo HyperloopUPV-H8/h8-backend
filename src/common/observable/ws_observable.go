@@ -8,17 +8,17 @@ type SubscriptionMessage struct {
 }
 
 func HandleSubscribe[T any](obs Observable[T], source string, payload []byte, sendMessage func(v T, id string) error) {
-	var subcription SubscriptionMessage
-	err := json.Unmarshal(payload, &subcription)
+	var subscription SubscriptionMessage
+	err := json.Unmarshal(payload, &subscription)
 
 	if err != nil {
 		return
 	}
 
-	if subcription.Subscribe {
-		addWsObserver(obs, subcription.Id, source, sendMessage)
+	if subscription.Subscribe {
+		addWsObserver(obs, subscription.Id, source, sendMessage)
 	} else {
-		obs.Unsubscribe(subcription.Id)
+		obs.Unsubscribe(subscription.Id)
 	}
 }
 

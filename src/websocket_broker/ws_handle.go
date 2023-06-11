@@ -78,6 +78,7 @@ func (broker *WebSocketBroker) updateHandlers(clientId string, msg models.Messag
 func (broker *WebSocketBroker) sendMessage(topic string, payload any, targets ...string) error {
 	broker.trace.Trace().Str("topic", topic).Strs("targets", targets).Msg("send message")
 	message, err := models.NewMessage(topic, payload)
+
 	if err != nil {
 		broker.trace.Error().Stack().Err(err).Msg("")
 		return err
