@@ -2,6 +2,7 @@ package pipe
 
 import (
 	"net"
+	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	excel_models "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
@@ -19,7 +20,7 @@ func contains(boards []string, board string) bool {
 	return false
 }
 
-func CreatePipes(global excel_models.GlobalInfo, boards []string, dataChan chan<- packet.Packet, onConnectionChange func(string, bool), config Config, readers map[uint16]common.ReaderFrom, trace zerolog.Logger) map[string]*Pipe {
+func CreatePipes(global excel_models.GlobalInfo, keepaliveInterval, writeTimeout *time.Duration, boards []string, dataChan chan<- packet.Packet, onConnectionChange func(string, bool), config Config, readers map[uint16]common.ReaderFrom, trace zerolog.Logger) map[string]*Pipe {
 	laddr := common.AddrWithPort(global.BackendIP, global.ProtocolToPort[config.TcpClientTag])
 	pipes := make(map[string]*Pipe)
 	for board, ip := range global.BoardToIP {
@@ -27,7 +28,7 @@ func CreatePipes(global excel_models.GlobalInfo, boards []string, dataChan chan<
 			continue
 		}
 		raddr := common.AddrWithPort(ip, global.ProtocolToPort[config.TcpServerTag])
-		pipe, err := newPipe(laddr, raddr, config.Mtu, dataChan, readers, getOnConnectionChange(board, onConnectionChange))
+		pipe, err := newPipe(laddr, raddr, keepaliveInterval, writeTimeout, config.Mtu, dataChan, readers, getOnConnectionChange(board, onConnectionChange))
 		if err != nil {
 			trace.Fatal().Stack().Err(err).Msg("error creating pipe")
 		}
@@ -37,7 +38,7 @@ func CreatePipes(global excel_models.GlobalInfo, boards []string, dataChan chan<
 	return pipes
 }
 
-func newPipe(laddr string, raddr string, mtu uint, outputChan chan<- packet.Packet, readers map[uint16]common.ReaderFrom, onConnectionChange func(bool)) (*Pipe, error) {
+func newPipe(laddr string, raddr string, keepaliveInterval, writeTimeout *time.Duration, mtu uint, outputChan chan<- packet.Packet, readers map[uint16]common.ReaderFrom, onConnectionChange func(bool)) (*Pipe, error) {
 	trace.Info().Str("laddr", laddr).Str("raddr", raddr).Msg("new pipe")
 	localAddr, err := net.ResolveTCPAddr("tcp", laddr)
 	if err != nil {
@@ -62,6 +63,9 @@ func newPipe(laddr string, raddr string, mtu uint, outputChan chan<- packet.Pack
 		mtu:      int(mtu),
 
 		onConnectionChange: onConnectionChange,
+
+		keepaliveInterval: keepaliveInterval,
+		writeTiemout:      writeTimeout,
 
 		trace: trace.With().Str("component", "pipe").IPAddr("addr", remoteAddr.IP).Logger(),
 	}
