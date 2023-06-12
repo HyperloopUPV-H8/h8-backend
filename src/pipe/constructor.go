@@ -1,7 +1,9 @@
 package pipe
 
 import (
+	"fmt"
 	"net"
+	"strconv"
 	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
@@ -21,12 +23,18 @@ func contains(boards []string, board string) bool {
 }
 
 func CreatePipes(global excel_models.GlobalInfo, keepaliveInterval, writeTimeout *time.Duration, boards []string, dataChan chan<- packet.Packet, onConnectionChange func(string, bool), config Config, readers map[uint16]common.ReaderFrom, trace zerolog.Logger) map[string]*Pipe {
-	laddr := common.AddrWithPort(global.BackendIP, global.ProtocolToPort[config.TcpClientTag])
 	pipes := make(map[string]*Pipe)
+	i := uint64(0)
 	for board, ip := range global.BoardToIP {
+		ip := ip
 		if boards != nil && !contains(boards, board) {
 			continue
 		}
+		port, err := strconv.ParseUint(global.ProtocolToPort[config.TcpClientTag], 10, 16)
+		if err != nil {
+			panic(err)
+		}
+		laddr := common.AddrWithPort(global.BackendIP, fmt.Sprintf("%d", port+i))
 		raddr := common.AddrWithPort(ip, global.ProtocolToPort[config.TcpServerTag])
 		pipe, err := newPipe(laddr, raddr, keepaliveInterval, writeTimeout, config.Mtu, dataChan, readers, getOnConnectionChange(board, onConnectionChange))
 		if err != nil {
@@ -34,6 +42,7 @@ func CreatePipes(global excel_models.GlobalInfo, keepaliveInterval, writeTimeout
 		}
 
 		pipes[board] = pipe
+		i++
 	}
 	return pipes
 }
