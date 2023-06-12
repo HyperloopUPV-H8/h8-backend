@@ -8,10 +8,6 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/excel/utils"
 )
 
-const (
-	DataType = "data"
-)
-
 func NewPodData(adeBoards map[string]ade.Board, globalUnits map[string]utils.Operations) (PodData, error) {
 	boards := make([]Board, 0)
 	boardErrs := common.NewErrorList()
@@ -67,10 +63,6 @@ func getPackets(adePackets []ade.Packet) ([]Packet, error) {
 	packetErrors := common.NewErrorList()
 
 	for _, packet := range adePackets {
-		if packet.Type != DataType {
-			continue
-		}
-
 		packet, err := getPacket(packet)
 
 		if err != nil {
@@ -143,4 +135,25 @@ func findMeasurements(measurements []Measurement, measIds []string) []Measuremen
 	}
 
 	return foundMeasurements
+}
+
+const DataType = "data"
+
+func GetDataOnlyPodData(podData PodData) PodData {
+	newBoards := make([]Board, 0)
+
+	for _, board := range podData.Boards {
+		newPackets := common.Filter(board.Packets, func(packet Packet) bool {
+			return packet.Type == DataType
+		})
+
+		newBoards = append(newBoards, Board{
+			Name:    board.Name,
+			Packets: newPackets,
+		})
+	}
+
+	return PodData{
+		Boards: newBoards,
+	}
 }

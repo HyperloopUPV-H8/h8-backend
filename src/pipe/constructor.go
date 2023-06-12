@@ -28,6 +28,10 @@ func CreatePipes(info info.Info, boards []string, dataChan chan<- packet.Packet,
 	pipes := make(map[string]*Pipe)
 
 	for board, ip := range info.Addresses.Boards {
+		if boards != nil && !contains(boards, board) {
+			continue
+		}
+
 		raddr := net.TCPAddr{
 			IP:   ip,
 			Port: int(info.Ports.TcpServer),

@@ -26,6 +26,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/packet_logger"
 	"github.com/HyperloopUPV-H8/Backend-H8/pod_data"
 	"github.com/HyperloopUPV-H8/Backend-H8/server"
+	"github.com/HyperloopUPV-H8/Backend-H8/state_space_logger"
 	"github.com/HyperloopUPV-H8/Backend-H8/update_factory"
 	"github.com/HyperloopUPV-H8/Backend-H8/value_logger"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle"
@@ -78,6 +79,7 @@ func main() {
 	}
 
 	podData, err := pod_data.NewPodData(ade.Boards, info.Units)
+	dataOnlyPodData := pod_data.GetDataOnlyPodData(podData)
 
 	if err != nil {
 		trace.Fatal().Err(err).Msg("creating podData")
@@ -122,6 +124,7 @@ func main() {
 	vehicleTransmittedOrders := make(chan vehicle_models.PacketUpdate)
 	blcuAckChan := make(chan struct{})
 	stateOrdersChan := make(chan message_parser.StateOrdersAdapter)
+	stateSpaceChan := make(chan vehicle_models.StateSpace)
 
 	dataTransfer := data_transfer.New(config.DataTransfer)
 	go dataTransfer.Run()
@@ -129,16 +132,18 @@ func main() {
 	messageTransfer := message_transfer.New(config.Messages)
 	orderTransfer, orderChannel := order_transfer.New()
 
-	packetLogger := packet_logger.NewPacketLogger(podData.Boards, config.PacketLogger)
-	valueLogger := value_logger.NewValueLogger(podData.Boards, config.ValueLogger)
-	orderLogger := order_logger.NewOrderLogger(podData.Boards, config.OrderLogger)
-	protectionLogger := protection_logger.NewMessageLogger(config.Vehicle.Messages.InfoIdKey, config.Vehicle.Messages.FaultIdKey, config.Vehicle.Messages.WarningIdKey, config.ProtectionLogger)
+	// packetLogger := packet_logger.NewPacketLogger(podData.Boards, config.PacketLogger)
+	// valueLogger := value_logger.NewValueLogger(podData.Boards, config.ValueLogger)
+	// orderLogger := order_logger.NewOrderLogger(podData.Boards, config.OrderLogger)
+	// protectionLogger := protection_logger.NewMessageLogger(config.Vehicle.Messages.InfoIdKey, config.Vehicle.Messages.FaultIdKey, config.Vehicle.Messages.WarningIdKey, config.ProtectionLogger)
+	stateSpaceLogger := state_space_logger.NewStateSpaceLogger(info.MessageIds.StateSpace)
 
 	loggers := map[string]logger_handler.Logger{
-		"packets":     &packetLogger,
-		"values":      &valueLogger,
-		"orders":      &orderLogger,
-		"protections": &protectionLogger,
+		// "packets":     &packetLogger,
+		// "values":      &valueLogger,
+		// "orders":      &orderLogger,
+		// "protections": &protectionLogger,
+		"stateSpace": &stateSpaceLogger,
 	}
 
 	loggerHandler := logger_handler.NewLoggerHandler(loggers, config.LoggerHandler)
@@ -156,7 +161,7 @@ func main() {
 	websocketBroker.RegisterHandle(&messageTransfer, "message/update")
 	websocketBroker.RegisterHandle(&orderTransfer, config.Orders.SendTopic, "order/stateOrders")
 
-	go vehicle.Listen(vehicleUpdates, vehicleTransmittedOrders, vehicleProtections, blcuAckChan, stateOrdersChan)
+	go vehicle.Listen(vehicleUpdates, vehicleTransmittedOrders, vehicleProtections, blcuAckChan, stateOrdersChan, stateSpaceChan)
 
 	go startPacketUpdateRoutine(vehicleUpdates, &dataTransfer, &loggerHandler)
 	go startMessagesRoutine(vehicleProtections, &messageTransfer, &loggerHandler)
@@ -176,6 +181,15 @@ func main() {
 	}()
 
 	go func() {
+		for stateSpace := range stateSpaceChan {
+			for _, row := range stateSpace {
+				loggerHandler.Log(state_space_logger.LoggableStateSpaceRow(row))
+			}
+
+		}
+	}()
+
+	go func() {
 		for stateOrders := range stateOrdersChan {
 			switch stateOrders.Action {
 			case message_parser.AddStateOrderKind:
@@ -191,7 +205,7 @@ func main() {
 	})
 
 	endpointData := server.EndpointData{
-		PodData:           podData,
+		PodData:           dataOnlyPodData,
 		OrderData:         vehicleOrders,
 		ProgramableBoards: uploadableBords,
 	}

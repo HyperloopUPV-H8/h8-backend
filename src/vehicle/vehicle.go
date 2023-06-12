@@ -29,6 +29,7 @@ type Vehicle struct {
 	blcuAckId           uint16
 	addStateOrdersId    uint16
 	removeStateOrdersId uint16
+	stateSpaceId        uint16
 
 	packetParser   packet_parser.PacketParser
 	messageParser  message_parser.MessageParser
@@ -43,7 +44,7 @@ type Vehicle struct {
 	trace zerolog.Logger
 }
 
-func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmittedOrderChan chan<- models.PacketUpdate, messageChan chan<- any, blcuAckChan chan<- struct{}, stateOrdersChan chan<- message_parser.StateOrdersAdapter) {
+func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmittedOrderChan chan<- models.PacketUpdate, messageChan chan<- any, blcuAckChan chan<- struct{}, stateOrdersChan chan<- message_parser.StateOrdersAdapter, stateSpaceChan chan<- models.StateSpace) {
 	vehicle.trace.Debug().Msg("vehicle listening")
 	for packet := range vehicle.dataChan {
 		payloadCopy := make([]byte, len(packet.Payload))
@@ -99,7 +100,9 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmitte
 			}
 
 			messageChan <- message
-
+		case id == vehicle.stateSpaceId:
+			stateSpace := models.NewStateSpace(packet.Payload)
+			stateSpaceChan <- stateSpace
 		default:
 			vehicle.trace.Error().Uint16("id", packet.Metadata.ID).Msg("raw id not recognized")
 		}

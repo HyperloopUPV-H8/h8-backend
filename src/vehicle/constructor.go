@@ -67,6 +67,7 @@ func New(args VehicleConstructorArgs) Vehicle {
 		blcuAckId:           args.Info.MessageIds.BlcuAck,
 		addStateOrdersId:    args.Info.MessageIds.AddStateOrder,
 		removeStateOrdersId: args.Info.MessageIds.RemoveStateOrder,
+		stateSpaceId:        args.Info.MessageIds.StateSpace,
 
 		packetParser:   packetParser,
 		messageParser:  protection_parser.NewMessageParser(args.Info),
