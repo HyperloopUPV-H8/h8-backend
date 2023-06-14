@@ -2,7 +2,6 @@ package models
 
 import (
 	"errors"
-	"strings"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/pod_data"
@@ -74,7 +73,7 @@ func NewVehicleOrders(boards []pod_data.Board, blcuName string) (VehicleOrders, 
 			}
 
 			desc := OrderDescription{
-				ID:     packet.Id,
+				Id:     packet.Id,
 				Name:   packet.Name,
 				Fields: fields,
 			}
@@ -107,6 +106,7 @@ func getField(m pod_data.Measurement) (any, error) {
 	case pod_data.NumericMeasurement:
 		return NumericDescription{
 			fieldDescription: fieldDescription{
+				Id:   typedMeas.Id,
 				Kind: NumericKind,
 				Name: typedMeas.Name,
 			},
@@ -117,6 +117,7 @@ func getField(m pod_data.Measurement) (any, error) {
 	case pod_data.BooleanMeasurement:
 		return BooleanDescription{
 			fieldDescription: fieldDescription{
+				Id:   typedMeas.Id,
 				Kind: BooleanKind,
 				Name: typedMeas.Name,
 			},
@@ -124,6 +125,7 @@ func getField(m pod_data.Measurement) (any, error) {
 	case pod_data.EnumMeasurement:
 		return EnumDescription{
 			fieldDescription: fieldDescription{
+				Id:   typedMeas.Id,
 				Kind: EnumKind,
 				Name: typedMeas.Name,
 			},
@@ -134,22 +136,15 @@ func getField(m pod_data.Measurement) (any, error) {
 	}
 }
 
-func getEnumMembers(enumExp string) []string {
-	trimmedEnumExp := strings.Replace(enumExp, " ", "", -1)
-	firstParenthesisIndex := strings.Index(trimmedEnumExp, "(")
-	lastParenthesisIndex := strings.LastIndex(trimmedEnumExp, ")")
-
-	return strings.Split(trimmedEnumExp[firstParenthesisIndex+1:lastParenthesisIndex], ",")
-}
-
 type OrderDescription struct {
-	ID     uint16         `json:"id"`
+	Id     uint16         `json:"id"`
 	Name   string         `json:"name"`
 	Fields map[string]any `json:"fields"`
 }
 
 type fieldDescription struct {
 	Kind string `json:"kind"`
+	Id   string `json:"id"`
 	Name string `json:"name"`
 }
 

@@ -8,7 +8,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/excel/utils"
 )
 
-const EnumType = "Enum"
+const EnumType = "enum"
 
 func getMeasurements(adeMeasurements []ade.Measurement, globalUnits map[string]utils.Operations) ([]Measurement, error) {
 	measurements := make([]Measurement, 0)
