@@ -2,6 +2,7 @@ package pipe
 
 import (
 	"net"
+	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/info"
@@ -19,15 +20,15 @@ func contains(boards []string, board string) bool {
 	return false
 }
 
-func CreatePipes(info info.Info, boards []string, dataChan chan<- packet.Packet, onConnectionChange func(string, bool), config Config, readers map[uint16]common.ReaderFrom, trace zerolog.Logger) map[string]*Pipe {
+func CreatePipes(info info.Info, keepaliveInterval, writeTimeout *time.Duration, boards []string, dataChan chan<- packet.Packet, onConnectionChange func(string, bool), config Config, readers map[uint16]common.ReaderFrom, trace zerolog.Logger) map[string]*Pipe {
 	laddr := net.TCPAddr{
 		IP:   info.Addresses.Backend,
 		Port: int(info.Ports.TcpClient),
 	}
-
+	i := uint64(0)
 	pipes := make(map[string]*Pipe)
-
 	for board, ip := range info.Addresses.Boards {
+		ip := ip
 		if boards != nil && !contains(boards, board) {
 			continue
 		}
@@ -36,21 +37,23 @@ func CreatePipes(info info.Info, boards []string, dataChan chan<- packet.Packet,
 			IP:   ip,
 			Port: int(info.Ports.TcpServer),
 		}
-		pipe, err := newPipe(laddr, raddr, config.Mtu, dataChan, readers, getOnConnectionChange(board, onConnectionChange))
+
+		pipe, err := newPipe(laddr, raddr, keepaliveInterval, writeTimeout, config.Mtu, dataChan, readers, getOnConnectionChange(board, onConnectionChange))
+
 		if err != nil {
 			//TODO: how to handle this error
 			trace.Fatal().Stack().Err(err).Msg("error creating pipe")
 		}
 
 		pipes[board] = pipe
-
+		i++
 	}
 
 	return pipes
 }
 
-func newPipe(laddr net.TCPAddr, raddr net.TCPAddr, mtu uint, outputChan chan<- packet.Packet, readers map[uint16]common.ReaderFrom, onConnectionChange func(bool)) (*Pipe, error) {
-	trace.Info().Str("laddr", laddr.String()).Str("raddr", raddr.String()).Msg("new pipe")
+func newPipe(laddr net.TCPAddr, raddr net.TCPAddr, keepaliveInterval, writeTimeout *time.Duration, mtu uint, outputChan chan<- packet.Packet, readers map[uint16]common.ReaderFrom, onConnectionChange func(bool)) (*Pipe, error) {
+	trace.Info().Any("laddr", laddr).Any("raddr", raddr).Msg("new pipe")
 
 	pipe := &Pipe{
 		laddr:  &laddr,
@@ -63,6 +66,9 @@ func newPipe(laddr net.TCPAddr, raddr net.TCPAddr, mtu uint, outputChan chan<- p
 		mtu:      int(mtu),
 
 		onConnectionChange: onConnectionChange,
+
+		keepaliveInterval: keepaliveInterval,
+		writeTiemout:      writeTimeout,
 
 		trace: trace.With().Str("component", "pipe").IPAddr("addr", raddr.IP).Logger(),
 	}

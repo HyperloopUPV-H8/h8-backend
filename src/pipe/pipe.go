@@ -27,6 +27,9 @@ type Pipe struct {
 	output             chan<- packet.Packet
 	onConnectionChange func(bool)
 
+	keepaliveInterval *time.Duration
+	writeTiemout      *time.Duration
+
 	trace zerolog.Logger
 }
 
@@ -34,11 +37,19 @@ func (pipe *Pipe) connect() {
 	pipe.trace.Debug().Msg("connecting")
 	dialer := net.Dialer{
 		LocalAddr: pipe.laddr,
-		KeepAlive: time.Second * 3,
 	}
+
+	if pipe.keepaliveInterval != nil {
+		dialer.KeepAlive = *pipe.keepaliveInterval
+	}
+
 	for pipe.isClosed {
 		pipe.trace.Trace().Msg("dial")
-		dialer.Deadline = time.Now().Add(time.Millisecond * 2500)
+
+		if pipe.writeTiemout != nil {
+			dialer.Deadline = time.Now().Add(*pipe.writeTiemout)
+		}
+
 		if conn, err := dialer.Dial("tcp", pipe.raddr.String()); err == nil {
 			pipe.open(conn.(*net.TCPConn))
 		} else {
@@ -119,7 +130,9 @@ func (pipe *Pipe) Write(data []byte) (int, error) {
 	}
 
 	pipe.trace.Trace().Msg("write")
-	pipe.conn.SetWriteDeadline(time.Now().Add(time.Millisecond * 2500))
+	if pipe.writeTiemout != nil {
+		pipe.conn.SetWriteDeadline(time.Now().Add(*pipe.writeTiemout))
+	}
 	return pipe.conn.Write(data)
 }
 

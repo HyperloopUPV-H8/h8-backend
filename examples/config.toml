@@ -17,10 +17,10 @@ boards = ["VCU"]
 tcp_client_tag = "TCP_CLIENT"
 tcp_server_tag = "TCP_SERVER"
 udp_tag = "UDP"
-# sniffer = { mtu = 1500, interface = "lo" }
 mtu = 1500
 interface = "lo"
-# blcu_ack_id = "blcu_ack"
+keepalive = "1s"
+timeout = "1s"
 
 [vehicle.messages]
 info_id_key = "info"
@@ -33,7 +33,6 @@ remove_state_orders_id_key = "remove_state_orders"
 
 [excel.download]
 id = "1BEwASubu0el9oQA6PSwVKaNU-Q6gbJ40JR6kgqguKYE"
-# id = "1l3YbwL2fPzehZc1kO0KySp84IzepfwzqT7XUWVQjk3Q"
 name = "ade.xlsx"
 path = "."
 
