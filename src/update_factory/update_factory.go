@@ -159,9 +159,11 @@ func replaceInvalidNumber(num float64) float64 {
 
 func replaceInf(sign int) float64 {
 	if sign >= 1 {
-		return math.MaxFloat64
+		// return math.MaxFloat64
+		return 0
 	} else {
-		return -math.MaxFloat64
+		// return -math.MaxFloat64
+		return 0
 	}
 }
 
