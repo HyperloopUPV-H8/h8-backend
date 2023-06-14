@@ -59,7 +59,7 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmitte
 			continue
 		}
 
-		if packet.Metadata.ID == 1 {
+		if packet.Metadata.ID == 2 {
 			vehicle.propagateFault(packet.Metadata.From, packet.Payload)
 		}
 
