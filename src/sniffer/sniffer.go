@@ -23,6 +23,7 @@ const SNAPLEN = 1500
 type Sniffer struct {
 	source *pcap.Handle
 	filter string
+	config Config
 	trace  zerolog.Logger
 }
 
@@ -40,8 +41,8 @@ func CreateSniffer(info info.Info, config Config, trace zerolog.Logger) Sniffer 
 
 func newSniffer(filter string, config Config) (*Sniffer, error) {
 	trace.Info().Msg("new sniffer")
+	source, err := newSource(config, filter)
 
-	source, err := obtainSource(config.Interface, filter, config.Mtu)
 	if err != nil {
 		trace.Error().Stack().Err(err).Msg("")
 		return nil, err
@@ -50,8 +51,19 @@ func newSniffer(filter string, config Config) (*Sniffer, error) {
 	return &Sniffer{
 		source: source,
 		filter: filter,
+		config: config,
 		trace:  trace.With().Str("component", "sniffer").Str("dev", config.Interface).Logger(),
 	}, nil
+}
+
+func newSource(config Config, filter string) (*pcap.Handle, error) {
+	source, err := obtainSource(config.Interface, filter, config.Mtu)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return source, nil
 }
 
 func getFilter(addrs []net.IP, udpPort uint16, tcpClientPort uint16, tcpServerPort uint16) string {
@@ -114,9 +126,20 @@ func obtainSource(dev string, filter string, mtu uint) (*pcap.Handle, error) {
 }
 
 func (sniffer *Sniffer) Listen(output chan<- packet.Packet) {
-	sniffer.trace.Info().Msg("start listening")
+	go sniffer.startReadLoop(output)
+}
 
-	go sniffer.read(output)
+func (sniffer *Sniffer) startReadLoop(output chan<- packet.Packet) {
+	for {
+		source, err := newSource(sniffer.config, sniffer.filter)
+		if err != nil {
+			continue
+		}
+		sniffer.source = source
+
+		sniffer.trace.Info().Msg("start listening")
+		sniffer.read(output)
+	}
 
 }
 
