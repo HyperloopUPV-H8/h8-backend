@@ -127,7 +127,7 @@ func (pipe *Pipe) SendFault(from string, payload []byte) {
 		return
 	}
 
-	pipe.Write(append([]byte{0x01, 0x00}, payload...))
+	pipe.Write(append([]byte{0x02, 0x00}, payload...))
 }
 
 func (pipe *Pipe) Write(data []byte) (int, error) {

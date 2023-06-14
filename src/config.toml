@@ -11,7 +11,7 @@ connections = "/backend"
 file_server = "/"
 
 [vehicle]
-boards = ["VCU"]
+boards = ["VCU", "PCU", "LCU_MASTER"]
 
 [vehicle.network]
 tcp_client_tag = "TCP_CLIENT"
@@ -34,7 +34,7 @@ add_state_orders_id_key = "add_state_orders"
 remove_state_orders_id_key = "remove_state_orders"
 
 [excel.download]
-id = "1-0DZRm9QxKRDO-g5B9gcOeQ0qtVdckgvINKCnKpJB2Q"
+id = "1XE9V2PI0hwSdAC8P6MePnSLyzADqsdWCOlx_kct7dps"
 #id = "1l3YbwL2fPzehZc1kO0KySp84IzepfwzqT7XUWVQjk3Q"
 name = "ade.xlsx"
 path = "."

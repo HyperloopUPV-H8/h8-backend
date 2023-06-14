@@ -21,11 +21,7 @@ func contains(boards []string, board string) bool {
 }
 
 func CreatePipes(info info.Info, keepaliveInterval, writeTimeout *time.Duration, boards []string, dataChan chan<- packet.Packet, onConnectionChange func(string, bool), config Config, readers map[uint16]common.ReaderFrom, trace zerolog.Logger) map[string]*Pipe {
-	laddr := net.TCPAddr{
-		IP:   info.Addresses.Backend,
-		Port: int(info.Ports.TcpClient),
-	}
-	i := uint64(0)
+	i := 0
 	pipes := make(map[string]*Pipe)
 	for board, ip := range info.Addresses.Boards {
 		ip := ip
@@ -36,6 +32,11 @@ func CreatePipes(info info.Info, keepaliveInterval, writeTimeout *time.Duration,
 		raddr := net.TCPAddr{
 			IP:   ip,
 			Port: int(info.Ports.TcpServer),
+		}
+
+		laddr := net.TCPAddr{
+			IP:   info.Addresses.Backend,
+			Port: int(info.Ports.TcpClient) + i,
 		}
 
 		pipe, err := newPipe(laddr, raddr, keepaliveInterval, writeTimeout, config.Mtu, dataChan, readers, getOnConnectionChange(board, onConnectionChange))
