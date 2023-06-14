@@ -15,22 +15,14 @@ func getMeasurements(adeMeasurements []ade.Measurement, globalUnits map[string]u
 	mErrors := common.NewErrorList()
 
 	for _, adeMeas := range adeMeasurements {
-		if isNumeric(adeMeas.Type) {
-			m, err := getNumericMeasurement(adeMeas, globalUnits)
+		meas, err := getMeasurement(adeMeas, globalUnits)
 
-			if err != nil {
-				mErrors.Add(err)
-				continue
-			}
-
-			measurements = append(measurements, m)
-		} else if adeMeas.Type == "bool" {
-			m := getBooleanMeasurement(adeMeas)
-			measurements = append(measurements, m)
-		} else {
-			m := getEnumMeasurement(adeMeas)
-			measurements = append(measurements, m)
+		if err != nil {
+			mErrors.Add(err)
+			continue
 		}
+
+		measurements = append(measurements, meas)
 	}
 
 	if len(mErrors) > 0 {
@@ -38,6 +30,21 @@ func getMeasurements(adeMeasurements []ade.Measurement, globalUnits map[string]u
 	}
 
 	return measurements, nil
+}
+
+func getMeasurement(adeMeas ade.Measurement, globalUnits map[string]utils.Operations) (Measurement, error) {
+	if isNumeric(adeMeas.Type) {
+		m, err := getNumericMeasurement(adeMeas, globalUnits)
+
+		if err != nil {
+			return nil, err
+		}
+		return m, nil
+	} else if adeMeas.Type == "bool" {
+		return getBooleanMeasurement(adeMeas), nil
+	} else {
+		return getEnumMeasurement(adeMeas), nil
+	}
 }
 
 func getNumericMeasurement(adeMeas ade.Measurement, globalUnits map[string]utils.Operations) (NumericMeasurement, error) {

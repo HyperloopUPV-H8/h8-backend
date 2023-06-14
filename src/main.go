@@ -79,11 +79,12 @@ func main() {
 	}
 
 	podData, err := pod_data.NewPodData(ade.Boards, info.Units)
-	dataOnlyPodData := pod_data.GetDataOnlyPodData(podData)
 
 	if err != nil {
 		trace.Fatal().Err(err).Msg("creating podData")
 	}
+
+	dataOnlyPodData := pod_data.GetDataOnlyPodData(podData)
 
 	dev, err := selectDev()
 	if err != nil {

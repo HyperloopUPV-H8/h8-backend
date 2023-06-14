@@ -8,7 +8,7 @@ import (
 
 func ParseRange(literal string) ([]*float64, error) {
 	if literal == "" {
-		return nil, errors.New("literal is empty")
+		return []*float64{nil, nil}, nil
 	}
 
 	strRange := strings.Split(strings.TrimSuffix(strings.TrimPrefix(strings.Replace(literal, " ", "", -1), "["), "]"), ",")
