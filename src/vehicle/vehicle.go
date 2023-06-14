@@ -50,7 +50,7 @@ func (vehicle *Vehicle) propagateFault(source string, payload []byte) {
 	}
 }
 
-func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmittedOrderChan chan<- models.PacketUpdate, messageChan chan<- any, blcuAckChan chan<- struct{}, stateOrdersChan chan<- message_parser.StateOrdersAdapter) {
+func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmittedOrderChan chan<- models.PacketUpdate, messageChan chan<- any, blcuAckChan chan<- struct{}, stateOrdersChan chan<- message_parser.StateOrdersAdapter, stateSpaceChan chan<- models.StateSpace) {
 	vehicle.trace.Debug().Msg("vehicle listening")
 	for packet := range vehicle.dataChan {
 		payloadCopy := make([]byte, len(packet.Payload))
@@ -85,6 +85,10 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmitte
 			}
 
 			transmittedOrderChan <- update
+
+		case id == vehicle.stateSpaceId:
+			stateSpace := models.NewStateSpace(packet.Payload)
+			stateSpaceChan <- stateSpace
 
 		case vehicle.messageIds.Has(id):
 			if id == vehicle.blcuAckId {
