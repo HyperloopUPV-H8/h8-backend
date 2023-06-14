@@ -156,11 +156,3 @@ func (pipe *Pipe) Laddr() string {
 func (pipe *Pipe) Raddr() string {
 	return pipe.raddr.String()
 }
-
-func (pipe *Pipe) SendFault(from string, payload []byte) {
-	if from == pipe.raddr.String() {
-		return
-	}
-
-	pipe.Write(append([]byte{0x01, 0x00}, payload...))
-}
