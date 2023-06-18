@@ -8,6 +8,7 @@ import (
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common/observable"
 	"github.com/HyperloopUPV-H8/Backend-H8/update_factory/models"
+	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
@@ -55,7 +56,13 @@ func (dataTransfer *DataTransfer) UpdateMessage(topic string, payload json.RawMe
 
 	observable.HandleSubscribe[map[uint16]models.Update](&dataTransfer.updateObservable, source, payload,
 		func(v map[uint16]models.Update, id string) error {
-			return dataTransfer.sendMessage(UpdateTopic, v, id)
+			err := dataTransfer.sendMessage(UpdateTopic, v, id)
+
+			if websocket.IsCloseError(err) {
+				return err
+			}
+
+			return nil
 		})
 }
 

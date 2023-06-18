@@ -133,18 +133,18 @@ func main() {
 	messageTransfer := message_transfer.New(config.Messages)
 	orderTransfer, orderChannel := order_transfer.New()
 
-	// packetLogger := packet_logger.NewPacketLogger(podData.Boards, config.PacketLogger)
-	// valueLogger := value_logger.NewValueLogger(podData.Boards, config.ValueLogger)
-	// orderLogger := order_logger.NewOrderLogger(podData.Boards, config.OrderLogger)
-	// protectionLogger := protection_logger.NewMessageLogger(config.Vehicle.Messages.InfoIdKey, config.Vehicle.Messages.FaultIdKey, config.Vehicle.Messages.WarningIdKey, config.ProtectionLogger)
+	packetLogger := packet_logger.NewPacketLogger(podData.Boards, config.PacketLogger)
+	valueLogger := value_logger.NewValueLogger(podData.Boards, config.ValueLogger)
+	orderLogger := order_logger.NewOrderLogger(podData.Boards, config.OrderLogger)
+	protectionLogger := protection_logger.NewMessageLogger(config.Vehicle.Messages.InfoIdKey, config.Vehicle.Messages.FaultIdKey, config.Vehicle.Messages.WarningIdKey, config.ProtectionLogger)
 	stateSpaceLogger := state_space_logger.NewStateSpaceLogger(info.MessageIds.StateSpace)
 
 	loggers := map[string]logger_handler.Logger{
-		// "packets":     &packetLogger,
-		// "values":      &valueLogger,
-		// "orders":      &orderLogger,
-		// "protections": &protectionLogger,
-		"stateSpace": &stateSpaceLogger,
+		"packets":     &packetLogger,
+		"values":      &valueLogger,
+		"orders":      &orderLogger,
+		"protections": &protectionLogger,
+		"stateSpace":  &stateSpaceLogger,
 	}
 
 	loggerHandler := logger_handler.NewLoggerHandler(loggers, config.LoggerHandler)
@@ -175,11 +175,13 @@ func main() {
 		}
 	}()
 
-	go func() {
-		for range blcuAckChan {
-			// blcu.NotifyAck()
-		}
-	}()
+	if useBlcu {
+		go func() {
+			for range blcuAckChan {
+				blcu.NotifyAck()
+			}
+		}()
+	}
 
 	go func() {
 		for stateSpace := range stateSpaceChan {
