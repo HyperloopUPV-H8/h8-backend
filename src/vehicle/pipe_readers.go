@@ -47,7 +47,7 @@ func NewStateOrderReaderFrom() StateOrderReaderFrom {
 	return StateOrderReaderFrom{}
 }
 
-const BoardIdSizeLen = 3
+const BoardIdSizeLen = 1
 
 type StateOrderReaderFrom struct{}
 
