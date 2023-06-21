@@ -44,6 +44,12 @@ type Vehicle struct {
 	trace zerolog.Logger
 }
 
+func (vehicle *Vehicle) propagateFault(source string, payload []byte) {
+	for _, pipe := range vehicle.pipes {
+		pipe.SendFault(source, payload)
+	}
+}
+
 func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmittedOrderChan chan<- models.PacketUpdate, messageChan chan<- any, blcuAckChan chan<- struct{}, stateOrdersChan chan<- message_parser.StateOrdersAdapter, stateSpaceChan chan<- models.StateSpace) {
 	vehicle.trace.Debug().Msg("vehicle listening")
 	for packet := range vehicle.dataChan {
@@ -52,6 +58,10 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmitte
 
 		if packet.Metadata.ID == 0 {
 			continue
+		}
+
+		if packet.Metadata.ID == 2 {
+			vehicle.propagateFault(packet.Metadata.From, packet.Payload)
 		}
 
 		//TODO: add order decoding

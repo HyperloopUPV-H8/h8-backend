@@ -61,7 +61,7 @@ func (rf StateOrderReaderFrom) ReadFrom(r io.Reader) ([]byte, error) {
 
 	orderNum := idBoardIdAndSize[0]
 
-	payload := make([]byte, BoardIdSizeLen+2+(orderNum*2))
+	payload := make([]byte, BoardIdSizeLen+(orderNum*2))
 	n, err := reader.Read(payload)
 
 	if err != nil {
