@@ -1,14 +1,13 @@
 package data_transfer
 
 import (
-	"encoding/json"
-	"errors"
 	"sync"
 	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common/observable"
 	"github.com/HyperloopUPV-H8/Backend-H8/update_factory/models"
-	"github.com/gorilla/websocket"
+	wsModels "github.com/HyperloopUPV-H8/Backend-H8/ws_handle/models"
+
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
@@ -24,7 +23,6 @@ type DataTransfer struct {
 	updateObservable observable.ReplayObservable[map[uint16]models.Update]
 	ticker           *time.Ticker
 	updateTopic      string
-	sendMessage      func(topic string, payload any, target ...string) error
 	trace            zerolog.Logger
 }
 type DataTransferTopics struct {
@@ -44,31 +42,16 @@ func New(config DataTransferConfig) DataTransfer {
 		updateObservable: observable.NewReplayObservable(make(map[uint16]models.Update)),
 		ticker:           time.NewTicker(time.Second / time.Duration(config.Fps)),
 		updateTopic:      config.Topics.Update,
-		sendMessage:      defaultSendMessage,
 		trace:            trace.With().Str("component", DataTransferHandlerName).Logger(),
 	}
 
 	return dataTransfer
 }
 
-func (dataTransfer *DataTransfer) UpdateMessage(topic string, payload json.RawMessage, source string) {
-	dataTransfer.trace.Info().Str("source", source).Str("topic", topic).Msg("got message")
+func (dataTransfer *DataTransfer) UpdateMessage(client wsModels.Client, msg wsModels.Message) {
+	dataTransfer.trace.Info().Str("source", client.Id()).Str("topic", msg.Topic).Msg("got message")
 
-	observable.HandleSubscribe[map[uint16]models.Update](&dataTransfer.updateObservable, source, payload,
-		func(v map[uint16]models.Update, id string) error {
-			err := dataTransfer.sendMessage(UpdateTopic, v, id)
-
-			if websocket.IsCloseError(err) {
-				return err
-			}
-
-			return nil
-		})
-}
-
-func (dataTransfer *DataTransfer) SetSendMessage(sendMessage func(topic string, payload any, target ...string) error) {
-	dataTransfer.trace.Debug().Msg("set send message")
-	dataTransfer.sendMessage = sendMessage
+	observable.HandleSubscribe[map[uint16]models.Update](&dataTransfer.updateObservable, msg, client)
 }
 
 func (DataTransfer *DataTransfer) HandlerName() string {
@@ -105,8 +88,4 @@ func (dataTransfer *DataTransfer) Update(update models.Update) {
 	defer dataTransfer.bufMx.Unlock()
 	dataTransfer.trace.Trace().Uint16("id", update.Id).Msg("update")
 	dataTransfer.updateBuf[update.Id] = update
-}
-
-func defaultSendMessage(string, any, ...string) error {
-	return errors.New("data transfer must be registered before use")
 }

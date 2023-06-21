@@ -1,30 +1,46 @@
 package observable
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	wsModels "github.com/HyperloopUPV-H8/Backend-H8/ws_handle/models"
+)
 
 type SubscriptionMessage struct {
 	Id        string `json:"id"`
 	Subscribe bool   `json:"subscribe"`
 }
 
-func HandleSubscribe[T any](obs Observable[T], source string, payload []byte, sendMessage func(v T, id string) error) {
+func HandleSubscribe[T any](obs Observable[T], msg wsModels.Message, client wsModels.Client) {
 	var subscription SubscriptionMessage
-	err := json.Unmarshal(payload, &subscription)
+	err := json.Unmarshal(msg.Payload, &subscription)
 
 	if err != nil {
 		return
 	}
 
 	if subscription.Subscribe {
-		addWsObserver(obs, subscription.Id, source, sendMessage)
+		addWsObserver(obs, subscription.Id, msg.Topic, client)
 	} else {
 		obs.Unsubscribe(subscription.Id)
 	}
 }
 
-func addWsObserver[T any](obs Observable[T], id string, connId string, sendMessage func(v T, id string) error) {
-	observer := NewWsObserver(id, connId, func(v T) {
-		err := sendMessage(v, connId)
+func addWsObserver[T any](obs Observable[T], id string, topic string, client wsModels.Client) {
+	observer := NewWsObserver(id, func(v T) {
+		msg, err := wsModels.NewMessage(topic, v)
+
+		if err != nil {
+			return
+		}
+
+		msgBuf, err := json.Marshal(msg)
+
+		if err != nil {
+			return
+		}
+
+		err = client.Write(msgBuf)
 
 		if err != nil {
 			obs.Unsubscribe(id)
@@ -35,16 +51,14 @@ func addWsObserver[T any](obs Observable[T], id string, connId string, sendMessa
 }
 
 type WsObserver[T any] struct {
-	id          string
-	connId      string
-	sendMessage func(T)
+	id           string
+	handleUpdate func(v T)
 }
 
-func NewWsObserver[T any](id string, connId string, sendMessage func(T)) WsObserver[T] {
+func NewWsObserver[T any](id string, handleUpdate func(v T)) WsObserver[T] {
 	return WsObserver[T]{
-		id:          id,
-		connId:      connId,
-		sendMessage: sendMessage,
+		id:           id,
+		handleUpdate: handleUpdate,
 	}
 }
 
@@ -53,5 +67,5 @@ func (o WsObserver[T]) Id() string {
 }
 
 func (o WsObserver[T]) Next(v T) {
-	o.sendMessage(v)
+	o.handleUpdate(v)
 }
