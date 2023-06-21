@@ -10,6 +10,7 @@ import (
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
+	wsModels "github.com/HyperloopUPV-H8/Backend-H8/ws_handle/models"
 	"github.com/pin/tftp/v3"
 )
 
@@ -18,7 +19,7 @@ type uploadRequest struct {
 	File  string `json:"file"`
 }
 
-func (blcu *BLCU) upload(payload json.RawMessage) error {
+func (blcu *BLCU) upload(client wsModels.Client, payload json.RawMessage) error {
 	blcu.trace.Debug().Msg("Handling upload")
 
 	var request uploadRequest
@@ -39,7 +40,9 @@ func (blcu *BLCU) upload(payload json.RawMessage) error {
 	}
 
 	reader := bytes.NewReader(decoded)
-	return blcu.WriteTFTP(reader, int(reader.Size()), blcu.notifyUploadProgress)
+	return blcu.WriteTFTP(reader, int(reader.Size()), func(progress float64) {
+		blcu.notifyUploadProgress(client, progress)
+	})
 }
 
 func (blcu *BLCU) requestUpload(board string) error {
@@ -94,18 +97,50 @@ type uploadResponse struct {
 	Failure    bool    `json:"failure"`
 }
 
-func (blcu *BLCU) notifyUploadFailure() {
+func (blcu *BLCU) notifyUploadFailure(client wsModels.Client) {
 	blcu.trace.Warn().Msg("Upload failed")
-	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: 0, Failure: true})
+
+	msgBuf, err := wsModels.NewMessageBuf(blcu.config.Topics.Download, uploadResponse{Percentage: 0, Failure: true})
+
+	if err != nil {
+		return
+	}
+
+	err = client.Write(msgBuf)
+	//TODO: handle error
+	if err != nil {
+		return
+	}
 }
 
-func (blcu *BLCU) notifyUploadSuccess() {
+func (blcu *BLCU) notifyUploadSuccess(client wsModels.Client) {
 	blcu.trace.Info().Msg("Upload success")
-	blcu.sendMessage(blcu.config.Topics.Download, uploadResponse{Percentage: 100, Failure: false})
+
+	msgBuf, err := wsModels.NewMessageBuf(blcu.config.Topics.Download, uploadResponse{Percentage: 100, Failure: false})
+
+	if err != nil {
+		return
+	}
+
+	err = client.Write(msgBuf)
+	//TODO: handle error
+	if err != nil {
+		return
+	}
 }
 
-func (blcu *BLCU) notifyUploadProgress(percentage float64) {
-	blcu.sendMessage(blcu.config.Topics.Upload, uploadResponse{Percentage: percentage, Failure: false})
+func (blcu *BLCU) notifyUploadProgress(client wsModels.Client, percentage float64) {
+	msgBuf, err := wsModels.NewMessageBuf(blcu.config.Topics.Upload, uploadResponse{Percentage: percentage, Failure: false})
+
+	if err != nil {
+		return
+	}
+
+	err = client.Write(msgBuf)
+	//TODO: handle error
+	if err != nil {
+		return
+	}
 }
 
 type Upload struct {

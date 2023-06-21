@@ -1,12 +1,12 @@
 package connection_transfer
 
 import (
-	"encoding/json"
-	"errors"
 	"sync"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/common/observable"
+	wsModels "github.com/HyperloopUPV-H8/Backend-H8/ws_handle/models"
+
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
 )
@@ -20,7 +20,6 @@ type ConnectionTransfer struct {
 	writeMx               *sync.Mutex
 	boardStatus           map[string]Connection
 	boardStatusObservable observable.ReplayObservable[[]Connection]
-	sendMessage           func(topic string, payload any, target ...string) error
 	updateTopic           string
 	trace                 zerolog.Logger
 }
@@ -36,23 +35,15 @@ func New(config ConnectionTransferConfig) ConnectionTransfer {
 		writeMx:               &sync.Mutex{},
 		boardStatus:           make(map[string]Connection),
 		boardStatusObservable: observable.NewReplayObservable(make([]Connection, 0)),
-		sendMessage:           defaultSendMessage,
 		updateTopic:           config.UpdateTopic,
 		trace:                 trace.With().Str("component", ConnectionTransferHandlerName).Logger(),
 	}
 }
 
-func (connectionTransfer *ConnectionTransfer) UpdateMessage(topic string, payload json.RawMessage, source string) {
-	connectionTransfer.trace.Trace().Str("source", source).Str("topic", topic).Msg("got message")
+func (connectionTransfer *ConnectionTransfer) UpdateMessage(client wsModels.Client, msg wsModels.Message) {
+	connectionTransfer.trace.Trace().Str("topic", msg.Topic).Str("client", client.Id()).Msg("got message")
 
-	observable.HandleSubscribe[[]Connection](&connectionTransfer.boardStatusObservable, source, payload, func(v []Connection, id string) error {
-		return connectionTransfer.sendMessage(UpdateTopic, v, id)
-	})
-}
-
-func (connectionTransfer *ConnectionTransfer) SetSendMessage(sendMessage func(topic string, payload any, target ...string) error) {
-	connectionTransfer.trace.Debug().Msg("set send message")
-	connectionTransfer.sendMessage = sendMessage
+	observable.HandleSubscribe[[]Connection](&connectionTransfer.boardStatusObservable, msg, client)
 }
 
 func (connectionTransfer *ConnectionTransfer) HandlerName() string {
@@ -71,8 +62,4 @@ func (connectionTransfer *ConnectionTransfer) Update(name string, IsConnected bo
 	}
 
 	connectionTransfer.boardStatusObservable.Next(common.Values(connectionTransfer.boardStatus))
-}
-
-func defaultSendMessage(string, any, ...string) error {
-	return errors.New("connection transfer must be registered before use")
 }

@@ -15,3 +15,20 @@ func NewMessage(topic string, message any) (Message, error) {
 		Payload: messageRaw,
 	}, err
 }
+
+func NewMessageBuf(topic string, v any) ([]byte, error) {
+	msg, err := NewMessage(topic, v)
+
+	if err != nil {
+		return nil, err
+	}
+
+	msgBuf, err := json.Marshal(msg)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return msgBuf, nil
+
+}

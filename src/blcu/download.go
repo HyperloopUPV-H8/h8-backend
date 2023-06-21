@@ -11,6 +11,7 @@ import (
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
+	wsModels "github.com/HyperloopUPV-H8/Backend-H8/ws_handle/models"
 	"github.com/pin/tftp/v3"
 )
 
@@ -18,7 +19,7 @@ type downloadRequest struct {
 	Board string `json:"board"`
 }
 
-func (blcu *BLCU) download(payload json.RawMessage) (string, []byte, error) {
+func (blcu *BLCU) download(client wsModels.Client, payload json.RawMessage) (string, []byte, error) {
 	blcu.trace.Debug().Msg("Handling download")
 	var request downloadRequest
 	if err := json.Unmarshal(payload, &request); err != nil {
@@ -32,7 +33,7 @@ func (blcu *BLCU) download(payload json.RawMessage) (string, []byte, error) {
 	}
 
 	buffer := &bytes.Buffer{}
-	err := blcu.ReadTFTP(buffer, blcu.notifyDownloadProgress)
+	err := blcu.ReadTFTP(buffer, func(percentage float64) { blcu.notifyDownloadProgress(client, percentage) })
 
 	return request.Board, buffer.Bytes(), err
 }
@@ -92,18 +93,53 @@ type downloadResponse struct {
 	File       []byte  `json:"file,omitempty"`
 }
 
-func (blcu *BLCU) notifyDownloadFailure() {
+func (blcu *BLCU) notifyDownloadFailure(client wsModels.Client) {
 	blcu.trace.Warn().Msg("Download failed")
-	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: false, File: nil, Percentage: 0.0})
+
+	msgBuf, err := wsModels.NewMessageBuf(blcu.config.Topics.Download, downloadResponse{IsSuccess: false, File: nil, Percentage: 0.0})
+
+	//TODO: handle errors
+	if err != nil {
+		return
+	}
+
+	err = client.Write(msgBuf)
+
+	if err != nil {
+		return
+	}
 }
 
-func (blcu *BLCU) notifyDownloadSuccess(data []byte) {
+func (blcu *BLCU) notifyDownloadSuccess(client wsModels.Client, data []byte) {
 	blcu.trace.Info().Msg("Download success")
-	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: true, File: data, Percentage: 1.0})
+
+	msgBuf, err := wsModels.NewMessageBuf(blcu.config.Topics.Download, downloadResponse{IsSuccess: true, File: data, Percentage: 1.0})
+
+	//TODO: handle errors
+	if err != nil {
+		return
+	}
+
+	err = client.Write(msgBuf)
+
+	if err != nil {
+		return
+	}
 }
 
-func (blcu *BLCU) notifyDownloadProgress(percentage float64) {
-	blcu.sendMessage(blcu.config.Topics.Download, downloadResponse{IsSuccess: false, File: nil, Percentage: percentage})
+func (blcu *BLCU) notifyDownloadProgress(client wsModels.Client, percentage float64) {
+	msgBuf, err := wsModels.NewMessageBuf(blcu.config.Topics.Download, downloadResponse{IsSuccess: false, File: nil, Percentage: percentage})
+
+	//TODO: handle errors
+	if err != nil {
+		return
+	}
+
+	err = client.Write(msgBuf)
+
+	if err != nil {
+		return
+	}
 }
 
 func (blcu *BLCU) writeDownloadFile(board string, data []byte) error {
