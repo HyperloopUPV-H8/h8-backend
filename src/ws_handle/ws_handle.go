@@ -1,11 +1,11 @@
-package websocket_broker
+package ws_handle
 
 import (
-	"fmt"
+	"encoding/json"
 	"sync"
 	"time"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/websocket_broker/models"
+	"github.com/HyperloopUPV-H8/Backend-H8/ws_handle/models"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
@@ -15,7 +15,7 @@ type WebSocketBroker struct {
 	handlersMx *sync.Mutex
 	handlers   map[string][]models.MessageHandler
 	clientsMx  *sync.Mutex
-	clients    map[string]*websocket.Conn
+	clients    map[string]models.Client
 	trace      zerolog.Logger
 }
 
@@ -25,7 +25,7 @@ func New() WebSocketBroker {
 		handlersMx: &sync.Mutex{},
 		handlers:   make(map[string][]models.MessageHandler),
 		clientsMx:  &sync.Mutex{},
-		clients:    make(map[string]*websocket.Conn),
+		clients:    make(map[string]models.Client),
 		trace:      trace.With().Str("component", "webSocketBroker").Logger(),
 	}
 }
@@ -33,22 +33,33 @@ func New() WebSocketBroker {
 func (broker *WebSocketBroker) Add(conn *websocket.Conn) error {
 	broker.clientsMx.Lock()
 	defer broker.clientsMx.Unlock()
-	id := conn.RemoteAddr().String()
-	broker.clients[id] = conn
-	go broker.readMessages(id, conn)
-	go broker.ping(id, conn)
+	client := models.NewClient(conn)
+	broker.clients[client.Id()] = client
+	go broker.readMessages(client)
+	go broker.ping(client.Id(), conn)
 	return nil
 }
 
-func (broker *WebSocketBroker) readMessages(id string, conn *websocket.Conn) {
-	broker.trace.Debug().Str("id", conn.RemoteAddr().String()).Msg("read messages")
+func (broker *WebSocketBroker) readMessages(client models.Client) {
+	broker.trace.Debug().Str("id", client.Id()).Msg("read messages")
 	for {
-		var msg models.Message
-		if err := conn.ReadJSON(&msg); err != nil {
-			broker.removeClient(id)
+		b, err := client.Read()
+
+		if err != nil {
+			broker.trace.Error().Err(err).Msg("reading message")
+			broker.removeClient(client.Id())
 			return
 		}
-		broker.updateHandlers(id, msg)
+
+		var msg models.Message
+		err = json.Unmarshal(b, &msg)
+
+		if err != nil {
+			broker.trace.Error().Err(err).Msg("unmarshaling message")
+			continue
+		}
+
+		broker.updateHandlers(client, msg)
 	}
 }
 
@@ -65,80 +76,20 @@ func (broker *WebSocketBroker) ping(id string, conn *websocket.Conn) {
 	}
 }
 
-func (broker *WebSocketBroker) updateHandlers(clientId string, msg models.Message) {
+func (broker *WebSocketBroker) updateHandlers(client models.Client, msg models.Message) {
 	broker.handlersMx.Lock()
 	defer broker.handlersMx.Unlock()
 
-	broker.trace.Trace().Str("topic", msg.Topic).Str("clientId", clientId).Msg("update")
+	broker.trace.Trace().Str("topic", msg.Topic).Str("clientId", client.Id()).Msg("update")
 	for _, handler := range broker.handlers[msg.Topic] {
-		handler.UpdateMessage(msg.Topic, msg.Payload, clientId)
+		handler.UpdateMessage(client, msg)
 	}
-}
-
-func (broker *WebSocketBroker) sendMessage(topic string, payload any, targets ...string) error {
-	broker.trace.Trace().Str("topic", topic).Strs("targets", targets).Msg("send message")
-	message, err := models.NewMessage(topic, payload)
-
-	if err != nil {
-		broker.trace.Error().Stack().Err(err).Msg("")
-		return err
-	}
-
-	if len(targets) == 0 {
-		return broker.broadcastMessage(message)
-	}
-
-	return broker.sendToTargets(message, targets)
-}
-
-func (broker *WebSocketBroker) sendToTargets(msg models.Message, targets []string) error {
-	failedTargets := make([]string, 0)
-	broker.clientsMx.Lock()
-	defer broker.clientsMx.Unlock()
-
-	for _, target := range targets {
-		conn, ok := broker.clients[target]
-
-		if !ok {
-			broker.trace.Warn().Str("target", target).Msg("target not found")
-			failedTargets = append(failedTargets, target)
-			continue
-		}
-
-		if err := conn.WriteJSON(msg); err != nil {
-			broker.trace.Error().Stack().Err(err).Msg("")
-			delete(broker.clients, target)
-			failedTargets = append(failedTargets, target)
-		}
-	}
-
-	if len(failedTargets) == 0 {
-		return nil
-	}
-
-	return fmt.Errorf("failed targets: %v", failedTargets)
-}
-
-func (broker *WebSocketBroker) broadcastMessage(message models.Message) error {
-	broker.trace.Trace().Str("topic", message.Topic).Msg("broadcast message")
-	broker.clientsMx.Lock()
-	defer broker.clientsMx.Unlock()
-	var err error
-	for id, conn := range broker.clients {
-		if err = conn.WriteJSON(message); err != nil {
-			delete(broker.clients, id)
-			broker.trace.Error().Stack().Err(err).Msg("")
-		}
-	}
-
-	return err
 }
 
 func (broker *WebSocketBroker) RegisterHandle(handler models.MessageHandler, topics ...string) {
 	broker.handlersMx.Lock()
 	defer broker.handlersMx.Unlock()
 	broker.trace.Debug().Strs("topics", topics).Str("handler", handler.HandlerName()).Msg("register handle")
-	handler.SetSendMessage(broker.sendMessage)
 	for _, topic := range topics {
 		broker.handlers[topic] = append(broker.handlers[topic], handler)
 	}
@@ -162,8 +113,8 @@ func (broker *WebSocketBroker) Close() error {
 	defer broker.clientsMx.Unlock()
 	broker.trace.Info().Msg("close")
 	var err error
-	for id, conn := range broker.clients {
-		if closeErr := conn.Close(); closeErr != nil {
+	for id, client := range broker.clients {
+		if closeErr := client.Close(); closeErr != nil {
 			broker.trace.Error().Stack().Err(closeErr).Msg("")
 			err = closeErr
 			continue

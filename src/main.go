@@ -32,7 +32,7 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle"
 	"github.com/HyperloopUPV-H8/Backend-H8/vehicle/message_parser"
 	vehicle_models "github.com/HyperloopUPV-H8/Backend-H8/vehicle/models"
-	"github.com/HyperloopUPV-H8/Backend-H8/websocket_broker"
+	"github.com/HyperloopUPV-H8/Backend-H8/ws_handle"
 	"github.com/fatih/color"
 	"github.com/google/gopacket/pcap"
 	"github.com/pelletier/go-toml/v2"
@@ -149,7 +149,7 @@ func main() {
 
 	loggerHandler := logger_handler.NewLoggerHandler(loggers, config.LoggerHandler)
 
-	websocketBroker := websocket_broker.New()
+	websocketBroker := ws_handle.New()
 	defer websocketBroker.Close()
 
 	if useBlcu {

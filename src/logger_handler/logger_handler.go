@@ -2,12 +2,13 @@ package logger_handler
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
+
+	wsModels "github.com/HyperloopUPV-H8/Backend-H8/ws_handle/models"
 
 	"github.com/rs/zerolog"
 	trace "github.com/rs/zerolog/log"
@@ -21,10 +22,9 @@ const (
 type LoggerHandler struct {
 	loggers       map[string]Logger
 	loggableChan  chan Loggable
-	currentClient string
+	currentClient *wsModels.Client
 	isRunning     bool
 	isRunningMx   *sync.Mutex
-	sendMessage   func(topic string, payload any, target ...string) error
 	config        Config
 	trace         zerolog.Logger
 }
@@ -38,13 +38,12 @@ func NewLoggerHandler(loggers map[string]Logger, config Config) LoggerHandler {
 	return LoggerHandler{
 		loggers:       loggers,
 		loggableChan:  make(chan Loggable),
-		currentClient: "",
+		currentClient: nil,
 		isRunning:     false,
 		isRunningMx:   &sync.Mutex{},
 
-		sendMessage: defaultSendMessage,
-		config:      config,
-		trace:       trace.With().Str("component", LogHandlerHandlerName).Logger(),
+		config: config,
+		trace:  trace.With().Str("component", LogHandlerHandlerName).Logger(),
 	}
 }
 
@@ -56,26 +55,26 @@ func (handler *LoggerHandler) Log(loggable Loggable) {
 	handler.isRunningMx.Unlock()
 }
 
-func (handler *LoggerHandler) UpdateMessage(topic string, payload json.RawMessage, source string) {
-	handler.trace.Info().Str("topic", topic).Str("source", source).Msg("update message")
-	switch topic {
+func (handler *LoggerHandler) UpdateMessage(client wsModels.Client, msg wsModels.Message) {
+	handler.trace.Info().Str("topic", msg.Topic).Str("client", client.Id()).Msg("update message")
+	switch msg.Topic {
 	case handler.config.Topics.Enable:
 		var enable bool
-		err := json.Unmarshal(payload, &enable)
+		err := json.Unmarshal(msg.Payload, &enable)
 		if err != nil {
 			handler.trace.Error().Stack().Err(err).Msg("unmarshal enable")
 			return
 		}
 
-		handler.handleEnable(enable, source)
+		handler.handleEnable(enable, client)
 	}
 
 }
 
-func (handler *LoggerHandler) handleEnable(enable bool, source string) error {
-	if !handler.verifySession(source) {
-		handler.trace.Warn().Str("source", source).Msg("tried to change running log session")
-		return fmt.Errorf("%s tried to change running log session of %s", source, handler.currentClient)
+func (handler *LoggerHandler) handleEnable(enable bool, client wsModels.Client) error {
+	if !handler.verifySession(client) {
+		handler.trace.Warn().Str("source", client.Id()).Msg("tried to change running log session")
+		return fmt.Errorf("%s tried to change running log session of %s", client.Id(), handler.currentClient.Id())
 	}
 
 	handler.changeState(enable)
@@ -93,16 +92,17 @@ func (handler *LoggerHandler) changeState(enable bool) {
 	}
 }
 
-func (handler *LoggerHandler) verifySession(session string) bool {
-	if handler.currentClient == "" {
-		handler.currentClient = session
+func (handler *LoggerHandler) verifySession(client wsModels.Client) bool {
+	if handler.currentClient == nil {
+		handler.currentClient = &client
 	}
 
-	return handler.currentClient == session
+	//TODO: THIS BOUNDS THE LOGGING TO A PARTICULAR WS CONNECTION
+	return handler.currentClient.Id() == client.Id()
 }
 
 func (handler *LoggerHandler) start() {
-	handler.trace.Info().Str("logger session", handler.currentClient).Msg("Started logging")
+	handler.trace.Info().Str("logger client", handler.currentClient.Id()).Msg("Started logging")
 	handler.loggableChan = make(chan Loggable)
 	currentTime := time.Now()
 	sessionDirName := fmt.Sprintf("%d_%d_%d - %d_%dh", currentTime.Day(), currentTime.Month(), currentTime.Year(), currentTime.Hour(), currentTime.Minute())
@@ -149,45 +149,47 @@ func startBroadcastRoutine(activeLoggers []ActiveLogger, generalInput <-chan Log
 }
 
 func (handler *LoggerHandler) stop() {
-	handler.trace.Info().Str("logger session", handler.currentClient).Msg("Stoped logging")
+	handler.trace.Info().Str("logger session", handler.currentClient.Id()).Msg("Stoped logging")
 	handler.isRunning = false
 	close(handler.loggableChan) // triggers loggers clean-up
 	handler.notifyState()
-	handler.currentClient = ""
+	handler.currentClient = nil
 }
 
-func (handler *LoggerHandler) NotifyDisconnect(session string) {
-	handler.trace.Debug().Str("session", session).Msg("notify disconnect")
-	if handler.verifySession(session) {
+func (handler *LoggerHandler) NotifyDisconnect(client wsModels.Client) {
+	handler.trace.Debug().Str("session", client.Id()).Msg("notify disconnect")
+	if handler.verifySession(client) {
 		handler.isRunningMx.Lock()
 		if handler.isRunning {
 			handler.stop()
 		}
 		handler.isRunningMx.Unlock()
 
-		handler.currentClient = ""
+		handler.currentClient = nil
 	}
 }
 
 func (handler *LoggerHandler) notifyState() error {
+	//TODO: check error handling
+	if handler.currentClient == nil {
+		return nil
+	}
 
-	if err := handler.sendMessage(ResponseTopic, handler.isRunning, handler.currentClient); err != nil {
-		handler.trace.Error().Stack().Err(err).Msg("")
+	msgBuf, err := wsModels.NewMessageBuf(ResponseTopic, handler.isRunning)
+
+	if err != nil {
+		return err
+	}
+
+	err = handler.currentClient.Write(msgBuf)
+
+	if err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (handler *LoggerHandler) SetSendMessage(sendMessage func(topic string, payload any, target ...string) error) {
-	handler.trace.Debug().Msg("set message")
-	handler.sendMessage = sendMessage
-}
-
 func (handler *LoggerHandler) HandlerName() string {
 	return LogHandlerHandlerName
-}
-
-func defaultSendMessage(string, any, ...string) error {
-	return errors.New("logger must be registered before using")
 }

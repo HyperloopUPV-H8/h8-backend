@@ -10,8 +10,20 @@ programable_boards = "/uploadableBoards"
 connections = "/backend"
 file_server = "/"
 
+[server.audience]
+# address = "192.168.0.9:4000"
+address = "127.0.0.2:4000"
+static = "./audience_static"
+
+[server.audience.endpoints]
+pod_data = "/podDataStructure"
+order_data = "/orderStructures"
+programable_boards = "/uploadableBoards"
+connections = "/backend"
+file_server = "/"
+
 [vehicle]
-boards = ["VCU", "PCU", "LCU_MASTER", "OBCCU"]
+boards = ["LCU_MASTER"]
 
 [vehicle.network]
 tcp_client_tag = "TCP_CLIENT"
@@ -34,10 +46,12 @@ add_state_orders_id_key = "add_state_orders"
 remove_state_orders_id_key = "remove_state_orders"
 
 [excel.download]
-id = "1BEwASubu0el9oQA6PSwVKaNU-Q6gbJ40JR6kgqguKYE"
-# id = "1u66hxIVY3NKVVAbXK4lmralhL7Zz_kVIIRn_vTnUi-g"
-# id = "1XE9V2PI0hwSdAC8P6MePnSLyzADqsdWCOlx_kct7dps"
+#id = "1-0DZRm9QxKRDO-g5B9gcOeQ0qtVdckgvINKCnKpJB2Q"
+#id = "1-0DZRm9QxKRDO-g5B9gcOeQ0qtVdckgvINKCnKpJB2Q"
+#id = "1u66hxIVY3NKVVAbXK4lmralhL7Zz_kVIIRn_vTnUi-g"
+#id = "1XE9V2PI0hwSdAC8P6MePnSLyzADqsdWCOlx_kct7dps"
 #id = "1l3YbwL2fPzehZc1kO0KySp84IzepfwzqT7XUWVQjk3Q"
+id="1BEwASubu0el9oQA6PSwVKaNU-Q6gbJ40JR6kgqguKYE"
 name = "ade.xlsx"
 path = "."
 
