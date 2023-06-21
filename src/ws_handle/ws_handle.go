@@ -36,7 +36,7 @@ func (broker *WebSocketBroker) Add(conn *websocket.Conn) error {
 	client := models.NewClient(conn)
 	broker.clients[client.Id()] = client
 	go broker.readMessages(client)
-	go broker.ping(client.Id(), conn)
+	go broker.ping(client)
 	return nil
 }
 
@@ -63,12 +63,12 @@ func (broker *WebSocketBroker) readMessages(client models.Client) {
 	}
 }
 
-func (broker *WebSocketBroker) ping(id string, conn *websocket.Conn) {
+func (broker *WebSocketBroker) ping(client models.Client) {
 	ticker := time.NewTicker(time.Second * 5)
 	for range ticker.C {
 		broker.clientsMx.Lock()
-		if err := conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
-			broker.unsafeRemoveClient(id)
+		if err := client.Ping(); err != nil {
+			broker.unsafeRemoveClient(client.Id())
 			broker.clientsMx.Unlock()
 			return
 		}

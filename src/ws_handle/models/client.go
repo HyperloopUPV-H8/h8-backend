@@ -32,6 +32,12 @@ func (c *Client) Write(b []byte) error {
 	return c.conn.WriteMessage(websocket.TextMessage, b)
 }
 
+func (c *Client) Ping() error {
+	c.writeMx.Lock()
+	defer c.writeMx.Unlock()
+	return c.conn.WriteMessage(websocket.PingMessage, []byte{})
+}
+
 func (c *Client) Close() error {
 	return c.conn.Close()
 }

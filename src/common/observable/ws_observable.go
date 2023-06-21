@@ -28,7 +28,6 @@ func HandleSubscribe[T any](obs Observable[T], msg wsModels.Message, client wsMo
 
 func addWsObserver[T any](obs Observable[T], id string, topic string, client wsModels.Client) {
 	observer := NewWsObserver(id, func(v T) {
-
 		msg, err := wsModels.NewMessage(topic, v)
 
 		if err != nil {
