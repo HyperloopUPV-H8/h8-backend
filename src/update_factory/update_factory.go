@@ -128,8 +128,8 @@ func (factory *UpdateFactory) getCount(id uint16) uint64 {
 	return factory.count[id]
 }
 
-func (factory *UpdateFactory) getFields(id uint16, fields map[string]packet.Value) map[string]models.UpdateValue {
-	updateFields := make(map[string]models.UpdateValue, len(fields))
+func (factory *UpdateFactory) getFields(id uint16, fields map[string]packet.Value) map[string]any {
+	updateFields := make(map[string]any, len(fields))
 
 	for name, value := range fields {
 		switch value := value.(type) {
@@ -139,6 +139,11 @@ func (factory *UpdateFactory) getFields(id uint16, fields map[string]packet.Valu
 			updateFields[name] = models.BooleanValue(value)
 		case packet.Enum:
 			updateFields[name] = models.EnumValue(value)
+		case packet.Array:
+			updateFields[name] = models.ArrayValue(value)
+
+		default:
+			factory.trace.Error().Type("valueType", value).Msg("incorrect type")
 		}
 	}
 

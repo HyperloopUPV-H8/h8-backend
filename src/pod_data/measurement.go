@@ -1,6 +1,8 @@
 package pod_data
 
 import (
+	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
@@ -42,8 +44,12 @@ func getMeasurement(adeMeas ade.Measurement, globalUnits map[string]utils.Operat
 		return m, nil
 	} else if adeMeas.Type == "bool" {
 		return getBooleanMeasurement(adeMeas), nil
-	} else {
+	} else if strings.Contains(adeMeas.Type, "enum") {
 		return getEnumMeasurement(adeMeas), nil
+	} else if strings.Contains(adeMeas.Type, "array") {
+		return getArrayMeasurement(adeMeas)
+	} else {
+		return nil, fmt.Errorf("invalid measurement type %s", adeMeas.Type)
 	}
 }
 
@@ -90,6 +96,7 @@ func getNumericMeasurement(adeMeas ade.Measurement, globalUnits map[string]utils
 	}, nil
 }
 
+// TODO: THIS SHOULD ERROR
 func getEnumMeasurement(adeMeas ade.Measurement) EnumMeasurement {
 	return EnumMeasurement{
 		Id:      adeMeas.Id,
@@ -113,6 +120,58 @@ func getBooleanMeasurement(adeMeas ade.Measurement) BooleanMeasurement {
 		Name: adeMeas.Name,
 		Type: adeMeas.Type,
 	}
+}
+
+var ArrayExp = regexp.MustCompile(`^array<(\w+)>$`)
+
+func getArrayMeasurement(adeMeas ade.Measurement) (ArrayMeasurement, error) {
+	submatches := ArrayExp.FindStringSubmatch(adeMeas.Type)
+
+	if submatches == nil {
+		return ArrayMeasurement{}, fmt.Errorf("invalid array type expression %s", adeMeas.Type)
+	}
+
+	if len(submatches) != 2 {
+		return ArrayMeasurement{}, fmt.Errorf("invalid number of submatches %d", len(submatches))
+	}
+
+	itemType := submatches[1]
+
+	var arr any
+	switch itemType {
+	case "uint8":
+		arr = make([]uint8, 0)
+	case "uint16":
+		arr = make([]uint16, 0)
+	case "uint32":
+		arr = make([]uint32, 0)
+	case "uint64":
+		arr = make([]uint64, 0)
+	case "int8":
+		arr = make([]int8, 0)
+	case "int16":
+		arr = make([]int16, 0)
+	case "int32":
+		arr = make([]int32, 0)
+	case "int64":
+		arr = make([]int64, 0)
+	case "float32":
+		arr = make([]float32, 0)
+	case "float64":
+		arr = make([]float64, 0)
+	case "bool":
+		arr = make([]bool, 0)
+	default:
+		return ArrayMeasurement{}, fmt.Errorf("invalid item type %s", itemType)
+	}
+
+	return ArrayMeasurement{
+		Id:       adeMeas.Id,
+		Name:     adeMeas.Name,
+		Type:     "array",
+		ItemType: itemType,
+		Value:    arr,
+	}, nil
 }
 
 func isNumeric(kind string) bool {

@@ -21,3 +21,11 @@ type Enum string
 func (e Enum) Inner() any {
 	return string(e)
 }
+
+type Array struct {
+	Arr any
+}
+
+func (a Array) Inner() any {
+	return a.Arr
+}

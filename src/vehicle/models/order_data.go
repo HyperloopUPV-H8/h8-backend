@@ -13,6 +13,7 @@ const (
 	NumericKind    = "numeric"
 	BooleanKind    = "boolean"
 	EnumKind       = "enum"
+	ArrayKind      = "array"
 )
 
 type OrderData struct {
@@ -131,6 +132,15 @@ func getField(m pod_data.Measurement) (any, error) {
 			},
 			Options: typedMeas.Options,
 		}, nil
+	case pod_data.ArrayMeasurement:
+		return ArrayDescription{
+			fieldDescription: fieldDescription{
+				Id:   typedMeas.Id,
+				Kind: ArrayKind,
+				Name: typedMeas.Name,
+			},
+			ItemType: typedMeas.ItemType,
+		}, nil
 	default:
 		return struct{}{}, errors.New("unrecognized measurement type")
 	}
@@ -162,4 +172,9 @@ type BooleanDescription struct {
 type EnumDescription struct {
 	fieldDescription
 	Options []string `json:"options"`
+}
+
+type ArrayDescription struct {
+	fieldDescription
+	ItemType string `json:"itemType"`
 }

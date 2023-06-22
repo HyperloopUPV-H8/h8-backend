@@ -15,10 +15,12 @@ func CreatePacketParser(info info.Info, boards []pod_data.Board, trace zerolog.L
 		return PacketParser{}, err
 	}
 
-	return newPacketParser(structures, getEnumDescriptors(info, boards)), nil
+	idToItemType := getIdToItemType(boards)
+
+	return newPacketParser(structures, getEnumDescriptors(info, boards), idToItemType), nil
 }
 
-func newPacketParser(structures map[uint16][]packet.ValueDescriptor, enums map[string][]string) PacketParser {
+func newPacketParser(structures map[uint16][]packet.ValueDescriptor, enums map[string][]string, idToItemType map[string]string) PacketParser {
 	return PacketParser{
 		structures: structures,
 		valueParsers: map[string]parser{
@@ -34,6 +36,7 @@ func newPacketParser(structures map[uint16][]packet.ValueDescriptor, enums map[s
 			"float64": numericParser[float64]{},
 			"bool":    booleanParser{},
 			"enum":    enumParser{descriptors: enums},
+			"array":   arrayParser{idToItemType: idToItemType},
 		},
 	}
 }
@@ -81,4 +84,24 @@ func getEnumDescriptors(info info.Info, boards []pod_data.Board) map[string][]st
 		}
 	}
 	return enums
+}
+
+func getIdToItemType(boards []pod_data.Board) map[string]string {
+	idToItemType := make(map[string]string, 0)
+
+	for _, board := range boards {
+		for _, packet := range board.Packets {
+			for _, meas := range packet.Measurements {
+				arrMeas, ok := meas.(pod_data.ArrayMeasurement)
+
+				if !ok {
+					continue
+				}
+
+				idToItemType[arrMeas.Id] = arrMeas.ItemType
+			}
+		}
+	}
+
+	return idToItemType
 }

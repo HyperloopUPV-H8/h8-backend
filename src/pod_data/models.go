@@ -86,3 +86,23 @@ func (m EnumMeasurement) GetName() string {
 func (m EnumMeasurement) GetType() string {
 	return m.Type
 }
+
+type ArrayMeasurement struct {
+	Id       string `json:"id"`
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	ItemType string `json:"itemType"`
+	Value    any    `json:"value"`
+}
+
+func (m ArrayMeasurement) GetId() string {
+	return m.Id
+}
+
+func (m ArrayMeasurement) GetName() string {
+	return m.Name
+}
+
+func (m ArrayMeasurement) GetType() string {
+	return m.Type
+}
