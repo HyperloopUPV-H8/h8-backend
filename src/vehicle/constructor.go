@@ -21,6 +21,7 @@ const (
 type VehicleConstructorArgs struct {
 	Boards             []pod_data.Board
 	Info               info.Info
+	PodData            pod_data.PodData
 	Config             Config
 	OnConnectionChange func(string, bool)
 }
@@ -70,7 +71,7 @@ func New(args VehicleConstructorArgs) Vehicle {
 		stateSpaceId:        args.Info.MessageIds.StateSpace,
 
 		packetParser:   packetParser,
-		messageParser:  protection_parser.NewMessageParser(args.Info),
+		messageParser:  protection_parser.NewMessageParser(args.Info, args.PodData),
 		bitarrayParser: NewBitarrayParser(names),
 
 		dataChan: dataChan,

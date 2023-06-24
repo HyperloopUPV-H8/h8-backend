@@ -82,3 +82,10 @@ func (orderTransfer *OrderTransfer) handleOrder(topic string, payload json.RawMe
 func (orderTransfer *OrderTransfer) HandlerName() string {
 	return ORDER_TRASNFER_NAME
 }
+
+func (orderTransfer *OrderTransfer) ClearOrders(board string) {
+	orderTransfer.stateOrdersMx.Lock()
+	defer orderTransfer.stateOrdersMx.Unlock()
+	orderTransfer.stateOrders[board] = []uint16{}
+	orderTransfer.stateOrdersObservable.Next(orderTransfer.stateOrders)
+}

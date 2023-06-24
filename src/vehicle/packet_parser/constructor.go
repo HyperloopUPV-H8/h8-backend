@@ -42,7 +42,7 @@ func getStructures(info info.Info, boards []pod_data.Board) (map[uint16][]packet
 	structures := make(map[uint16][]packet.ValueDescriptor)
 	for _, board := range boards {
 		for _, packet := range board.Packets {
-			if packet.Type == "data" || packet.Type == "order" {
+			if packet.Type == "data" || packet.Type == "order" || packet.Type == "stateOrder" {
 				structures[packet.Id] = getDescriptor(packet.Measurements)
 			}
 		}

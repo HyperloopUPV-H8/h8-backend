@@ -65,6 +65,7 @@ func (pipe *Pipe) open(conn *net.TCPConn) {
 	pipe.trace.Debug().Msg("open")
 	pipe.conn = conn
 	pipe.isClosed = false
+	pipe.conn.SetNoDelay(true)
 	pipe.onConnectionChange(!pipe.isClosed)
 }
 

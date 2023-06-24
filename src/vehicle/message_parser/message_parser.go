@@ -17,6 +17,7 @@ type MessageParser struct {
 	errorId            uint16
 	addStateOrderId    uint16
 	removeStateOrderId uint16
+	idToBoardId        map[uint16]uint16
 	boardIdToName      map[uint16]string
 	trace              zerolog.Logger
 }
@@ -50,21 +51,12 @@ func (parser *MessageParser) Parse(id uint16, raw []byte) (any, error) {
 func (parser *MessageParser) toStateOrder(kind string, payload []byte) (models.StateOrdersMessage, error) {
 	reader := bytes.NewReader(payload)
 
-	var boardId uint16
-	err := binary.Read(reader, binary.LittleEndian, &boardId)
-	if err != nil {
-		return models.StateOrdersMessage{}, err
-	}
-
-	if reader.Len() == 0 {
-		return models.StateOrdersMessage{
-			BoardId: parser.boardIdToName[boardId],
-			Orders:  make([]uint16, 0),
-		}, nil
+	if reader.Len() <= 1 {
+		return models.StateOrdersMessage{}, nil
 	}
 
 	var ordersLen uint8
-	err = binary.Read(reader, binary.LittleEndian, &ordersLen)
+	err := binary.Read(reader, binary.LittleEndian, &ordersLen)
 	if err != nil {
 		return models.StateOrdersMessage{}, err
 	}
@@ -75,6 +67,7 @@ func (parser *MessageParser) toStateOrder(kind string, payload []byte) (models.S
 		return models.StateOrdersMessage{}, err
 	}
 
+	boardId := parser.idToBoardId[orders[0]]
 	//TODO: check if board exists
 
 	return models.StateOrdersMessage{

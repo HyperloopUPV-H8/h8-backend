@@ -101,11 +101,19 @@ func main() {
 		trace.Fatal().Err(err).Msg("creating vehicleOrders")
 	}
 
+	orderTransfer, orderChannel := order_transfer.New()
+
 	vehicle := vehicle.New(vehicle.VehicleConstructorArgs{
-		Config:             config.Vehicle,
-		Boards:             podData.Boards,
-		Info:               info,
-		OnConnectionChange: connectionTransfer.Update,
+		PodData: podData,
+		Config:  config.Vehicle,
+		Boards:  podData.Boards,
+		Info:    info,
+		OnConnectionChange: func(board string, isConnected bool) {
+			if !isConnected {
+				orderTransfer.ClearOrders(board)
+			}
+			connectionTransfer.Update(board, isConnected)
+		},
 	})
 
 	var blcu blcuPackage.BLCU
@@ -131,7 +139,6 @@ func main() {
 	go dataTransfer.Run()
 
 	messageTransfer := message_transfer.New(config.Messages)
-	orderTransfer, orderChannel := order_transfer.New()
 
 	packetLogger := packet_logger.NewPacketLogger(podData.Boards, config.PacketLogger)
 	valueLogger := value_logger.NewValueLogger(podData.Boards, config.ValueLogger)
