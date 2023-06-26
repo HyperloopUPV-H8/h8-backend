@@ -59,7 +59,7 @@ func New(args VehicleConstructorArgs) Vehicle {
 		displayConverter: unit_converter.NewUnitConverter("display", args.Boards, args.Info.Units),
 
 		sniffer: sniffer.CreateSniffer(args.Info, snifferConfig, vehicleTrace),
-		pipes:   pipe.CreatePipes(args.Info, args.Config.Network.GetKeepaliveInterval(), args.Config.Network.GetWriteTimeout(), args.Config.Boards, dataChan, args.OnConnectionChange, pipesConfig, pipeReaders, vehicleTrace),
+		pipes:   pipe.CreatePipes(args.Info, args.Config.Network.GetKeepaliveInterval(), args.Config.Network.GetWriteTimeout(), args.Config.Boards, dataChan, args.OnConnectionChange, pipesConfig, newPipeReaders(args.Info.MessageIds), vehicleTrace),
 
 		dataIds:             getBoardIdsFromType(args.Boards, "data", vehicleTrace),
 		orderIds:            getBoardIdsFromType(args.Boards, "order", vehicleTrace),
