@@ -27,6 +27,8 @@ func (blcu *BLCU) download(client wsModels.Client, payload json.RawMessage) (str
 		return "", nil, err
 	}
 
+	blcu.notifyDownloadProgress(client, 0)
+
 	if err := blcu.requestDownload(request.Board); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Request download")
 		return request.Board, nil, err
@@ -89,14 +91,14 @@ func (blcu *BLCU) ReadTFTP(output io.Writer, onProgress func(float64)) error {
 
 type downloadResponse struct {
 	Percentage float64 `json:"percentage"`
-	IsSuccess  bool    `json:"success"`
+	IsFailure  bool    `json:"failure"`
 	File       []byte  `json:"file,omitempty"`
 }
 
 func (blcu *BLCU) notifyDownloadFailure(client wsModels.Client) {
 	blcu.trace.Warn().Msg("Download failed")
 
-	msgBuf, err := wsModels.NewMessageBuf(blcu.config.Topics.Download, downloadResponse{IsSuccess: false, File: nil, Percentage: 0.0})
+	msgBuf, err := wsModels.NewMessageBuf(blcu.config.Topics.Download, downloadResponse{IsFailure: true, File: nil, Percentage: 0.0})
 
 	//TODO: handle errors
 	if err != nil {
@@ -113,7 +115,7 @@ func (blcu *BLCU) notifyDownloadFailure(client wsModels.Client) {
 func (blcu *BLCU) notifyDownloadSuccess(client wsModels.Client, data []byte) {
 	blcu.trace.Info().Msg("Download success")
 
-	msgBuf, err := wsModels.NewMessageBuf(blcu.config.Topics.Download, downloadResponse{IsSuccess: true, File: data, Percentage: 1.0})
+	msgBuf, err := wsModels.NewMessageBuf(blcu.config.Topics.Download, downloadResponse{IsFailure: false, File: data, Percentage: 100})
 
 	//TODO: handle errors
 	if err != nil {
@@ -128,7 +130,7 @@ func (blcu *BLCU) notifyDownloadSuccess(client wsModels.Client, data []byte) {
 }
 
 func (blcu *BLCU) notifyDownloadProgress(client wsModels.Client, percentage float64) {
-	msgBuf, err := wsModels.NewMessageBuf(blcu.config.Topics.Download, downloadResponse{IsSuccess: false, File: nil, Percentage: percentage})
+	msgBuf, err := wsModels.NewMessageBuf(blcu.config.Topics.Download, downloadResponse{IsFailure: false, File: nil, Percentage: percentage})
 
 	//TODO: handle errors
 	if err != nil {
@@ -175,9 +177,9 @@ func NewDownload(writer io.Writer, size int, onProgress func(float64)) Download 
 
 func (download *Download) Write(p []byte) (n int, err error) {
 	n, err = download.writer.Write(p)
-	if err != nil {
+	if err == nil {
 		download.current += n
-		download.onProgress(float64(download.current) / float64(download.total))
+		download.onProgress(float64(download.current) * 100 / float64(download.total))
 	}
 	return n, err
 }

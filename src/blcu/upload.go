@@ -28,6 +28,8 @@ func (blcu *BLCU) upload(client wsModels.Client, payload json.RawMessage) error 
 		return err
 	}
 
+	blcu.notifyUploadProgress(client, 0)
+
 	if err := blcu.requestUpload(request.Board); err != nil {
 		blcu.trace.Error().Err(err).Stack().Msg("Request upload")
 		return err
@@ -94,13 +96,13 @@ func (blcu *BLCU) WriteTFTP(reader io.Reader, size int, onProgress func(float64)
 
 type uploadResponse struct {
 	Percentage float64 `json:"percentage"`
-	Failure    bool    `json:"failure"`
+	IsFailure  bool    `json:"failure"`
 }
 
 func (blcu *BLCU) notifyUploadFailure(client wsModels.Client) {
 	blcu.trace.Warn().Msg("Upload failed")
 
-	msgBuf, err := wsModels.NewMessageBuf(blcu.config.Topics.Download, uploadResponse{Percentage: 0, Failure: true})
+	msgBuf, err := wsModels.NewMessageBuf(blcu.config.Topics.Download, uploadResponse{Percentage: 0, IsFailure: true})
 
 	if err != nil {
 		return
@@ -116,7 +118,7 @@ func (blcu *BLCU) notifyUploadFailure(client wsModels.Client) {
 func (blcu *BLCU) notifyUploadSuccess(client wsModels.Client) {
 	blcu.trace.Info().Msg("Upload success")
 
-	msgBuf, err := wsModels.NewMessageBuf(blcu.config.Topics.Download, uploadResponse{Percentage: 100, Failure: false})
+	msgBuf, err := wsModels.NewMessageBuf(blcu.config.Topics.Download, uploadResponse{Percentage: 100, IsFailure: false})
 
 	if err != nil {
 		return
@@ -130,7 +132,7 @@ func (blcu *BLCU) notifyUploadSuccess(client wsModels.Client) {
 }
 
 func (blcu *BLCU) notifyUploadProgress(client wsModels.Client, percentage float64) {
-	msgBuf, err := wsModels.NewMessageBuf(blcu.config.Topics.Upload, uploadResponse{Percentage: percentage, Failure: false})
+	msgBuf, err := wsModels.NewMessageBuf(blcu.config.Topics.Upload, uploadResponse{Percentage: percentage, IsFailure: false})
 
 	if err != nil {
 		return

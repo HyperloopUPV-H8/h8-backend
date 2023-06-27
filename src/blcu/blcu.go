@@ -22,7 +22,7 @@ type BLCU struct {
 }
 
 func NewBLCU(laddr net.TCPAddr, boardIds map[string]uint16, config BLCUConfig) BLCU {
-	trace.Info().Msg("New BLCU")
+	trace.Info().Str("addr", laddr.String()).Msg("New BLCU")
 
 	return BLCU{
 		addr:       laddr,

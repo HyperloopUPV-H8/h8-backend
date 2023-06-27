@@ -114,7 +114,7 @@ func main() {
 	if useBlcu {
 		blcu = blcuPackage.NewBLCU(net.TCPAddr{
 			IP:   blcuAddr,
-			Port: int(info.Ports.TcpServer),
+			Port: int(info.Ports.TFTP),
 		}, info.BoardIds, config.BLCU)
 
 		blcu.SetSendOrder(vehicle.SendOrder)
