@@ -2,45 +2,60 @@ package vehicle
 
 import (
 	"bufio"
+	"encoding/binary"
 	"fmt"
 	"io"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
+	"github.com/HyperloopUPV-H8/Backend-H8/info"
 )
 
-var pipeReaders map[uint16]common.ReaderFrom = map[uint16]common.ReaderFrom{
-	1: NewDelimReaderFrom(0x00),
-	2: NewDelimReaderFrom(0x00),
-	3: NewDelimReaderFrom(0x00),
-	4: NewDelimReaderFrom(0x00),
-	5: NewStateOrderReaderFrom(),
-	6: NewStateOrderReaderFrom(),
-	7: NewStateSpaceReaderFrom(8, 15, 4),
-}
-
-func NewDelimReaderFrom(delim byte) DelimReaderFrom {
-	return DelimReaderFrom{
-		delim: delim,
+func newPipeReaders(messageIds info.MessageIds) map[uint16]common.ReaderFrom {
+	return map[uint16]common.ReaderFrom{
+		messageIds.Info:             NewProtectionFrom(),
+		messageIds.Warning:          NewProtectionFrom(),
+		messageIds.Fault:            NewProtectionFrom(),
+		messageIds.BlcuAck:          NewEmptyFrom(),
+		messageIds.AddStateOrder:    NewStateOrderReaderFrom(),
+		messageIds.RemoveStateOrder: NewStateOrderReaderFrom(),
+		messageIds.StateSpace:       NewStateSpaceReaderFrom(8, 15, 4),
 	}
 }
 
-type DelimReaderFrom struct {
-	delim byte
+func NewProtectionFrom() ProtectionFrom {
+	return ProtectionFrom{}
 }
 
-func (rf DelimReaderFrom) ReadFrom(r io.Reader) ([]byte, error) {
-	reader := bufio.NewReader(r)
-	buf, err := reader.ReadBytes(rf.delim)
+type ProtectionFrom struct{}
 
+func (rf ProtectionFrom) ReadFrom(r io.Reader) ([]byte, error) {
+	var protectionLen uint16
+	err := binary.Read(r, binary.LittleEndian, &protectionLen)
 	if err != nil {
-		return buf, err
+		return nil, err
 	}
 
-	if len(buf) == 0 {
-		return buf, nil
+	protectionBuf := make([]byte, protectionLen)
+	n, err := r.Read(protectionBuf)
+	if err != nil {
+		return nil, err
 	}
 
-	return buf[:len(buf)-1], nil
+	if n != int(protectionLen) {
+		return nil, io.ErrShortBuffer
+	}
+
+	return protectionBuf, nil
+}
+
+func NewEmptyFrom() EmptyFrom {
+	return EmptyFrom{}
+}
+
+type EmptyFrom struct{}
+
+func (rf EmptyFrom) ReadFrom(r io.Reader) ([]byte, error) {
+	return []byte{}, nil
 }
 
 func NewStateOrderReaderFrom() StateOrderReaderFrom {
