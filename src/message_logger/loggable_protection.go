@@ -17,7 +17,8 @@ func (lp LoggableProtection) Log() []string {
 	time := fmt.Sprintf("%d:%d:%d", lp.Timestamp.Hour, lp.Timestamp.Minute, lp.Timestamp.Second)
 	datetime := fmt.Sprintf("%s %s", date, time)
 	data := getDataString(lp.Protection.Data)
-	return []string{datetime, lp.Kind, lp.Board, lp.Protection.Kind, data}
+
+	return []string{datetime, lp.Kind, lp.Board, lp.Name, lp.Protection.Kind, data}
 }
 
 func getDataString(data any) string {
