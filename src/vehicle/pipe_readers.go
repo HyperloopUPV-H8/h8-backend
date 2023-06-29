@@ -1,7 +1,6 @@
 package vehicle
 
 import (
-	"bufio"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -62,32 +61,39 @@ func NewStateOrderReaderFrom() StateOrderReaderFrom {
 	return StateOrderReaderFrom{}
 }
 
-const BoardIdSizeLen = 1
+const OrderNumByteSize = 1
+const OrderByteSize = 2
 
 type StateOrderReaderFrom struct{}
 
 func (rf StateOrderReaderFrom) ReadFrom(r io.Reader) ([]byte, error) {
-	reader := bufio.NewReader(r)
-	idBoardIdAndSize, err := reader.Peek(BoardIdSizeLen)
+	orderNumBuf := make([]byte, OrderNumByteSize)
+	n, err := r.Read(orderNumBuf)
+
+	if n != len(orderNumBuf) {
+		return nil, fmt.Errorf("expected %d bytes, got %d", len(orderNumBuf), n)
+	}
 
 	if err != nil {
 		return nil, err
 	}
 
-	orderNum := idBoardIdAndSize[0]
+	orderNum := orderNumBuf[0]
 
-	payload := make([]byte, BoardIdSizeLen+(orderNum*2))
-	n, err := reader.Read(payload)
+	orderIds := make([]byte, (orderNum * OrderByteSize))
+	n, err = r.Read(orderIds)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if n != len(payload) {
-		return nil, fmt.Errorf("expected %d bytes, got %d", len(payload), n)
+	if n != len(orderIds) {
+		return nil, fmt.Errorf("expected %d bytes, got %d", len(orderIds), n)
 	}
 
-	return payload, nil
+	result := append([]byte{orderNum}, orderIds...)
+
+	return result, nil
 }
 
 // 8*15 float32

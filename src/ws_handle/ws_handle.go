@@ -136,7 +136,7 @@ func (broker *WebSocketBroker) unsafeRemoveClient(id string) {
 	_, ok := broker.clients[id]
 
 	if !ok {
-		broker.trace.Error().Str("clientId", id).Msg("client to be removed not found")
+		broker.trace.Warn().Str("clientId", id).Msg("client to be removed not found")
 		return
 	}
 

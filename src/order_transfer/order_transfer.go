@@ -42,7 +42,7 @@ func New() (OrderTransfer, <-chan vehicle_models.Order) {
 }
 
 func (orderTransfer *OrderTransfer) UpdateMessage(client wsModels.Client, msg wsModels.Message) {
-	orderTransfer.trace.Warn().Str("client", client.Id()).Str("topic", msg.Topic).Msg("got message")
+	orderTransfer.trace.Info().Str("client", client.Id()).Str("topic", msg.Topic).Msg("got message")
 	switch msg.Topic {
 	case "order/send":
 		orderTransfer.handleOrder(msg.Topic, msg.Payload, client.Id())
