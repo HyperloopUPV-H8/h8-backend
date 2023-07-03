@@ -38,13 +38,12 @@ func (parser *MessageParser) Parse(id uint16, raw []byte) (any, error) {
 	if len(raw) < 2 {
 		return nil, fmt.Errorf("message too short (length %d)", len(raw))
 	}
-	payload := raw[2:]
 
 	if kind == infoKind {
-		return parser.toInfoMessage(kind, payload)
+		return parser.toInfoMessage(kind, raw)
 	}
 
-	return parser.toProtectionMessage(kind, payload)
+	return parser.toProtectionMessage(kind, raw)
 
 }
 
