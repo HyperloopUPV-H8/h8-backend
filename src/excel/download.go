@@ -43,17 +43,13 @@ func Download(config DownloadConfig) (*excelize.File, error) {
 
 	fileBuf, errFile := getFile(client, config.Id, SHEETS_MIME_TYPE)
 	if errFile != nil {
-		trace.Error().Str("id", config.Id).Str("path", config.Path).Str("name", config.Name).Stack().Err(errFile).Msg("")
-		return nil, errors.Wrap(errFile, ErrDownload)
-	}
-
-	errSaving := saveFile(fileBuf, config.Path, config.Name)
-	if errSaving != nil {
-		trace.Error().Str("id", config.Id).Str("path", config.Path).Str("name", config.Name).Stack().Err(errSaving).Msg("")
-	}
-
-	if errSaving != nil {
-		return nil, errors.Wrap(errSaving, ErrSaving)
+		trace.Warn().Str("id", config.Id).Str("path", config.Path).Str("name", config.Name).Stack().Err(errFile).Msg("")
+	} else {
+		errSaving := saveFile(fileBuf, config.Path, config.Name)
+		if errSaving != nil {
+			trace.Error().Str("id", config.Id).Str("path", config.Path).Str("name", config.Name).Stack().Err(errSaving).Msg("")
+			return nil, errSaving
+		}
 	}
 
 	file, errOpening := excelize.OpenFile(filepath.Join(config.Path, config.Name))
