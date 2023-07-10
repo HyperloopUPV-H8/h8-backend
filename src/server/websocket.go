@@ -13,12 +13,13 @@ type ConnectionHandler interface {
 
 func (server *WebServer) serveWebsocket(path string, upgrader *websocket.Upgrader, headers map[string]string) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		trace.Info().Str("server", server.name).Msg("websocket connection")
+		trace.Info().Str("server", server.name).Msg("new websocket connection")
 		for key, value := range headers {
 			w.Header().Set(key, value)
 		}
 
 		if server.config.MaxConnections != nil && server.connected.Load() >= *server.config.MaxConnections {
+			trace.Error().Msg("websocket connection after maxoimum connections reached")
 			http.Error(w, "Max connections reached", http.StatusTooManyRequests)
 			return
 		}
@@ -29,6 +30,7 @@ func (server *WebServer) serveWebsocket(path string, upgrader *websocket.Upgrade
 		}
 
 		conn.SetCloseHandler(func(code int, text string) error {
+			trace.Info().Msg("websocket connection closed")
 			server.connected.Add(-1)
 			return nil
 		})

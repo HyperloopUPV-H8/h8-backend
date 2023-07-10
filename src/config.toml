@@ -22,7 +22,7 @@ connections = "/backend"
 file_server = "/"
 
 [vehicle]
-boards = ["LCU_MASTER"]
+boards = ["LCU_MASTER", "PCU"]
 
 [vehicle.network]
 tcp_client_tag = "TCP_CLIENT"
@@ -32,8 +32,8 @@ udp_tag = "UDP"
 mtu = 1500
 interface = "lo"
 # blcu_ack_id = "blcu_ack"
-keep_alive_interval = "100ms"
-keep_alive_probes = 5
+keep_alive_interval = "1s"
+keep_alive_probes = 3
 timeout = "1s"
 
 [vehicle.messages]
