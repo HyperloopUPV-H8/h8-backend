@@ -19,18 +19,19 @@ type NetworkConfig struct {
 	TcpServerTag      string  `toml:"tcp_server_tag"`
 	UdpTag            string  `toml:"udp_tag"`
 	Mtu               uint    `toml:"mtu"`
+	KeepAliveProbes   int     `toml:"keep_alive_probes"`
 	Interface         string  `toml:"interface"`
-	KeepaliveInterval *string `toml:"keepalive,omitempty"`
+	KeepAliveInterval *string `toml:"keep_alive_interval,omitempty"`
 	WriteTimeout      *string `toml:"timeout,omitempty"`
 }
 
-func (networkConfig NetworkConfig) GetKeepaliveInterval() *time.Duration {
-	if networkConfig.KeepaliveInterval == nil {
+func (networkConfig NetworkConfig) GetKeepAliveInterval() *time.Duration {
+	if networkConfig.KeepAliveInterval == nil {
 		return nil
 	}
-	interval, err := time.ParseDuration(*networkConfig.KeepaliveInterval)
+	interval, err := time.ParseDuration(*networkConfig.KeepAliveInterval)
 	if err != nil {
-		log.Fatal().Stack().Err(err).Str("interval", *networkConfig.KeepaliveInterval).Msg("error parsing keepalive interval")
+		log.Fatal().Stack().Err(err).Str("interval", *networkConfig.KeepAliveInterval).Msg("error parsing keepalive interval")
 	}
 	return &interval
 }

@@ -1,7 +1,9 @@
 package pipe
 
 import (
+	"fmt"
 	"net"
+	"os/exec"
 	"time"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
@@ -21,6 +23,12 @@ func contains(boards []string, board string) bool {
 }
 
 func CreatePipes(info info.Info, keepaliveInterval, writeTimeout *time.Duration, boards []string, dataChan chan<- packet.Packet, onConnectionChange func(string, bool), config Config, readers map[uint16]common.ReaderFrom, trace zerolog.Logger) map[string]*Pipe {
+	err := configKeepAliveProbes(config.KeepAliveProbes)
+
+	if err != nil {
+		trace.Error().Err(err).Msg("configuring keep alive probes")
+	}
+
 	i := 0
 	pipes := make(map[string]*Pipe)
 	for board, ip := range info.Addresses.Boards {
@@ -51,6 +59,11 @@ func CreatePipes(info info.Info, keepaliveInterval, writeTimeout *time.Duration,
 	}
 
 	return pipes
+}
+
+func configKeepAliveProbes(n int) error {
+	flag := fmt.Sprintf("net.ipv4.tcp_keepalive_probes=%d", n)
+	return exec.Command("sysctl", "-w", flag).Run()
 }
 
 func newPipe(laddr net.TCPAddr, raddr net.TCPAddr, keepaliveInterval, writeTimeout *time.Duration, mtu uint, outputChan chan<- packet.Packet, readers map[uint16]common.ReaderFrom, onConnectionChange func(bool)) (*Pipe, error) {

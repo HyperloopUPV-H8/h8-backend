@@ -60,7 +60,7 @@ func New(args VehicleConstructorArgs) Vehicle {
 		displayConverter: unit_converter.NewUnitConverter("display", args.Boards, args.Info.Units),
 
 		sniffer: sniffer.CreateSniffer(args.Info, snifferConfig, vehicleTrace),
-		pipes:   pipe.CreatePipes(args.Info, args.Config.Network.GetKeepaliveInterval(), args.Config.Network.GetWriteTimeout(), args.Config.Boards, dataChan, args.OnConnectionChange, pipesConfig, newPipeReaders(args.Info.MessageIds), vehicleTrace),
+		pipes:   pipe.CreatePipes(args.Info, args.Config.Network.GetKeepAliveInterval(), args.Config.Network.GetWriteTimeout(), args.Config.Boards, dataChan, args.OnConnectionChange, pipesConfig, newPipeReaders(args.Info.MessageIds), vehicleTrace),
 
 		dataIds:             getBoardIdsFromType(args.Boards, "data", vehicleTrace),
 		orderIds:            getBoardIdsFromType(args.Boards, "order", vehicleTrace),
@@ -98,9 +98,10 @@ func getSnifferConfig(config Config) sniffer.Config {
 
 func getPipesConfig(config Config) pipe.Config {
 	return pipe.Config{
-		TcpClientTag: config.Network.TcpClientTag,
-		TcpServerTag: config.Network.TcpServerTag,
-		Mtu:          config.Network.Mtu,
+		TcpClientTag:    config.Network.TcpClientTag,
+		TcpServerTag:    config.Network.TcpServerTag,
+		Mtu:             config.Network.Mtu,
+		KeepAliveProbes: config.Network.KeepAliveProbes,
 	}
 }
 

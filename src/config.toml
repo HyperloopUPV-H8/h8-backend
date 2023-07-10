@@ -11,8 +11,8 @@ connections = "/backend"
 file_server = "/"
 
 [server.audience]
-address = "127.0.0.2:4000"
-static = "./audience_static"
+address = "192.168.0.9:4000"
+static = "./mobile_front"
 
 [server.audience.endpoints]
 pod_data = "/podDataStructure"
@@ -22,7 +22,7 @@ connections = "/backend"
 file_server = "/"
 
 [vehicle]
-boards = ["VCU", "LCU_MASTER", "PCU"]
+boards = ["LCU_MASTER"]
 
 [vehicle.network]
 tcp_client_tag = "TCP_CLIENT"
@@ -32,7 +32,8 @@ udp_tag = "UDP"
 mtu = 1500
 interface = "lo"
 # blcu_ack_id = "blcu_ack"
-keepalive = "1s"
+keep_alive_interval = "100ms"
+keep_alive_probes = 5
 timeout = "1s"
 
 [vehicle.messages]
@@ -45,12 +46,8 @@ add_state_orders_id_key = "add_state_orders"
 remove_state_orders_id_key = "remove_state_orders"
 
 [excel.download]
-#id = "1-0DZRm9QxKRDO-g5B9gcOeQ0qtVdckgvINKCnKpJB2Q"
-#id = "1-0DZRm9QxKRDO-g5B9gcOeQ0qtVdckgvINKCnKpJB2Q"
-#id = "1u66hxIVY3NKVVAbXK4lmralhL7Zz_kVIIRn_vTnUi-g"
-id = "1BEwASubu0el9oQA6PSwVKaNU-Q6gbJ40JR6kgqguKYE"
-#id = "1l3YbwL2fPzehZc1kO0KySp84IzepfwzqT7XUWVQjk3Q"
-#id = "1W9jeKEo_AY1yQsj-Np-cRRj1P-_zY-VAmHeO_UYLJMs"
+id = "1XE9V2PI0hwSdAC8P6MePnSLyzADqsdWCOlx_kct7dps"
+#id = "1BEwASubu0el9oQA6PSwVKaNU-Q6gbJ40JR6kgqguKYE"
 name = "ade.xlsx"
 path = "."
 
