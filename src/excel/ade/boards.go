@@ -1,14 +1,13 @@
 package ade
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	doc "github.com/HyperloopUPV-H8/Backend-H8/excel/document"
 )
-
-const BoardPrefix = "BOARD "
 
 const (
 	PacketTable      = "Packets"
@@ -32,6 +31,11 @@ func getBoards(sheets map[string]doc.Sheet) (map[string]Board, error) {
 			boardErrs.Add(err)
 		}
 
+		if _, ok := boards[name]; ok {
+			boardErrs.Add(errors.New("board already exists"))
+			continue
+		}
+
 		boards[name] = board
 	}
 
@@ -50,13 +54,37 @@ func getBoard(name string, sheet doc.Sheet) (Board, error) {
 		boardErrs.Add(err)
 	}
 
+	err = checkDuplicateIds(common.Map(packets, func(packet Packet) string {
+		return packet.Id
+	}))
+
+	if err != nil {
+		boardErrs.Add(err)
+	}
+
 	measurements, err := getMeasurements(sheet)
 
 	if err != nil {
 		boardErrs.Add(err)
 	}
 
+	err = checkDuplicateIds(common.Map(measurements, func(meas Measurement) string {
+		return meas.Id
+	}))
+
+	if err != nil {
+		boardErrs.Add(err)
+	}
+
 	structures, err := getStructures(sheet)
+
+	if err != nil {
+		boardErrs.Add(err)
+	}
+
+	err = checkDuplicateIds(common.Map(structures, func(structure Structure) string {
+		return structure.Packet
+	}))
 
 	if err != nil {
 		boardErrs.Add(err)
@@ -144,6 +172,19 @@ func getStructures(sheet doc.Sheet) ([]Structure, error) {
 	}
 
 	return structures, nil
+}
+
+func checkDuplicateIds(ids []string) error {
+	idSet := common.NewSet[string]()
+	for _, id := range ids {
+		if idSet.Has(id) {
+			return fmt.Errorf("duplicate id %s", id)
+		} else {
+			idSet.Add(id)
+		}
+	}
+
+	return nil
 }
 
 func getTable(name string, sheet doc.Sheet, headers []string) (Table, error) {

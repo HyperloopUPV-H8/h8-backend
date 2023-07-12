@@ -1,13 +1,16 @@
 package ade
 
 import (
+	"strings"
+
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/excel/document"
 	"github.com/xuri/excelize/v2"
 )
 
 const (
-	InfoName = "GLOBAL INFO" //TODO: change to INFO
+	InfoName    = "GLOBAL INFO" //TODO: change to INFO
+	BoardPrefix = "BOARD "
 )
 
 func CreateADE(file *excelize.File) (ADE, error) {
@@ -25,7 +28,7 @@ func CreateADE(file *excelize.File) (ADE, error) {
 	}
 
 	boardSheets := FilterMap(doc.Sheets, func(name string, _ document.Sheet) bool {
-		return name != InfoName
+		return strings.HasPrefix(name, BoardPrefix)
 	})
 
 	boards, err := getBoards(boardSheets)

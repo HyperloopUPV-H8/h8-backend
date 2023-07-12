@@ -175,6 +175,13 @@ func (factory *UpdateFactory) getNumericField(id uint16, name string, value pack
 	lastVal := replaceInvalidNumber(float64(value))
 	avg := factory.getAverage(id, name)
 	lastAvg := avg.Add(lastVal)
+
+	if math.IsInf(lastAvg, 0) {
+		factory.resetAverage(id, name)
+		return models.NumericValue{Value: lastVal, Average: 0}
+
+	}
+
 	return models.NumericValue{Value: lastVal, Average: lastAvg}
 }
 
@@ -192,6 +199,23 @@ func (factory *UpdateFactory) getAverage(id uint16, name string) *common.MovingA
 	}
 
 	return average
+}
+
+func (factory *UpdateFactory) resetAverage(id uint16, name string) {
+	averages, ok := factory.fieldAvg[id]
+	if !ok {
+		factory.trace.Warn().Uint16("id", id).Msg("packet average not found")
+		return
+	}
+
+	_, ok = averages[name]
+	if !ok {
+		factory.trace.Warn().Str("id", name).Msg("measurement average not found")
+		return
+	}
+
+	factory.fieldAvg[id][name] = common.NewMovingAverage[float64](DEFAULT_ORDER)
+
 }
 
 func (factory *UpdateFactory) getCycleTime(id uint16, timestamp uint64) uint64 {
