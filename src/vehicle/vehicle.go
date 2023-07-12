@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"net"
+	"strings"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
 	"github.com/HyperloopUPV-H8/Backend-H8/packet"
@@ -17,8 +19,9 @@ import (
 )
 
 type Vehicle struct {
-	sniffer sniffer.Sniffer
-	pipes   map[string]*pipe.Pipe
+	sniffer     sniffer.Sniffer
+	pipes       map[string]*pipe.Pipe
+	backendAddr net.IP
 
 	displayConverter unit_converter.UnitConverter
 	podConverter     unit_converter.UnitConverter
@@ -91,6 +94,11 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmitte
 			stateSpaceChan <- stateSpace
 
 		case vehicle.messageIds.Has(id):
+
+			if !strings.Contains(packet.Metadata.To, vehicle.backendAddr.String()) {
+				continue
+			}
+
 			if id == vehicle.blcuAckId {
 				blcuAckChan <- struct{}{}
 				continue

@@ -15,8 +15,9 @@ type Config struct {
 }
 
 type NetworkConfig struct {
-	TcpClientTag      string  `toml:"tcp_client_tag"`
-	TcpServerTag      string  `toml:"tcp_server_tag"`
+	TcpClientTag string `toml:"tcp_client_tag"`
+	TcpServerTag string `toml:"tcp_server_tag"`
+
 	UdpTag            string  `toml:"udp_tag"`
 	Mtu               uint    `toml:"mtu"`
 	KeepAliveProbes   int     `toml:"keep_alive_probes"`

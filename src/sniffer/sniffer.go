@@ -29,7 +29,7 @@ type Sniffer struct {
 
 func CreateSniffer(info info.Info, config Config, trace zerolog.Logger) Sniffer {
 	ips := common.Values(info.Addresses.Boards)
-	filter := getFilter(ips, info.Ports.UDP, info.Ports.TcpClient, info.Ports.TcpServer)
+	filter := getFilter(ips, info.Addresses.Backend, info.Ports.UDP, info.Ports.TcpClient, info.Ports.TcpServer)
 	sniffer, err := newSniffer(filter, config)
 
 	if err != nil {
@@ -66,13 +66,17 @@ func newSource(config Config, filter string) (*pcap.Handle, error) {
 	return source, nil
 }
 
-func getFilter(addrs []net.IP, udpPort uint16, tcpClientPort uint16, tcpServerPort uint16) string {
+func getFilter(boardAddrs []net.IP, backendAddr net.IP, udpPort uint16, tcpClientPort uint16, tcpServerPort uint16) string {
 	ipipFilter := getIPIPfilter()
-	udpFilter := getUDPFilter(addrs, udpPort)
-	tcpFilter := getTCPFilter(addrs, tcpServerPort, tcpClientPort)
-	filter := fmt.Sprintf("(%s) or (%s) or (%s)", ipipFilter, udpFilter, tcpFilter)
+	// udpFilter := getUDPFilter(boardAddrs, udpPort)
+	tcpFilter := getTCPFilter(boardAddrs, tcpServerPort, tcpClientPort)
+	noBackend := "not host 192.168.0.9"
 
-	trace.Trace().Any("addrs", addrs).Str("filter", filter).Msg("new filter")
+	// filter := fmt.Sprintf("((%s) or (%s) or (%s)) and (%s)", ipipFilter, udpFilter, tcpFilter, noBackend)
+
+	filter := fmt.Sprintf("((%s) or (%s)) and (%s)", ipipFilter, tcpFilter, noBackend)
+
+	trace.Trace().Any("addrs", boardAddrs).Str("filter", filter).Msg("new filter")
 	return filter
 }
 
@@ -81,13 +85,14 @@ func getIPIPfilter() string {
 }
 
 func getUDPFilter(addrs []net.IP, port uint16) string {
-	udp := fmt.Sprintf("(udp port %d)", port)
-	udpAddr := ""
-	for _, addr := range addrs {
-		udpAddr = fmt.Sprintf("%s or (src host %s)", udpAddr, addr.String())
-	}
-	udpAddr = strings.TrimPrefix(udpAddr, " or ")
-	return fmt.Sprintf("%s and (%s)", udp, udpAddr)
+	udpPort := fmt.Sprintf("udp port %d", port)
+	udpAddrs := common.Map(addrs, func(addr net.IP) string {
+		return fmt.Sprintf("(src host %s)", addr)
+	})
+
+	udpAddrsStr := strings.Join(udpAddrs, " or ")
+
+	return fmt.Sprintf("(%s) and (%s)", udpPort, udpAddrsStr)
 }
 
 func getTCPFilter(addrs []net.IP, serverPort uint16, clientPort uint16) string {
@@ -95,18 +100,19 @@ func getTCPFilter(addrs []net.IP, serverPort uint16, clientPort uint16) string {
 	flags := "tcp[tcpflags] & (tcp-fin | tcp-syn | tcp-rst) == 0"
 	nonZeroPayload := "tcp[tcpflags] & tcp-push != 0"
 
-	srcAddresses := make([]string, 0, len(addrs))
-	dstAddresses := make([]string, 0, len(addrs))
+	srcAddresses := common.Map(addrs, func(addr net.IP) string {
+		return fmt.Sprintf("(src host %s)", addr)
+	})
 
-	for _, addr := range addrs {
-		srcAddresses = append(srcAddresses, fmt.Sprintf("(src host %s)", addr.String()))
-		dstAddresses = append(dstAddresses, fmt.Sprintf("(dst host %s)", addr.String()))
-	}
+	srcAddressesStr := strings.Join(srcAddresses, " or ")
 
-	srcAddrsStr := strings.Join(srcAddresses, " or ")
-	dstAddrsStr := strings.Join(dstAddresses, " or ")
+	dstAddresses := common.Map(addrs, func(addr net.IP) string {
+		return fmt.Sprintf("(dst host %s)", addr)
+	})
 
-	filter := fmt.Sprintf("(%s) and (%s) and (%s) and (%s) and (%s)", ports, flags, nonZeroPayload, srcAddrsStr, dstAddrsStr)
+	dstAddressesStr := strings.Join(dstAddresses, " or ")
+
+	filter := fmt.Sprintf("(%s) and (%s) and (%s) and (%s) and (%s)", ports, flags, nonZeroPayload, srcAddressesStr, dstAddressesStr)
 	return filter
 }
 

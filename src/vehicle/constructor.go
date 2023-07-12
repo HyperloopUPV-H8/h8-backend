@@ -58,6 +58,7 @@ func New(args VehicleConstructorArgs) Vehicle {
 	vehicle := Vehicle{
 		podConverter:     unit_converter.NewUnitConverter("pod", args.Boards, args.Info.Units),
 		displayConverter: unit_converter.NewUnitConverter("display", args.Boards, args.Info.Units),
+		backendAddr:      args.Info.Addresses.Backend,
 
 		sniffer: sniffer.CreateSniffer(args.Info, snifferConfig, vehicleTrace),
 		pipes:   pipe.CreatePipes(args.Info, args.Config.Network.GetKeepAliveInterval(), args.Config.Network.GetWriteTimeout(), args.Config.Boards, dataChan, args.OnConnectionChange, pipesConfig, newPipeReaders(args.Info.MessageIds), vehicleTrace),
