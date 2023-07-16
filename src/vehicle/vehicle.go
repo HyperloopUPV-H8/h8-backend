@@ -131,12 +131,19 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmitte
 
 func (vehicle *Vehicle) SendOrder(order models.Order) error {
 	vehicle.trace.Info().Uint16("id", order.ID).Msg("send order")
-	pipe, err := vehicle.getPipe(order.ID)
+	// pipe, err := vehicle.getPipe(order.ID)
 
-	if err != nil {
-		vehicle.trace.Error().Err(err).Msg("error getting pipe")
-		return err
+	pipe, ok := vehicle.pipes["VCU"]
+
+	if !ok {
+		fmt.Println("VCU PIPE NOT FOUND")
+		return nil
 	}
+
+	// if err != nil {
+	// 	vehicle.trace.Error().Err(err).Msg("error getting pipe")
+	// 	return err
+	// }
 
 	values := getOrderValues(order, vehicle.trace)
 	convertedValues := vehicle.applyUnitConversion(values)
@@ -146,7 +153,7 @@ func (vehicle *Vehicle) SendOrder(order models.Order) error {
 	idBuf := make([]byte, 2)
 	binary.LittleEndian.PutUint16(idBuf, order.ID)
 
-	err = vehicle.packetParser.Encode(order.ID, convertedValues, buf)
+	err := vehicle.packetParser.Encode(order.ID, convertedValues, buf)
 	if err != nil {
 		vehicle.trace.Error().Err(err).Msg("error encoding order")
 		return err

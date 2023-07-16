@@ -81,6 +81,7 @@ func main() {
 	podData, err := pod_data.NewPodData(ade.Boards, info.Units)
 
 	if err != nil {
+		fmt.Println(err)
 		trace.Fatal().Err(err).Msg("creating podData")
 	}
 

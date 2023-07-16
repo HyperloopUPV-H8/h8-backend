@@ -68,13 +68,11 @@ func newSource(config Config, filter string) (*pcap.Handle, error) {
 
 func getFilter(boardAddrs []net.IP, backendAddr net.IP, udpPort uint16, tcpClientPort uint16, tcpServerPort uint16) string {
 	ipipFilter := getIPIPfilter()
-	// udpFilter := getUDPFilter(boardAddrs, udpPort)
+	udpFilter := getUDPFilter(boardAddrs, udpPort)
 	tcpFilter := getTCPFilter(boardAddrs, tcpServerPort, tcpClientPort)
 	noBackend := "not host 192.168.0.9"
 
-	// filter := fmt.Sprintf("((%s) or (%s) or (%s)) and (%s)", ipipFilter, udpFilter, tcpFilter, noBackend)
-
-	filter := fmt.Sprintf("((%s) or (%s)) and (%s)", ipipFilter, tcpFilter, noBackend)
+	filter := fmt.Sprintf("((%s) or (%s) or (%s)) and (%s)", ipipFilter, udpFilter, tcpFilter, noBackend)
 
 	trace.Trace().Any("addrs", boardAddrs).Str("filter", filter).Msg("new filter")
 	return filter

@@ -1,6 +1,7 @@
 package pod_data
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/HyperloopUPV-H8/Backend-H8/common"
@@ -42,8 +43,10 @@ func getMeasurement(adeMeas ade.Measurement, globalUnits map[string]utils.Operat
 		return m, nil
 	} else if adeMeas.Type == "bool" {
 		return getBooleanMeasurement(adeMeas), nil
-	} else {
+	} else if strings.HasPrefix(adeMeas.Type, "enum") {
 		return getEnumMeasurement(adeMeas), nil
+	} else {
+		return nil, fmt.Errorf("type %s not recognized", adeMeas.Type)
 	}
 }
 
