@@ -63,9 +63,9 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmitte
 			continue
 		}
 
-		if packet.Metadata.ID == 2 {
-			vehicle.propagateFault(packet.Metadata.From, packet.Payload)
-		}
+		// if packet.Metadata.ID == 2 {
+		// 	vehicle.propagateFault(packet.Metadata.From, packet.Payload)
+		// }
 
 		//TODO: add order decoding
 		switch id := packet.Metadata.ID; {
