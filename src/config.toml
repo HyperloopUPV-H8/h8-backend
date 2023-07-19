@@ -22,7 +22,7 @@ connections = "/backend"
 file_server = "/"
 
 [vehicle]
-boards = ["VCU", "LCU_MASTER", "PCU", "OBCCU", "BMSL"]
+boards = ["VCU"]
 
 [vehicle.network]
 tcp_client_tag = "TCP_CLIENT"

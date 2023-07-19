@@ -70,9 +70,11 @@ func getFilter(boardAddrs []net.IP, backendAddr net.IP, udpPort uint16, tcpClien
 	ipipFilter := getIPIPfilter()
 	udpFilter := getUDPFilter(boardAddrs, udpPort)
 	tcpFilter := getTCPFilter(boardAddrs, tcpServerPort, tcpClientPort)
-	noBackend := "not host 192.168.0.9"
+	// noBackend := "not host 192.168.0.9"
 
-	filter := fmt.Sprintf("((%s) or (%s) or (%s)) and (%s)", ipipFilter, udpFilter, tcpFilter, noBackend)
+	// filter := fmt.Sprintf("((%s) or (%s) or (%s)) and (%s)", ipipFilter, udpFilter, tcpFilter, noBackend)
+
+	filter := fmt.Sprintf("(%s) or (%s) or (%s)", ipipFilter, udpFilter, tcpFilter)
 
 	trace.Trace().Any("addrs", boardAddrs).Str("filter", filter).Msg("new filter")
 	return filter
