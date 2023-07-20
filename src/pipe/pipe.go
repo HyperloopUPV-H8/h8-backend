@@ -82,6 +82,11 @@ func (pipe *Pipe) listen() {
 		}
 
 		id := binary.LittleEndian.Uint16(idBuf)
+
+		if id == 69 {
+			continue
+		}
+
 		reader, ok := pipe.readers[id]
 
 		if !ok {
