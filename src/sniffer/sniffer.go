@@ -97,7 +97,8 @@ func getUDPFilter(addrs []net.IP, port uint16) string {
 
 func getTCPFilter(addrs []net.IP, serverPort uint16, clientPort uint16) string {
 	ports := fmt.Sprintf("tcp port %d or %d", serverPort, clientPort)
-	flags := "tcp[tcpflags] & (tcp-fin | tcp-syn | tcp-rst) == 0"
+	notSynFinRst := "tcp[tcpflags] & (tcp-fin | tcp-syn | tcp-rst) == 0"
+	notJustAck := "tcp[tcpflags] | tcp-ack != 16"
 	nonZeroPayload := "tcp[tcpflags] & tcp-push != 0"
 
 	srcAddresses := common.Map(addrs, func(addr net.IP) string {
@@ -112,7 +113,7 @@ func getTCPFilter(addrs []net.IP, serverPort uint16, clientPort uint16) string {
 
 	dstAddressesStr := strings.Join(dstAddresses, " or ")
 
-	filter := fmt.Sprintf("(%s) and (%s) and (%s) and (%s) and (%s)", ports, flags, nonZeroPayload, srcAddressesStr, dstAddressesStr)
+	filter := fmt.Sprintf("(%s) and (%s) and (%s) and (%s) and (%s) and (%s)", ports, notSynFinRst, notJustAck, nonZeroPayload, srcAddressesStr, dstAddressesStr)
 	return filter
 }
 
