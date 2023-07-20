@@ -62,6 +62,7 @@ func (pipe *Pipe) keepalive(interval *time.Duration) {
 	for range ticker.C {
 		_, err := pipe.Write([]byte{0x45, 0x00})
 		if err != nil {
+			pipe.Close(true)
 			return
 		}
 	}
