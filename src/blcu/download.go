@@ -43,7 +43,12 @@ func (blcu *BLCU) download(client wsModels.Client, payload json.RawMessage) (str
 func (blcu *BLCU) requestDownload(board string) error {
 	blcu.trace.Info().Str("board", board).Msg("Requesting download")
 
-	downloadOrder := blcu.createDownloadOrder(board)
+	downloadOrder, err := blcu.createDownloadOrder(board)
+
+	if err != nil {
+		return err
+	}
+
 	if err := blcu.sendOrder(downloadOrder); err != nil {
 		return err
 	}
@@ -56,16 +61,23 @@ func (blcu *BLCU) requestDownload(board string) error {
 	return nil
 }
 
-func (blcu *BLCU) createDownloadOrder(board string) models.Order {
+func (blcu *BLCU) createDownloadOrder(board string) (models.Order, error) {
+	boardId, ok := blcu.boardToId[board]
+
+	if !ok {
+		blcu.trace.Error().Str("board", board).Msg("board id not found")
+		return models.Order{}, fmt.Errorf("missing id for board %s", board)
+	}
+
 	return models.Order{
 		ID: blcu.config.Packets.Download.Id,
 		Fields: map[string]models.Field{
 			blcu.config.Packets.Download.Field: {
-				Value:     board,
+				Value:     boardId,
 				IsEnabled: true,
 			},
 		},
-	}
+	}, nil
 }
 
 const FlashMemorySize = 786432

@@ -11,6 +11,7 @@ import (
 
 func newPipeReaders(messageIds info.MessageIds) map[uint16]common.ReaderFrom {
 	return map[uint16]common.ReaderFrom{
+		0:                           NewEmptyFrom(),
 		messageIds.Info:             NewProtectionFrom(),
 		messageIds.Warning:          NewProtectionFrom(),
 		messageIds.Fault:            NewProtectionFrom(),

@@ -62,6 +62,10 @@ func (parser enumParser) decode(descriptor packet.ValueDescriptor, order binary.
 		return packet.Enum("Default"), err
 	}
 
+	if len(enum) < int(value) {
+		return packet.Enum("Default"), fmt.Errorf("option slice has length %d but index is %d", len(enum), value)
+	}
+
 	return packet.Enum(enum[value]), nil
 }
 

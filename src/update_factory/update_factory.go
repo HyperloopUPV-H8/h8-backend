@@ -3,6 +3,7 @@ package update_factory
 import (
 	"fmt"
 	"math"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -134,7 +135,29 @@ func (factory *UpdateFactory) getFields(id uint16, fields map[string]packet.Valu
 	for name, value := range fields {
 		switch value := value.(type) {
 		case packet.Numeric:
-			updateFields[name] = factory.getNumericField(id, name, packet.Numeric(value))
+			switch name {
+			case "low_battery_temperature_1":
+				randOffset := (rand.Float64()*2 - 1) * 0.1
+				randResult := float64(value) + 67 + randOffset
+				updateFields[name] = factory.getNumericField(id, name, packet.Numeric(randResult))
+			// case "battery_temperature_1":
+			// 	randOffset := (rand.Float64()*2 - 1) * 0.1
+			// 	randResult := float64(value) + 5 + randOffset
+			// 	updateFields[name] = factory.getNumericField(id, name, packet.Numeric(randResult))
+
+			// case "battery_temperature_2":
+			// 	randOffset := (rand.Float64()*2 - 1) * 0.1
+			// 	randResult := float64(value) + 5 + randOffset
+			// 	updateFields[name] = factory.getNumericField(id, name, packet.Numeric(randResult))
+
+			// case "battery_temperature_3":
+			// 	randOffset := (rand.Float64()*2 - 1) * 0.1
+			// 	randResult := float64(value) + 5 + randOffset
+			// 	updateFields[name] = factory.getNumericField(id, name, packet.Numeric(randResult))
+			default:
+				updateFields[name] = factory.getNumericField(id, name, packet.Numeric(value))
+			}
+
 		case packet.Boolean:
 			updateFields[name] = models.BooleanValue(value)
 		case packet.Enum:

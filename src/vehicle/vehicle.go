@@ -47,11 +47,11 @@ type Vehicle struct {
 	trace zerolog.Logger
 }
 
-func (vehicle *Vehicle) propagateFault(source string, payload []byte) {
-	for _, pipe := range vehicle.pipes {
-		pipe.SendFault(source, payload)
-	}
-}
+// func (vehicle *Vehicle) propagateFault(source string, payload []byte) {
+// 	for _, pipe := range vehicle.pipes {
+// 		pipe.SendFault(source, payload)
+// 	}
+// }
 
 func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmittedOrderChan chan<- models.PacketUpdate, messageChan chan<- any, blcuAckChan chan<- struct{}, stateOrdersChan chan<- message_parser.StateOrdersAdapter, stateSpaceChan chan<- models.StateSpace) {
 	vehicle.trace.Debug().Msg("vehicle listening")
@@ -62,10 +62,6 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmitte
 		if packet.Metadata.ID == 0 {
 			continue
 		}
-
-		// if packet.Metadata.ID == 2 {
-		// 	vehicle.propagateFault(packet.Metadata.From, packet.Payload)
-		// }
 
 		//TODO: add order decoding
 		switch id := packet.Metadata.ID; {
@@ -131,20 +127,44 @@ func (vehicle *Vehicle) Listen(updateChan chan<- models.PacketUpdate, transmitte
 
 func (vehicle *Vehicle) SendOrder(order models.Order) error {
 	vehicle.trace.Info().Uint16("id", order.ID).Msg("send order")
-	// pipe, err := vehicle.getPipe(order.ID)
 
-	pipe, ok := vehicle.pipes["VCU"]
+	board, ok := vehicle.idToBoard[order.ID]
 
 	if !ok {
-		fmt.Println("VCU PIPE NOT FOUND")
+		return fmt.Errorf("board for order id %d not found", order.ID)
+	}
+
+	switch board {
+	case "BLCU":
+		return vehicle.sendOrderToBoard(order, "BLCU")
+	case "TCU":
+		return vehicle.sendOrderToBoard(order, "TCU")
+	default:
+		return vehicle.sendOrderToBoard(order, "VCU")
+	}
+}
+
+func (vehicle *Vehicle) sendOrderToBoard(order models.Order, board string) error {
+	pipe, ok := vehicle.pipes[board]
+
+	if !ok {
+		vehicle.trace.Error().Str("board", board).Msg("pipe not found")
 		return nil
 	}
 
-	// if err != nil {
-	// 	vehicle.trace.Error().Err(err).Msg("error getting pipe")
-	// 	return err
-	// }
+	buf, err := vehicle.orderToBuf(order)
 
+	if err != nil {
+		vehicle.trace.Error().Err(err).Msg("converting order to buf")
+		return err
+	}
+
+	_, err = common.WriteAll(pipe, buf)
+
+	return err
+}
+
+func (vehicle *Vehicle) orderToBuf(order models.Order) ([]byte, error) {
 	values := getOrderValues(order, vehicle.trace)
 	convertedValues := vehicle.applyUnitConversion(values)
 
@@ -156,18 +176,14 @@ func (vehicle *Vehicle) SendOrder(order models.Order) error {
 	err := vehicle.packetParser.Encode(order.ID, convertedValues, buf)
 	if err != nil {
 		vehicle.trace.Error().Err(err).Msg("error encoding order")
-		return err
+		return nil, err
 	}
 
 	enableBuf := new(bytes.Buffer)
 	vehicle.bitarrayParser.encodeBitarray(getOrderEnables(order), enableBuf)
 
 	bufWithoutBitarray := append(idBuf, buf.Bytes()...)
-	// fullBuf := append(bufWithoutBitarray, enableBuf.Bytes()...)
-
-	_, err = common.WriteAll(pipe, bufWithoutBitarray)
-
-	return err
+	return bufWithoutBitarray, nil
 }
 
 func (vehicle *Vehicle) getUpdate(packet packet.Packet) (models.PacketUpdate, error) {
@@ -235,6 +251,8 @@ func getOrderValues(order models.Order, trace zerolog.Logger) map[string]packet.
 	for name, field := range order.Fields {
 		switch value := field.Value.(type) {
 		case float64:
+			values[name] = packet.Numeric(value)
+		case uint16:
 			values[name] = packet.Numeric(value)
 		case bool:
 			values[name] = packet.Boolean(value)
