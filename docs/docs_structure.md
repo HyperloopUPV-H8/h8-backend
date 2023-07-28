@@ -1,5 +1,6 @@
 Cada punto es una carpeta y cada subpunto es un archivo. Cada archivo debe explicar su concepto de la manera más directa.
 La intro de cada sección será similar a los intros de los apartadas de The Rust book: uno o dos párrafos que resumen el concepto que engloba lo que se va a explicar y porque es necesario para el backend.
+Cada documento puede contener extractos de código a modo de ejemplo.
 
 1. Introducción
     1. Intro + Funciones fundamentales de la estación de control.
