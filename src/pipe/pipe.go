@@ -39,10 +39,6 @@ func (pipe *Pipe) connect() {
 		LocalAddr: pipe.laddr,
 	}
 
-	if pipe.keepaliveInterval != nil {
-		dialer.KeepAlive = *pipe.keepaliveInterval
-	}
-
 	for pipe.isClosed {
 		pipe.trace.Trace().Msg("dial")
 
@@ -61,12 +57,27 @@ func (pipe *Pipe) connect() {
 	go pipe.listen()
 }
 
+func (pipe *Pipe) keepalive(interval *time.Duration) {
+	ticker := time.NewTicker(*interval)
+	for range ticker.C {
+		_, err := pipe.Write([]byte{0x45, 0x00})
+		if err != nil {
+			pipe.Close(true)
+			return
+		}
+	}
+
+}
+
 func (pipe *Pipe) open(conn *net.TCPConn) {
 	pipe.trace.Debug().Msg("open")
 	pipe.conn = conn
 	pipe.isClosed = false
 	pipe.conn.SetNoDelay(true)
 	pipe.onConnectionChange(!pipe.isClosed)
+	if pipe.keepaliveInterval != nil {
+		go pipe.keepalive(pipe.keepaliveInterval)
+	}
 }
 
 func (pipe *Pipe) listen() {
@@ -82,6 +93,11 @@ func (pipe *Pipe) listen() {
 		}
 
 		id := binary.LittleEndian.Uint16(idBuf)
+
+		if id == 69 {
+			continue
+		}
+
 		reader, ok := pipe.readers[id]
 
 		if !ok {
