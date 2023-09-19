@@ -1,56 +1,48 @@
 package message_transfer
 
 import (
-	dataTransferModels "github.com/HyperloopUPV-H8/Backend-H8/data_transfer/models"
-	"github.com/HyperloopUPV-H8/Backend-H8/message_transfer/models"
-	"github.com/gorilla/websocket"
-	"github.com/kjk/betterguid"
+	wsModels "github.com/HyperloopUPV-H8/Backend-H8/ws_handle/models"
+
+	"github.com/HyperloopUPV-H8/Backend-H8/common/observable"
+	"github.com/rs/zerolog"
+	trace "github.com/rs/zerolog/log"
+)
+
+const (
+	MessageTransferHandlerName = "messageTransfer"
+	UpdateTopic                = "message/update"
 )
 
 type MessageTransfer struct {
-	sockets map[string]*websocket.Conn
+	updateTopic       string
+	messageObservable observable.NoReplayObservable[any]
+	trace             zerolog.Logger
+}
+type MessageTransferConfig struct {
+	UpdateTopic string `toml:"update_topic"`
 }
 
-func New() *MessageTransfer {
-	return &MessageTransfer{
-		sockets: make(map[string]*websocket.Conn),
+func New(config MessageTransferConfig) MessageTransfer {
+	trace.Info().Msg("new message transfer")
+	return MessageTransfer{
+		updateTopic:       config.UpdateTopic,
+		messageObservable: observable.NewNoReplayObservable[any](),
+		// messageObservable: observable.NewWsObservable[any](struct{}{}, func(v any, id string) error { return defaultSendMessage(id, v) }), //FIXME: change struct{}{}
+		trace: trace.With().Str("component", MessageTransferHandlerName).Logger(),
 	}
 }
 
-func (messageTransfer *MessageTransfer) HandleConn(socket *websocket.Conn) {
-	messageTransfer.sockets[betterguid.New()] = socket
+func (messageTransfer *MessageTransfer) SendMessage(message any) error {
+	messageTransfer.messageObservable.Next(message)
+	return nil
 }
 
-func (messageTransfer *MessageTransfer) Broadcast(update dataTransferModels.PacketUpdate) {
-	message := getMessage(update)
-	for id, socket := range messageTransfer.sockets {
-		if err := socket.WriteJSON(message); err != nil {
-			socket.Close()
-			delete(messageTransfer.sockets, id)
-		}
-	}
+func (messageTransfer *MessageTransfer) UpdateMessage(client wsModels.Client, msg wsModels.Message) {
+	messageTransfer.trace.Info().Str("client", client.Id()).Str("topic", msg.Topic).Msg("got message")
+
+	observable.HandleSubscribe[any](&messageTransfer.messageObservable, msg, client)
 }
 
-func (messageTransfer *MessageTransfer) Close() {
-	for _, socket := range messageTransfer.sockets {
-		socket.Close()
-	}
-}
-
-func getMessage(update dataTransferModels.PacketUpdate) models.Message {
-	var message models.Message
-	if msg, ok := update.Values["warning"]; ok {
-		message = models.Message{
-			ID:          update.ID,
-			Description: msg,
-			Type:        "warning",
-		}
-	} else if msg, ok = update.Values["fault"]; ok {
-		message = models.Message{
-			ID:          update.ID,
-			Description: msg,
-			Type:        "fault",
-		}
-	}
-	return message
+func (messageTransfer *MessageTransfer) HandlerName() string {
+	return MessageTransferHandlerName
 }

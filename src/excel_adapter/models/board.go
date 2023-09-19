@@ -4,39 +4,46 @@ import (
 	"github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/internals/models"
 )
 
+const (
+	PACKET_TABLE_NAME      = "Packets"
+	MEASUREMENT_TABLE_NAME = "Measurements"
+	STRUCTURES_TABLE_NAME  = "Structures"
+)
+
 type Board struct {
-	Name         string
-	IP           string
-	Descriptions map[string]Description
-	Measurements map[string]Value
-	Structures   map[string]Structure
+	Name    string
+	IP      string
+	Packets []Packet
 }
 
 func NewBoard(name string, ip string, sheet models.Sheet) Board {
+
+	descriptions := getDescriptions(sheet.Tables[PACKET_TABLE_NAME])
+	measurements := getMeasurements(sheet.Tables[MEASUREMENT_TABLE_NAME])
+	structures := getStructures(sheet.Tables[STRUCTURES_TABLE_NAME])
+
 	return Board{
-		Name:         name,
-		IP:           ip,
-		Descriptions: getDescriptions(sheet.Tables["packets"]),
-		Measurements: getMeasurements(sheet.Tables["values"]),
-		Structures:   getStructures(sheet.Tables["structures"]),
+		Name:    name,
+		IP:      ip,
+		Packets: getPackets(descriptions, measurements, structures),
 	}
 }
 
-func (board Board) GetPackets() []Packet {
+func getPackets(descriptions map[string]Description, measurements map[string]Value, structures map[string]Structure) []Packet {
 	expandedPackets := make([]Packet, 0)
-	for _, description := range board.Descriptions {
-		measurements := board.getPacketMeasurements(description)
+	for _, description := range descriptions {
+		measurements := getPacketMeasurements(description, structures[description.Name], measurements)
 		packetDTOs := expandPacket(description, measurements)
 		expandedPackets = append(expandedPackets, packetDTOs...)
 	}
 	return expandedPackets
 }
 
-func (board Board) getPacketMeasurements(description Description) []Value {
-	wantedMeasurements := board.Structures[description.Name].Measurements
+func getPacketMeasurements(description Description, structure Structure, values map[string]Value) []Value {
+	wantedMeasurements := structure.Measurements
 	measurements := make([]Value, len(wantedMeasurements))
-	for index, name := range wantedMeasurements {
-		measurements[index] = board.Measurements[name]
+	for index, id := range wantedMeasurements {
+		measurements[index] = values[id]
 	}
 
 	return measurements
@@ -56,7 +63,7 @@ func getMeasurements(table models.Table) map[string]Value {
 	measurements := make(map[string]Value, len(table.Rows))
 	for _, row := range table.Rows {
 		adapter := newValue(row)
-		measurements[adapter.Name] = adapter
+		measurements[adapter.ID] = adapter
 	}
 
 	return measurements

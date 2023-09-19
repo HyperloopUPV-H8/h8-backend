@@ -1,75 +1,91 @@
 package data_transfer
 
 import (
-	"encoding/json"
-	"log"
 	"sync"
 	"time"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/data_transfer/models"
-	"github.com/gorilla/websocket"
-	"github.com/kjk/betterguid"
+	"github.com/HyperloopUPV-H8/Backend-H8/common/observable"
+	"github.com/HyperloopUPV-H8/Backend-H8/update_factory/models"
+	wsModels "github.com/HyperloopUPV-H8/Backend-H8/ws_handle/models"
+
+	"github.com/rs/zerolog"
+	trace "github.com/rs/zerolog/log"
+)
+
+const (
+	DataTransferHandlerName = "dataTransfer"
+	UpdateTopic             = "podData/update"
 )
 
 type DataTransfer struct {
-	bufMx     sync.Mutex
-	packetBuf map[uint16]models.PacketUpdate
-	ticker    *time.Ticker
-	sockets   map[string]*websocket.Conn
+	bufMx            *sync.Mutex
+	updateBuf        map[uint16]models.Update
+	updateObservable observable.ReplayObservable[map[uint16]models.Update]
+	ticker           *time.Ticker
+	updateTopic      string
+	trace            zerolog.Logger
+}
+type DataTransferTopics struct {
+	Update string
+}
+type DataTransferConfig struct {
+	Fps    uint
+	Topics DataTransferTopics
 }
 
-func New(rate time.Duration) *DataTransfer {
-	dataTransfer := &DataTransfer{
-		bufMx:     sync.Mutex{},
-		packetBuf: make(map[uint16]models.PacketUpdate),
-		ticker:    time.NewTicker(rate),
-		sockets:   make(map[string]*websocket.Conn),
-	}
+func New(config DataTransferConfig) DataTransfer {
+	trace.Info().Msg("create data transfer")
 
-	go dataTransfer.run()
+	dataTransfer := DataTransfer{
+		bufMx:            &sync.Mutex{},
+		updateBuf:        make(map[uint16]models.Update),
+		updateObservable: observable.NewReplayObservable(make(map[uint16]models.Update)),
+		ticker:           time.NewTicker(time.Second / time.Duration(config.Fps)),
+		updateTopic:      config.Topics.Update,
+		trace:            trace.With().Str("component", DataTransferHandlerName).Logger(),
+	}
 
 	return dataTransfer
 }
 
-func (dataTransfer *DataTransfer) run() {
+func (dataTransfer *DataTransfer) UpdateMessage(client wsModels.Client, msg wsModels.Message) {
+	dataTransfer.trace.Info().Str("source", client.Id()).Str("topic", msg.Topic).Msg("got message")
+
+	observable.HandleSubscribe[map[uint16]models.Update](&dataTransfer.updateObservable, msg, client)
+}
+
+func (DataTransfer *DataTransfer) HandlerName() string {
+	return DataTransferHandlerName
+}
+
+func (dataTransfer *DataTransfer) Run() {
+	dataTransfer.trace.Info().Msg("run")
 	for {
 		<-dataTransfer.ticker.C
-		if len(dataTransfer.packetBuf) == 0 {
-			continue
-		}
-		data := dataTransfer.getJSON()
-		for id, socket := range dataTransfer.sockets {
-			if err := socket.WriteMessage(websocket.TextMessage, data); err != nil {
-				socket.Close()
-				delete(dataTransfer.sockets, id)
-			}
-		}
+		dataTransfer.trySend()
 	}
 }
 
-func (dataTransfer *DataTransfer) Close() {
-	for _, socket := range dataTransfer.sockets {
-		socket.Close()
-	}
-}
-
-func (dataTransfer *DataTransfer) getJSON() []byte {
+func (dataTransfer *DataTransfer) trySend() {
 	dataTransfer.bufMx.Lock()
 	defer dataTransfer.bufMx.Unlock()
-	data, err := json.Marshal(dataTransfer.packetBuf)
-	if err != nil {
-		log.Fatalf("data transfer: getJSON: %s\n", err)
+
+	if len(dataTransfer.updateBuf) == 0 {
+		return
 	}
-	dataTransfer.packetBuf = make(map[uint16]models.PacketUpdate, len(dataTransfer.packetBuf))
-	return data
+
+	dataTransfer.sendBuf()
 }
 
-func (dataTransfer *DataTransfer) HandleConn(socket *websocket.Conn) {
-	dataTransfer.sockets[betterguid.New()] = socket
+func (dataTransfer *DataTransfer) sendBuf() {
+	dataTransfer.trace.Trace().Msg("send buffer")
+	dataTransfer.updateObservable.Next(dataTransfer.updateBuf)
+	dataTransfer.updateBuf = make(map[uint16]models.Update, len(dataTransfer.updateBuf))
 }
 
-func (dataTransfer *DataTransfer) Update(update models.PacketUpdate) {
+func (dataTransfer *DataTransfer) Update(update models.Update) {
 	dataTransfer.bufMx.Lock()
 	defer dataTransfer.bufMx.Unlock()
-	dataTransfer.packetBuf[update.ID] = update
+	dataTransfer.trace.Trace().Uint16("id", update.Id).Msg("update")
+	dataTransfer.updateBuf[update.Id] = update
 }

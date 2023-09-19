@@ -1,59 +1,64 @@
 package unit_converter
 
 import (
-	"log"
+	"fmt"
 
-	excelAdapterModels "github.com/HyperloopUPV-H8/Backend-H8/excel_adapter/models"
-	"github.com/HyperloopUPV-H8/Backend-H8/unit_converter/models"
+	"github.com/HyperloopUPV-H8/Backend-H8/excel/utils"
+	"github.com/HyperloopUPV-H8/Backend-H8/pod_data"
+	"github.com/rs/zerolog"
+	trace "github.com/rs/zerolog/log"
 )
 
 type UnitConverter struct {
-	operations map[string]models.Operations
-	Kind       string
+	operations map[string]utils.Operations
+	trace      zerolog.Logger
 }
 
-func (converter *UnitConverter) AddPacket(board string, ip string, desc excelAdapterModels.Description, values []excelAdapterModels.Value) {
-	if converter.operations == nil {
-		converter.operations = make(map[string]models.Operations)
-	}
+func NewUnitConverter(kind string, boards []pod_data.Board, unitToOperations map[string]utils.Operations) UnitConverter {
+	trace.Info().Str("kind", kind).Msg("new unit converter")
 
-	for _, val := range values {
-		if converter.Kind == "pod" {
-			if val.PodOps == "" {
-				continue
+	operations := make(map[string]utils.Operations)
+
+	for _, board := range boards {
+		for _, packet := range board.Packets {
+			for _, meas := range packet.Measurements {
+				if numericMeas, ok := meas.(pod_data.NumericMeasurement); ok {
+					if kind == "pod" {
+						operations[numericMeas.Id] = numericMeas.PodUnits.Operations
+					} else if kind == "display" {
+						operations[numericMeas.Id] = numericMeas.DisplayUnits.Operations
+					} else {
+						continue
+					}
+				}
 			}
-			converter.operations[val.Name] = models.NewOperations(val.PodOps)
-		} else if converter.Kind == "display" {
-			if val.DisplayOps == "" {
-				continue
-			}
-			converter.operations[val.Name] = models.NewOperations(val.DisplayOps)
-		} else {
-			log.Fatalf("unit converter: AddValue: invalid UnitConverter kind %s\n", converter.Kind)
 		}
+	}
+
+	return UnitConverter{
+		operations: operations,
+		trace:      trace.With().Str("component", "unitConverter").Str("kind", kind).Logger(),
 	}
 }
 
-func (converter *UnitConverter) Convert(values map[string]any) map[string]any {
-	convertedValues := make(map[string]any, len(values))
-	for name, value := range values {
-		if ops, ok := converter.operations[name]; ok {
-			convertedValues[name] = ops.Convert(value.(float64))
-		} else {
-			convertedValues[name] = value
-		}
+func (converter *UnitConverter) Convert(name string, value float64) (float64, error) {
+	ops, ok := converter.operations[name]
+	if ok {
+		converter.trace.Trace().Msg("convert")
+		return ops.Convert(value), nil
+	} else {
+		converter.trace.Error().Str("name", name).Msg("operations not found")
+		return 0, fmt.Errorf("couldn't find operations for %s", name)
 	}
-	return convertedValues
 }
 
-func (converter *UnitConverter) Revert(values map[string]any) map[string]any {
-	convertedValues := make(map[string]any, len(values))
-	for name, value := range values {
-		if ops, ok := converter.operations[name]; ok {
-			convertedValues[name] = ops.Convert(value.(float64))
-		} else {
-			convertedValues[name] = value
-		}
+func (converter *UnitConverter) Revert(name string, value float64) (float64, error) {
+	ops, ok := converter.operations[name]
+	if ok {
+		converter.trace.Trace().Msg("convert")
+
+		return ops.Revert(value), nil
+	} else {
+		return 0, fmt.Errorf("couldn't find operations for %s", name)
 	}
-	return convertedValues
 }

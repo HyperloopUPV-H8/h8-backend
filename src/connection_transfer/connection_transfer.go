@@ -1,64 +1,65 @@
 package connection_transfer
 
 import (
-	"encoding/json"
-	"log"
 	"sync"
 
-	"github.com/HyperloopUPV-H8/Backend-H8/connection_transfer/models"
-	"github.com/gorilla/websocket"
-	"github.com/kjk/betterguid"
+	"github.com/HyperloopUPV-H8/Backend-H8/common"
+	"github.com/HyperloopUPV-H8/Backend-H8/common/observable"
+	wsModels "github.com/HyperloopUPV-H8/Backend-H8/ws_handle/models"
+
+	"github.com/rs/zerolog"
+	trace "github.com/rs/zerolog/log"
+)
+
+const (
+	ConnectionTransferHandlerName = "connectionTransfer"
+	UpdateTopic                   = "connection/update"
 )
 
 type ConnectionTransfer struct {
-	writeMx     sync.Mutex
-	boardStatus map[string]models.Connection
-	sockets     map[string]*websocket.Conn
+	writeMx               *sync.Mutex
+	boardStatus           map[string]Connection
+	boardStatusObservable observable.ReplayObservable[[]Connection]
+	updateTopic           string
+	trace                 zerolog.Logger
 }
 
-func New() *ConnectionTransfer {
-	return &ConnectionTransfer{
-		writeMx:     sync.Mutex{},
-		boardStatus: make(map[string]models.Connection),
-		sockets:     make(map[string]*websocket.Conn),
+type ConnectionTransferConfig struct {
+	UpdateTopic string `toml:"update_topic"`
+}
+
+func New(config ConnectionTransferConfig) ConnectionTransfer {
+	trace.Info().Msg("new connection transfer")
+
+	return ConnectionTransfer{
+		writeMx:               &sync.Mutex{},
+		boardStatus:           make(map[string]Connection),
+		boardStatusObservable: observable.NewReplayObservable(make([]Connection, 0)),
+		updateTopic:           config.UpdateTopic,
+		trace:                 trace.With().Str("component", ConnectionTransferHandlerName).Logger(),
 	}
 }
 
-func (connectionTransfer *ConnectionTransfer) HandleConn(socket *websocket.Conn) {
-	connectionTransfer.sockets[betterguid.New()] = socket
+func (connectionTransfer *ConnectionTransfer) UpdateMessage(client wsModels.Client, msg wsModels.Message) {
+	connectionTransfer.trace.Trace().Str("topic", msg.Topic).Str("client", client.Id()).Msg("got message")
+
+	observable.HandleSubscribe[[]Connection](&connectionTransfer.boardStatusObservable, msg, client)
 }
 
-func (connectionTransfer *ConnectionTransfer) Update(name string, up bool) {
+func (connectionTransfer *ConnectionTransfer) HandlerName() string {
+	return ConnectionTransferHandlerName
+}
+
+func (connectionTransfer *ConnectionTransfer) Update(name string, IsConnected bool) {
 	connectionTransfer.writeMx.Lock()
 	defer connectionTransfer.writeMx.Unlock()
-	connectionTransfer.boardStatus[name] = models.Connection{
+
+	connectionTransfer.trace.Debug().Str("connection", name).Bool("isConnected", IsConnected).Msg("update connection state")
+
+	connectionTransfer.boardStatus[name] = Connection{
 		Name:        name,
-		IsConnected: up,
+		IsConnected: IsConnected,
 	}
 
-	message, err := json.Marshal(mapToArray(connectionTransfer.boardStatus))
-	if err != nil {
-		log.Fatalf("connection transfer: Update: %s\n", err)
-	}
-
-	for id, socket := range connectionTransfer.sockets {
-		if err := socket.WriteMessage(websocket.TextMessage, message); err != nil {
-			socket.Close()
-			delete(connectionTransfer.sockets, id)
-		}
-	}
-}
-
-func (ConnectionTransfer *ConnectionTransfer) Close() {
-	for _, socket := range ConnectionTransfer.sockets {
-		socket.Close()
-	}
-}
-
-func mapToArray(input map[string]models.Connection) []models.Connection {
-	output := make([]models.Connection, 0, len(input))
-	for _, value := range input {
-		output = append(output, value)
-	}
-	return output
+	connectionTransfer.boardStatusObservable.Next(common.Values(connectionTransfer.boardStatus))
 }
