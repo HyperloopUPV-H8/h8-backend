@@ -12,6 +12,9 @@ To build the project just run `go build` inside one of these folders. In order t
 
 alternatively you can download a version that is ready for production from the releases.
 
+## Interface
+<img width="1270" alt="ethernet-view-h8" src="https://github.com/HyperloopUPV-H8/h8-backend/assets/114561048/c8707a2d-e3dc-4e43-963d-bdee9945a470">
+
 ## Authors
 
 * [Juan Martinez Alonso](https://github.com/jmaralo)
